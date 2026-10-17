@@ -8,7 +8,10 @@ import { PullToSync } from "@/components/pull-to-sync";
 import { TabBar } from "@/components/glass/tab-bar";
 import { SettingsSheet } from "@/components/settings-sheet";
 import { Toaster } from "@/components/ui/sonner";
+import { Suspense } from "react";
+import { ConnectionToast } from "@/components/connection-toast";
 import { getBuddy } from "@/lib/buddy";
+import { getConnectionStatus } from "@/lib/connections";
 import { getCurrentUser } from "@/lib/users";
 import "./globals.css";
 
@@ -46,7 +49,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <span className="font-pixel text-[22px] leading-none text-dim">
               ~/<span className="text-foreground">build101</span>
             </span>
-            <SettingsSheet currentUserId={user.id} currentBuddy={buddy} />
+            <SettingsSheet
+              currentUserId={user.id}
+              currentBuddy={buddy}
+              connections={getConnectionStatus(user.id)}
+              configured={{ github: Boolean(process.env.GITHUB_CLIENT_ID), linear: Boolean(process.env.LINEAR_CLIENT_ID), slack: Boolean(process.env.SLACK_CLIENT_ID) }}
+            />
           </header>
           <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">
             <PullToSync>{children}</PullToSync>
@@ -54,6 +62,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </div>
         <TabBar />
         <Toaster theme="dark" position="top-center" />
+        <Suspense>
+          <ConnectionToast />
+        </Suspense>
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { setBuddy } from "@/app/actions/buddy";
 import { deleteMyData } from "@/app/actions/data";
+import { ConnectionsList, type ConnectionConfig, type ConnectionStatus } from "@/components/connections-list";
 import { Daemon } from "@/components/daemon/daemon";
 import { setCurrentUser } from "@/app/actions/user";
 import { Sheet } from "@/components/glass/sheet";
@@ -11,13 +12,6 @@ import { PushToggle } from "@/components/push-toggle";
 import { BUDDIES, buddyName, type BuddyId } from "@/lib/daemon";
 import { USERS, type UserId } from "@/lib/user-list";
 import { cn } from "@/lib/utils";
-
-const CONNECTIONS = [
-  { name: "Google Health", owner: "Renzo" },
-  { name: "Google Calendar", owner: "Joaco" },
-  { name: "GitHub", owner: "Joaco" },
-  { name: "Linear", owner: "Joaco" },
-] as const;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -29,7 +23,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /** Chip de usuario del header: abre Ajustes (usuario, notificaciones, conexiones, tus datos). */
-export function SettingsSheet({ currentUserId, currentBuddy }: { currentUserId: UserId; currentBuddy: BuddyId }) {
+type SettingsSheetProps = { currentUserId: UserId; currentBuddy: BuddyId; connections: ConnectionStatus; configured: ConnectionConfig };
+
+export function SettingsSheet({ currentUserId, currentBuddy, connections, configured }: SettingsSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -115,14 +111,7 @@ export function SettingsSheet({ currentUserId, currentBuddy }: { currentUserId: 
         </Section>
 
         <Section title="conexiones">
-          <ul className="grid gap-2 font-mono text-sm">
-            {CONNECTIONS.map((c) => (
-              <li key={c.name} className="flex justify-between">
-                <span>{c.name}</span>
-                <span className="text-dim">[pendiente · {c.owner}]</span>
-              </li>
-            ))}
-          </ul>
+          <ConnectionsList status={connections} configured={configured} />
         </Section>
 
         <Section title="esto es tuyo">
