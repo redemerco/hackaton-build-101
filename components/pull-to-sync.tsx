@@ -6,7 +6,7 @@ import { SPINNER } from "@/lib/ascii";
 import { reactDaemon } from "@/lib/daemon-events";
 
 // Endpoints que se llaman al soltar.
-const SYNC_ENDPOINTS = ["/api/sync/github", "/api/sync/health"] as const;
+const SYNC_ENDPOINTS = ["/api/sync/github", "/api/sync/health", "/api/sync/calendar", "/api/sync/linear", "/api/sync/slack"] as const;
 const TRIGGER_PX = 72;
 const MAX_PULL_PX = 110;
 const RESISTANCE = 0.5;
