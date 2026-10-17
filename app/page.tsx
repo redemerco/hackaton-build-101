@@ -41,6 +41,7 @@ function InsightRow({ i }: { i: Insight }) {
     <li className="grid gap-1 border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
       <p className="text-[13px] font-medium text-dim">{i.question}</p>
       <p className="text-[15px] leading-relaxed text-pretty">{i.text}</p>
+      <p className="text-[13px] leading-snug text-mood/90">→ {i.tryThis}</p>
       <p className="font-mono text-[11px] text-faint">
         {i.basis} · {i.isHypothesis ? <span className="text-mood">{i.evidence}</span> : i.evidence}
       </p>

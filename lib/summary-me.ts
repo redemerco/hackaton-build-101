@@ -33,7 +33,7 @@ export function buildMePrompt(userId: string, today: Today, cross: Cross): { sys
     `Hoy: ${commits} commits${commits ? ` (pico a las ${peak.hour} h)` : ""}, ${fmtMin(meetingMin)} de reuniones, ${azm} min en zona activa.`,
   ].filter(Boolean);
 
-  const crosses = cross.insights.slice(0, 3).map((i) => `- ${i.text} [${i.basis}; ${i.isHypothesis ? "hipótesis" : `respaldo: ${i.evidence}`}]`);
+  const crosses = cross.insights.slice(0, 3).map((i) => `- ${i.text} [${i.basis}; ${i.isHypothesis ? "hipótesis" : `respaldo: ${i.evidence}`}] Prueba sugerida: ${i.tryThis}`);
   const prompt = [
     `Hechos de hoy:\n${facts.join("\n")}`,
     crosses.length ? `Cruces que pasaron el control (de más a menos fuerte):\n${crosses.join("\n")}` : "Todavía no hay cruces con datos suficientes: decilo y no inventes ninguno.",

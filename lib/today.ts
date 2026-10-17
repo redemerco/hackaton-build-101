@@ -125,7 +125,7 @@ export function contributors(today: Today): Contributor[] {
   if (today.sleepMin !== null && realWeek.length) {
     const avgSleep = Math.round(realWeek.reduce((a, b) => a + b, 0) / realWeek.length);
     const sleepTrend = today.sleepMin > avgSleep + 15 ? "up" : today.sleepMin < avgSleep - 15 ? "down" : "flat";
-    out.push({ label: "sueño", value: fmt(today.sleepMin), vs: `tu media ${fmt(avgSleep)}`, trend: sleepTrend, isGood: sleepTrend !== "down" });
+    out.push({ label: "sueño", value: fmt(today.sleepMin), vs: `media 7 días ${fmt(avgSleep)}`, trend: sleepTrend, isGood: sleepTrend !== "down" });
   }
   if (today.hrvMs !== null && today.hrvTypical) {
     const [lo, hi] = today.hrvTypical;

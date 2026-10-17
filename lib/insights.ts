@@ -11,6 +11,7 @@ export type Insight = {
   basis: string; // "12 vs 18 días"
   evidence: string; // paper, o "hipótesis tuya: sin estudios directos"
   isHypothesis: boolean;
+  tryThis: string; // una prueba chica que la persona controla (lo que vuelve útil a un insight)
   weight: number; // para ordenar: tamaño del efecto relativo a tu variación
 };
 
@@ -76,8 +77,9 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
       if (debt >= 60)
         ready.push({
           id: "deuda",
+        tryThis: "Probá acostarte 30 min antes 5 noches seguidas y mirá si la deuda baja.",
           question,
-          text: `Esta semana dormiste ${fmtMin(debt)} menos que tu media de ${fmtMin(baseSleep)}. Con varios días recortados el rendimiento cae aunque uno no se sienta peor.`,
+          text: `Esta semana dormiste ${fmtMin(debt)} menos que tu media de 6 semanas (${fmtMin(baseSleep)}). Con varios días recortados el rendimiento cae aunque uno no se sienta peor.`,
           basis: `${week.length} noches vs tu media de ${nights.length}`,
           evidence: "Van Dongen et al. 2003, Sleep",
           isHypothesis: false,
@@ -101,6 +103,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     else if (Math.abs(c.a - c.b) >= 0.4)
       ready.push({
         id: "sueno-animo",
+        tryThis: "La próxima noche corta, anotá el ánimo igual: así vemos si el patrón se sostiene.",
         question,
         text: `Los días después de dormir 1 h menos que tu media tu ánimo promedia ${fmtMood(c.a)}, contra ${fmtMood(c.b)} el resto.`,
         basis: `${c.na} vs ${c.nb} días`,
@@ -121,6 +124,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
       if (spread >= 45)
         ready.push({
           id: "regularidad",
+        tryThis: "Probá una hora fija para acostarte (±30 min) durante una semana.",
           question,
           text: `Tu hora de acostarte varía ±${fmtMin(spread)} (en promedio a las ${clock(mean(beds))}). Los estudios asocian la regularidad del sueño tanto o más que la duración con la salud.`,
           basis: `${beds.length} noches`,
@@ -144,6 +148,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     else if (c.b - c.a >= 20)
       ready.push({
         id: "tarde-sueno",
+        tryThis: "Probá cortar a las 22:30 tres noches y comparamos con las otras.",
         question,
         text: `Las noches que tu último commit o mensaje fue después de las 23 h dormiste ${fmtMin(c.b - c.a)} menos que las otras.`,
         basis: `${c.na} vs ${c.nb} noches`,
@@ -160,6 +165,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (recent > 0 && usual < 0.3)
       ready.push({
         id: "madrugada",
+        tryThis: "Mañana, con la cabeza fresca, revisá ese commit antes de mergearlo.",
         question: "¿Mis commits de madrugada necesitan otra mirada?",
         text: `Hiciste ${recent} commit${recent > 1 ? "s" : ""} entre las 0 y las 4 h. En proyectos open source los commits de ese horario tuvieron más bugs: quizás valga una revisión con la cabeza fresca.`,
         basis: `${recent} commit${recent > 1 ? "s" : ""} · te pasa ${Math.round(usual * 100)}% de los días`,
@@ -179,6 +185,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (c && c.a - c.b >= 0.4)
       ready.push({
         id: "foco",
+        tryThis: "Reservá mañana un bloque de 2 h sin reuniones y hacé el check-in a la tarde.",
         question,
         text: `Tus días con al menos un bloque de 2 h sin reuniones promedian ${fmtMood(c.a)} de ánimo, contra ${fmtMood(c.b)} los otros.${today?.longestFreeMin != null ? ` Hoy tu bloque libre más largo es de ${fmtMin(today.longestFreeMin)}.` : ""}`,
         basis: `${c.na} vs ${c.nb} días`,
@@ -201,6 +208,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (c && c.a - c.b >= 20)
       ready.push({
         id: "reuniones-sueno",
+        tryThis: "El próximo día pesado de reuniones, poné una alarma para cortar a las 22:30.",
         question,
         text: `Los días con más de 4 h de reunión te acostaste ${fmtMin(c.a - c.b)} más tarde que los otros.`,
         basis: `${c.na} vs ${c.nb} días`,
@@ -223,6 +231,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
       if (z <= -1)
         ready.push({
           id: "recuperacion",
+        tryThis: "Hoy algo más liviano: dormir temprano y menos carga si podés elegir.",
           question,
           text: `Tu HRV de esta semana viene por debajo de tu rango habitual (${Math.round(Math.exp(mean(week)))} ms contra ${Math.round(Math.exp(mean(hrv)))} ms de media). Puede tener muchas causas: carga, poco sueño, alcohol o empezar a enfermarte.`,
           basis: `${week.length} días vs tu base de ${hrv.length}`,
@@ -244,6 +253,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (c && c.a - c.b >= 0.4)
       ready.push({
         id: "movimiento",
+        tryThis: "Probá 20 min activos tres días seguidos y mirá tu ánimo esos días.",
         question,
         text: `Los días que superás ${median} min en zona activa tu ánimo promedia ${fmtMood(c.a)}, contra ${fmtMood(c.b)} los otros.`,
         basis: `${c.na} vs ${c.nb} días`,
