@@ -5,7 +5,9 @@ export const maxDuration = 30;
 
 // POST /api/ingesta/procesar
 // Servicio de IA: recibe eventos (JSON) + un system prompt opcional, devuelve un digest.
-// Body: { events: unknown[] | object, systemPrompt?: string, instruction?: string }
+// Body: { events: unknown[] | object, systemPrompt?: string, instruction?: string, raw?: boolean, json?: boolean }
+//   raw: true → `events` (string) va tal cual, sin anteponer `instruction`; json: true → pide JSON a Gemini.
+//   Los usa lib/ai.ts cuando corre sin GEMINI_API_KEY (AI_SERVICE_URL apunta acá).
 // Respuesta: { digest: string, model: string, count?: number }
 //
 // Pensado para que otro servicio/agente mande su propio set de eventos y su prompt,
@@ -14,6 +16,8 @@ type Body = {
   events?: unknown;
   systemPrompt?: string;
   instruction?: string;
+  raw?: boolean;
+  json?: boolean;
 };
 
 export async function POST(req: Request): Promise<Response> {
@@ -34,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
   const count = Array.isArray(body.events) ? body.events.length : undefined;
 
   try {
-    const digest = await generateWithRetry(system, `${instruction}\n\n${eventsText}`);
+    const digest = await generateWithRetry(system, body.raw ? eventsText : `${instruction}\n\n${eventsText}`, body.json === true);
     return json({ digest: digest.trim(), model: MODEL, count }, 200);
   } catch (error) {
     console.error("[ingesta/procesar]", error);
@@ -43,13 +47,13 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 // Reintenta ante picos transitorios de Gemini (503 / 429). Backoff corto.
-async function generateWithRetry(system: string, userText: string, tries = 3): Promise<string> {
+async function generateWithRetry(system: string, userText: string, json: boolean, tries = 3): Promise<string> {
   let lastErr: unknown;
   for (let i = 0; i < tries; i++) {
     try {
       const res = await getAI().models.generateContent({
         model: MODEL,
-        config: { systemInstruction: system },
+        config: { systemInstruction: system, ...(json && { responseMimeType: "application/json" }) },
         contents: [{ role: "user", parts: [{ text: userText }] }],
       });
       return res.text ?? "";
