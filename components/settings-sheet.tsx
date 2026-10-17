@@ -12,7 +12,6 @@ import { PushToggle } from "@/components/push-toggle";
 import type { SourceOverview } from "@/lib/connection-overview";
 import { BUDDIES, buddyName, type BuddyId } from "@/lib/daemon";
 import { TINTS, type TintId } from "@/lib/tints";
-import { type UserId } from "@/lib/user-list";
 import { cn } from "@/lib/utils";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -25,15 +24,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /** Chip de usuario del header: abre Ajustes (usuario, notificaciones, conexiones, tus datos). */
-type SettingsSheetProps = { currentUserId: UserId; currentBuddy: BuddyId; currentTint: TintId; sources: SourceOverview[] };
+type SettingsSheetProps = { userName: string; currentBuddy: BuddyId; currentTint: TintId; sources: SourceOverview[] };
 
-export function SettingsSheet({ currentUserId, currentBuddy, currentTint, sources }: SettingsSheetProps) {
+export function SettingsSheet({ userName, currentBuddy, currentTint, sources }: SettingsSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
   // El usuario es quien se logueó con Google: mostramos su cuenta, no un selector.
   const account = sources.find((s) => s.id === "health")?.account ?? null;
-  const label = account ?? "Mi cuenta";
+  const label = userName && userName !== "Invitado" ? userName : account ?? "Mi cuenta";
 
   const pickBuddy = (id: BuddyId) =>
     startTransition(async () => {

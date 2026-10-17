@@ -62,8 +62,8 @@ const MAX_PENDING = 4;
 
 export default async function Yo() {
   const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
-  const today = getToday(user.id);
   const cross = getCross(user.id);
+  const today = getToday(user.id, new Date(), cross.series);
   const hasWork = cross.series.some((d) => d.commits > 0 || d.lastWorkMinute !== null || d.meetingMin > 0);
 
   // Sin ningún dato real: estado vacío honesto, pero el check-in de ánimo sigue disponible (es un dato que se crea acá).

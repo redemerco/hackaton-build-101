@@ -52,7 +52,8 @@ function meetingsToday(userId: UserId, now: Date): number {
 }
 
 // El sueño sale del ingest real de google_health (lib/body) cuando existe; si no, null/0 (nunca ejemplo).
-export function getToday(userId: UserId, now = new Date()): Today {
+/** `series` de getCross si ya la tenés (Yo la usa para la gráfica): evita leer 6 semanas de raw_events dos veces. */
+export function getToday(userId: UserId, now = new Date(), series = getCross(userId, now.getTime()).series): Today {
   const night = getLastNight(userId);
   const nightMin = (sm?: Record<string, number>) => (sm ? sm.light + sm.deep + sm.rem : undefined);
   const sleepMin = night ? nightMin(night.stageMinutes) ?? null : null;
@@ -62,7 +63,6 @@ export function getToday(userId: UserId, now = new Date()): Today {
   const mood = todaysMood(userId);
   const meetings = meetingsToday(userId, now);
   // pulso y HRV vienen como diarios de Google Health (no dentro de la noche): de la serie de lib/cross
-  const series = getCross(userId, now.getTime()).series;
   const vitals = recentVitals(series);
   const lastNightMin = series.at(-1)?.sleepMin ?? null;
 

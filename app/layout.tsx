@@ -60,7 +60,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   ~/<span className="text-foreground">build101</span>
                 </span>
                 <SettingsSheet
-                  currentUserId={user.id}
+                  userName={user.name}
                   currentBuddy={buddy}
                   currentTint={tint}
                   sources={getSourcesOverview(user.id)}
