@@ -41,6 +41,7 @@ Pantallas, dueños, estados y **dónde engancha cada uno su dato real**: [`docs/
 
 | `lib/connections.ts` | Tokens OAuth por usuario (tabla `connections`, aparte de `raw_events` para que nunca lleguen al digest): `getConnectionStatus(userId)` → `{ github, linear, slack }` con la cuenta conectada o `null` (server-only: pasalo como prop a componentes cliente), `deleteConnection` |
 | `lib/digest.ts` + `POST /api/digest` | Digest de 7 días en streaming (lo consume `<Digest src="/api/digest">`). Si Gemini falla, re-tipea el último digest guardado |
+| `lib/nudge.ts` + `/api/nudge` | `getNudge(userId)` → `{ title, body, isExample }` calculado de datos reales (racha sin cortar, hora, próxima reunión). `GET` lo devuelve; `POST` lo manda por push (si el push falla responde igual el nudge, para mostrarlo in-app). `?user=santi` apunta a otro usuario: es lo que llama el botón demo de Renzo |
 | `lib/sources/{github,linear,slack}.ts` | Ingests de trabajo → `raw_events`. Cada uno: `sync<Fuente>User(userId)` (token OAuth del usuario) + respaldo con la key de `.env.local` |
 
 `raw_events`: `source` = fuente (`google_health`, `github`, `linear`, `meal`, `mood`…), `kind` = tipo dentro de la fuente, `ts` = ISO 8601 UTC, `json` = payload crudo.
