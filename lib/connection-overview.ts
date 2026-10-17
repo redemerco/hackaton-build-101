@@ -26,7 +26,7 @@ const SOURCES: Omit<SourceOverview, "configured" | "account" | "lastEventAt" | "
   { id: "linear", name: "Linear", reads: "issues creados, empezados y cerrados", never: "comentarios", connect: "oauth" },
   { id: "slack", name: "Slack", reads: "cuántos mensajes mandás y a qué hora", never: "el texto, los canales ni con quién", connect: "oauth" },
   { id: "health", name: "Google Health", reads: "sueño por etapas (Fitbit)", never: "nada sale de tu cuenta", connect: "login" },
-  { id: "calendar", name: "Google Calendar", reads: "cuántas reuniones y cuándo", never: "títulos ni invitados", connect: "pending", owner: "Renzo" },
+  { id: "calendar", name: "Google Calendar", reads: "cuántas reuniones y cuándo", never: "títulos ni invitados", connect: "oauth" },
 ];
 
 // en raw_events cada fuente se guarda con este `source`
@@ -39,7 +39,7 @@ export function getSourcesOverview(userId: UserId, now = new Date()): SourceOver
     github: Boolean(process.env.GITHUB_CLIENT_ID),
     linear: Boolean(process.env.LINEAR_CLIENT_ID),
     slack: Boolean(process.env.SLACK_CLIENT_ID),
-    calendar: false,
+    calendar: Boolean(process.env.CALENDAR_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID),
     health: false,
   };
   const since = new Date(now.getTime() - WEEK_MS).toISOString();
@@ -53,7 +53,7 @@ export function getSourcesOverview(userId: UserId, now = new Date()): SourceOver
       .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, source), gte(rawEvents.ts, since)))
       .get();
     const account =
-      s.id === "github" || s.id === "linear" || s.id === "slack" ? status[s.id] : s.id === "health" ? (getConnection(userId, "google")?.account ?? null) : null;
+      s.id === "github" || s.id === "linear" || s.id === "slack" || s.id === "calendar" ? status[s.id] : s.id === "health" ? (getConnection(userId, "google")?.account ?? null) : null;
     return { ...s, configured: configured[s.id], account, lastEventAt: last?.ts ?? null, events7d: week?.n ?? 0 };
   });
 }

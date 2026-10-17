@@ -92,6 +92,22 @@ export const PROVIDERS: Record<Provider, Config> = {
       return (await res.json()).email;
     },
   },
+  calendar: {
+    authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    // Conexión aparte del login: su token SOLO tiene Calendar, así no rompe la Health API.
+    scope: ["https://www.googleapis.com/auth/calendar.events.readonly", "openid", "email"].join(" "),
+    // Reusa el mismo cliente OAuth de Google (CALENDAR_CLIENT_ID opcional por si se separa).
+    clientId: process.env.CALENDAR_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.CALENDAR_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET,
+    extraAuthParams: { access_type: "offline", prompt: "consent" },
+    account: async (token) => {
+      const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return (await res.json()).email;
+    },
+  },
 };
 
 export function isProvider(p: string): p is Provider {

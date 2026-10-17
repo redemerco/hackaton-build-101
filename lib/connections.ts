@@ -30,7 +30,7 @@ db.run(sql`CREATE TABLE IF NOT EXISTS connections (
   PRIMARY KEY (user_id, provider)
 )`);
 
-export type Provider = "github" | "linear" | "slack" | "google";
+export type Provider = "github" | "linear" | "slack" | "google" | "calendar";
 export type Connection = typeof connections.$inferSelect;
 
 export function saveConnection(c: Omit<Connection, "createdAt">) {
@@ -59,6 +59,7 @@ export function getConnectionStatus(userId: string): Record<Exclude<Provider, "g
     github: getConnection(userId, "github")?.account ?? null,
     linear: getConnection(userId, "linear")?.account ?? null,
     slack: getConnection(userId, "slack")?.account ?? null,
+    calendar: getConnection(userId, "calendar")?.account ?? null,
   };
 }
 

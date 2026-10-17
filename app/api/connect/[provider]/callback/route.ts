@@ -4,6 +4,7 @@ import { syncGithubUser } from "@/lib/sources/github";
 import { syncLinearUser } from "@/lib/sources/linear";
 import { syncSlackUser } from "@/lib/sources/slack";
 import { syncGoogleUser } from "@/lib/sources/google";
+import { syncCalendarUser } from "@/lib/sources/calendar";
 import { getCurrentUser } from "@/lib/users";
 import { USER_COOKIE, USERS, type UserId } from "@/lib/user-list";
 
@@ -13,6 +14,7 @@ const FIRST_SYNC: Partial<Record<string, (userId: string) => Promise<unknown>>> 
   linear: syncLinearUser,
   slack: syncSlackUser,
   google: syncGoogleUser,
+  calendar: syncCalendarUser,
 };
 
 // Google es el login de entrada: mapea el email de la cuenta al usuario de Pulso.
