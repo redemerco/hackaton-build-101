@@ -13,8 +13,8 @@ CONTRATO COMPARTIDO (no romperlo — Santi y Joaco trabajan en paralelo):
 - Next.js App Router + TypeScript + Tailwind + shadcn/ui, en la raíz del repo. **El scaffold y el sistema de UI los hace Santi (Rol A)** — tus pantallas se arman con sus componentes; si la base no está, no la crees vos: coordiná.
 - SQLite + Drizzle: `lib/db.ts`, archivo `data/pulso.db`. Tabla genérica `raw_events(id, source, kind, user_id, ts, json)` — cada ingest escribe JSON crudo ahí; las vistas derivan con queries. Tablas propias solo si hace falta (meals, checkins).
 - Usuarios hardcodeados en `lib/users.ts`: "santi" | "renzo" | "joaco" + switcher en la UI. SIN auth real (nada de next-auth).
-- Cliente Claude compartido en `lib/claude.ts`, modelo `claude-sonnet-5-5`, helper de streaming.
-- `.env.local` (NUNCA se commitea): ANTHROPIC_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
+- IA: **Gemini** (no Claude, por costo). Cliente compartido en `lib/ai.ts`, modelo `gemini-flash-latest`, helper `streamText()` (ver Contrato en el README).
+- `.env.local` (NUNCA se commitea): GEMINI_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
 - Git: commits chicos y frecuentes directo a `main` (son parte del dataset de la demo). `git pull --rebase` antes de pushear; nunca `push --force`.
 - El spine de PLAN.md no se negocia; stretch solo si sobra. Simple > completo.
 
@@ -57,6 +57,6 @@ TU ROL: B — RENZO — GOOGLE HEALTH + COMIDAS (dueño del go/no-go de salud y 
    - Instalar la PWA en los 3 teléfonos apenas exista (iOS: el push requiere **home screen**, 16.4+).
    - Botón oculto "enviar ahora" para el beat del nudge (1:50): llama al endpoint de Joaco, que calcula y envía vía `lib/push.ts` de Santi. Vos solo el disparador de demo. SIN cron ni scheduler.
 
-COSTURAS: usás los componentes UI de Santi y `lib/claude.ts`; el nudge lo calcula Joaco — vos ponés el botón; Joaco reusa tu OAuth de Google para Calendar; Santi muestra tus datos de salud en "Cuerpo".
+COSTURAS: usás los componentes UI de Santi y `lib/ai.ts` (Gemini); el nudge lo calcula Joaco — vos ponés el botón; Joaco reusa tu OAuth de Google para Calendar; Santi muestra tus datos de salud en "Cuerpo".
 NO HAGAS: scaffold/sistema de UI ni vista Cuerpo (Santi), digest/ingests de trabajo (Joaco).
 CHECKPOINTS: H8 datos reales de Google Health en `raw_events` + foto → análisis end-to-end funcionando EN EL TELÉFONO.

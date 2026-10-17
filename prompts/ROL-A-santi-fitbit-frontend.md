@@ -13,8 +13,8 @@ CONTRATO COMPARTIDO (no romperlo — Renzo y Joaco trabajan en paralelo):
 - Next.js App Router + TypeScript + Tailwind + shadcn/ui, en la raíz del repo. **El scaffold lo hacés VOS, primero que todo.**
 - SQLite + Drizzle: `lib/db.ts`, archivo `data/pulso.db`. Tabla genérica `raw_events(id, source, kind, user_id, ts, json)` — cada ingest escribe JSON crudo ahí; las vistas derivan con queries.
 - Usuarios hardcodeados en `lib/users.ts`: "santi" | "renzo" | "joaco" + switcher en la UI. SIN auth real (nada de next-auth).
-- Cliente Claude compartido en `lib/claude.ts`, modelo `claude-sonnet-5-5`, helper de streaming.
-- `.env.local` (NUNCA se commitea): ANTHROPIC_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
+- IA: **Gemini** (no Claude, por costo). Cliente compartido en `lib/ai.ts`, modelo `gemini-flash-latest`, helper `streamText()` (ver Contrato en el README).
+- `.env.local` (NUNCA se commitea): GEMINI_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
 - Ingests en `lib/sources/<fuente>.ts`.
 - Git: commits chicos y frecuentes directo a `main` (son parte del dataset de la demo). `git pull --rebase` antes de pushear; nunca `push --force`.
 - El spine de PLAN.md no se negocia; stretch solo si sobra. Simple > completo.
@@ -22,7 +22,7 @@ CONTRATO COMPARTIDO (no romperlo — Renzo y Joaco trabajan en paralelo):
 TU ROL: A — SANTI — FRONTEND (camino crítico: el scaffold destraba a Renzo y Joaco). Google Health (GCP, OAuth, ingest, plan B) pasó a Renzo — ver `prompts/ROL-B-renzo-comidas.md`.
 
 1) SCAFFOLD EXPRÉS (H0-2 — lo primero, PR exprés, mergear YA):
-   - create-next-app (TS, Tailwind, App Router) + shadcn/ui + Drizzle/SQLite (`lib/db.ts`, `data/pulso.db`, tabla `raw_events`) + `lib/users.ts` con switcher + `lib/claude.ts` (streaming helper).
+   - create-next-app (TS, Tailwind, App Router) + shadcn/ui + Drizzle/SQLite (`lib/db.ts`, `data/pulso.db`, tabla `raw_events`) + `lib/users.ts` con switcher + `lib/ai.ts` (Gemini, streaming helper).
    - PWA shell por la **guía oficial de Next, SIN libs**: `app/manifest.ts` + service worker a mano + plumbing de push: `lib/push.ts` con `sendPush(userId, payload)` + route de suscripción (web-push + VAPID). Dev con `next dev --experimental-https`.
    - Layout, navegación y componentes base: sos el dueño del sistema visual. Renzo y Joaco arman sus pantallas con TUS componentes.
 

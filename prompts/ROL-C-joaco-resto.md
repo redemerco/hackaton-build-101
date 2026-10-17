@@ -13,8 +13,8 @@ CONTRATO COMPARTIDO (no romperlo — Santi y Renzo trabajan en paralelo):
 - Next.js App Router + TypeScript + Tailwind + shadcn/ui, en la raíz del repo. **El scaffold y el sistema de UI los hace Santi (Rol A)** — tus pantallas se arman con sus componentes; si la base no está, no la crees vos: empezá por los ingests (no necesitan UI).
 - SQLite + Drizzle: `lib/db.ts`, archivo `data/pulso.db`. Tabla genérica `raw_events(id, source, kind, user_id, ts, json)` — cada ingest escribe JSON crudo ahí; las vistas derivan con queries.
 - Usuarios hardcodeados en `lib/users.ts`: "santi" | "renzo" | "joaco" + switcher en la UI. SIN auth real (nada de next-auth).
-- Cliente Claude compartido en `lib/claude.ts`, modelo `claude-sonnet-5-5`, helper de streaming.
-- `.env.local` (NUNCA se commitea): ANTHROPIC_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
+- IA: **Gemini** (no Claude, por costo). Cliente compartido en `lib/ai.ts`, modelo `gemini-flash-latest`, helper `streamText()` (ver Contrato en el README).
+- `.env.local` (NUNCA se commitea): GEMINI_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
 - Ingests en `lib/sources/<fuente>.ts`.
 - Git: commits chicos y frecuentes directo a `main` (son parte del dataset de la demo). `git pull --rebase` antes de pushear; nunca `push --force`.
 - El spine de PLAN.md no se negocia; stretch solo si sobra. Simple > completo.

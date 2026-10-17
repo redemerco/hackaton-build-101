@@ -5,10 +5,10 @@ Contexto para los agentes de Claude Code del equipo. El plan completo está en `
 ## Qué estamos construyendo
 
 **Pulso**: una PWA de salud para developers. Muestra **tu cuerpo y tu trabajo en el mismo gráfico**.
-- Cuerpo: Fitbit vía **Google Health API** (la Web API clásica de Fitbit se apaga el 30-oct-2026, no se usa), fotos de comida analizadas con Claude vision y check-in de ánimo.
+- Cuerpo: Fitbit vía **Google Health API** (la Web API clásica de Fitbit se apaga el 30-oct-2026, no se usa), fotos de comida analizadas con IA (Gemini vision) y check-in de ánimo.
 - Trabajo: GitHub, Linear y Google Calendar. Slack es lo primero que se corta.
 - Todo es **individual y privado**: nada va a un admin ni a la empresa. Es anti-bossware por diseño.
-- Claude narra **observaciones y correlaciones, nunca diagnóstico médico**. El disclaimer de no-medicina se ve en la app.
+- La IA narra **observaciones y correlaciones, nunca diagnóstico médico**. El disclaimer de no-medicina se ve en la app.
 
 Es una hackathon de **un fin de semana** con demo en vivo de 3 minutos. Por eso:
 - **Simple > completo.** El spine de `PLAN.md` no se negocia; el stretch entra solo si sobra tiempo.
@@ -20,22 +20,22 @@ Es una hackathon de **un fin de semana** con demo en vivo de 3 minutos. Por eso:
 
 | Rol | Quién | Dueño de | No toca |
 |---|---|---|---|
-| A | Santi | Scaffold, PWA shell, sistema de UI, `lib/push.ts`, Google Health OAuth/ingest, vista Cuerpo, polish final | Comidas, ingests de trabajo, digest |
-| B | Renzo | Cámara → Claude vision (comidas), check-in de ánimo, túnel ngrok, PWA en los teléfonos, botón demo del nudge | Scaffold/UI, OAuth de salud, digest |
+| A | Santi | Scaffold, PWA shell, sistema de UI, `lib/push.ts`, vista Cuerpo (sobre los datos de Renzo), polish final | Google Health, comidas, ingests de trabajo, digest |
+| B | Renzo | GCP + Google Health OAuth/ingest + plan B, cámara → Gemini vision (comidas), check-in de ánimo, túnel ngrok, PWA en los teléfonos, botón demo del nudge | Scaffold/UI, vista Cuerpo, digest |
 | C | Joaco | Ingests GitHub/Linear/Calendar, digest en streaming, endpoint del nudge, Wrapped, pitch y dry-runs | Scaffold/PWA/UI, cámara/comidas |
 
 Si una tarea cae en el área de otro rol, **avisá y coordiná, no la hagas vos**. Si la base de Santi todavía no está, no la crees: avanzá con lo que no la necesita.
 
 ## Contrato compartido (no romperlo)
 
-- **Stack**: Next.js App Router + TypeScript + Tailwind + shadcn/ui, en la raíz del repo. PWA por la guía oficial de Next, sin libs (`app/manifest.ts` + service worker a mano). Dev con `next dev --experimental-https`.
+- **Stack**: Next.js App Router + TypeScript + Tailwind + shadcn/ui, en la raíz del repo. PWA por la guía oficial de Next, sin libs (`app/manifest.ts` + service worker a mano). Dev con `npm run dev` (HTTP: `localhost` ya es contexto seguro para SW/push; el teléfono entra por ngrok con HTTPS). Next 16.4 con `cacheComponents` apagado.
 - **DB**: SQLite + Drizzle. `lib/db.ts`, archivo `data/pulso.db`. Tabla genérica:
   `raw_events(id, source, kind, user_id, ts, json)`. Cada ingest escribe el **JSON crudo** ahí y las vistas derivan con queries. No se diseñan schemas propios (solo `meals`/`checkins` si de verdad hace falta).
 - **Usuarios**: hardcodeados en `lib/users.ts` (`"santi" | "renzo" | "joaco"`) + switcher en la UI. **Sin auth real** (nada de next-auth).
-- **Claude**: cliente compartido en `lib/claude.ts`, modelo `claude-sonnet-5-5`, con helper de streaming. Un solo pipeline simple.
+- **IA: Gemini, no Claude** (por costo). Cliente compartido en `lib/ai.ts`, modelo `gemini-flash-latest`, helper `streamText()`. Un solo pipeline simple. Firmas exactas de todo en la sección **Contrato** del README.
 - **Ingests**: en `lib/sources/<fuente>.ts`.
 - **Push**: `lib/push.ts` exporta `sendPush(userId, payload)` (web-push + VAPID).
-- **Secrets**: en `.env.local`, que **nunca se commitea**: `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, `LINEAR_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
+- **Secrets**: en `.env.local`, que **nunca se commitea**: `GEMINI_API_KEY`, `GITHUB_TOKEN`, `LINEAR_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
 
 **Costuras**: Santi publica `lib/push.ts` y los componentes de UI. Renzo y Joaco arman sus pantallas con esos componentes. Joaco expone el endpoint del nudge y Renzo lo dispara con su botón. Todos escriben a `raw_events` y el digest solo lee de ahí.
 
@@ -53,7 +53,7 @@ Si una tarea cae en el área de otro rol, **avisá y coordiná, no la hagas vos*
 - **Google Calendar** comparte proyecto y consent screen con Google Health (scope `calendar.events.readonly`): un solo OAuth da salud + calendario.
 - **El OAuth nunca pasa por el túnel**: corre en la laptop con callback `localhost`. El teléfono solo lee datos por el túnel.
 - **Dominio del túnel fijo** (ngrok estático): la PWA instalada y la push subscription quedan atadas a ese origin.
-- **Cámara**: `<input type="file" accept="image/*" capture="environment">`, **no** getUserMedia (tiene bugs en PWAs standalone de iOS). Re-encodear a JPEG con canvas antes de mandar (Claude no acepta HEIC, máx 10MB).
+- **Cámara**: `<input type="file" accept="image/*" capture="environment">`, **no** getUserMedia (tiene bugs en PWAs standalone de iOS). Re-encodear a JPEG con canvas antes de mandar (HEIC no es seguro en todos lados; JPEG chico es más rápido y barato).
 - **Calorías**: siempre en **rangos** y con desglose por ítem en gramos, nunca un número seco.
 - **Push en iOS**: requiere la PWA instalada en home screen (iOS 16.4+).
 - **Nudges**: sin cron ni scheduler. Se calculan de datos reales y se disparan con un botón oculto de demo.
