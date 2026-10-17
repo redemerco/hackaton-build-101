@@ -27,7 +27,7 @@ function compact(source: string, kind: string, json: string): string {
   if (source === "github") {
     const d = JSON.parse(json);
     if (kind === "commit") return d.commit?.message?.split("\n")[0] ?? "";
-    if (kind === "pr") return `${d.title} (${d.merged_at ? "merged" : d.state})`;
+    if (kind === "pr") return `${d.title} (${(d.merged_at ?? d.pull_request?.merged_at) ? "merged" : d.state})`;
     if (kind === "issue") return `${d.title} (${d.state})`;
     if (kind === "review") return d.state ?? "";
   }

@@ -43,7 +43,7 @@ export function getWorkDay(userId: string): WorkDay {
       const message = d.commit?.message?.split("\n")[0] ?? "";
       log.push({ type: "commit", time: hhmm.format(new Date(r.ts)), message, additions: 0, deletions: 0 });
     } else if (r.kind === "pr") {
-      log.push({ type: "pr", title: `PR #${d.number} ${d.merged_at ? "mergeado" : d.state}` });
+      log.push({ type: "pr", title: `PR #${d.number} ${(d.merged_at ?? d.pull_request?.merged_at) ? "mergeado" : d.state}` });
     }
   }
 
