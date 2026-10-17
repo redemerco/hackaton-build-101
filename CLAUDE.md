@@ -1,28 +1,30 @@
-# CLAUDE.md — Pulso (hackathon de fin de semana)
+# CLAUDE.md — build101 (hackathon de fin de semana)
 
-Contexto para los agentes de Claude Code del equipo. El plan completo está en `PLAN.md`. Los prompts de cada rol están en `prompts/`.
+Contexto para los agentes de Claude Code del equipo. El plan vigente está en `plan/`: [`plan/README.md`](plan/README.md) (navegación, dueños, contrato, cortes y demo) y un archivo por persona (`plan/santi.md`, `plan/renzo.md`, `plan/joaco.md`).
 
 ## Qué estamos construyendo
 
-**Pulso**: una PWA de salud para developers. Muestra **tu cuerpo y tu trabajo en el mismo gráfico**.
+**build101** (nombre provisorio): una PWA de salud para developers. Muestra **tu cuerpo y tu trabajo en el mismo gráfico**.
 - Cuerpo: Fitbit vía **Google Health API** (la Web API clásica de Fitbit se apaga el 30-oct-2026, no se usa), fotos de comida analizadas con IA (Gemini vision) y check-in de ánimo.
 - Trabajo: GitHub, Linear y Google Calendar. Slack es lo primero que se corta.
-- Todo es **individual y privado**: nada va a un admin ni a la empresa. Es anti-bossware por diseño.
+- Todo es **individual y privado**: nada va a un admin ni a la empresa. Lo único que se comparte con el equipo es el **puntaje build101** del ranking (nunca los datos crudos).
 - La IA narra **observaciones y correlaciones, nunca diagnóstico médico**. El disclaimer de no-medicina se ve en la app.
 
 Es una hackathon de **un fin de semana** con demo en vivo de 3 minutos. Por eso:
-- **Simple > completo.** El spine de `PLAN.md` no se negocia; el stretch entra solo si sobra tiempo.
+- **Simple > completo.** Los P0 de `plan/` no se negocian; P1/P2 entran solo si sobra tiempo.
 - Planificamos con el **corte de 24h**: el spine llega hasta el digest (punto 5). Ánimo, nudge y Wrapped son bonus en ese orden.
 - Nada de abstracciones, multi-agente, tests exhaustivos ni infraestructura "para producción". Si algo no aparece en la demo, probablemente no hace falta.
 - Toda feature que se vea en la demo necesita **fallback cacheado**, porque la API o el wifi pueden morir en vivo.
 
 ## Equipo y roles (no pisarse)
 
-| Rol | Quién | Dueño de | No toca |
-|---|---|---|---|
-| A | Santi | Scaffold, PWA shell, sistema de UI, `lib/push.ts`, vista Cuerpo (sobre los datos de Renzo), polish final | Google Health, comidas, ingests de trabajo, digest |
-| B | Renzo | GCP + Google Health OAuth/ingest + plan B, cámara → Gemini vision (comidas), check-in de ánimo, túnel ngrok, PWA en los teléfonos, botón demo del nudge | Scaffold/UI, vista Cuerpo, digest |
-| C | Joaco | Ingests GitHub/Linear/Calendar, digest en streaming, endpoint del nudge, Wrapped, pitch y dry-runs | Scaffold/PWA/UI, cámara/comidas |
+Dueños por pantalla (detalle y tareas en `plan/`):
+
+| Quién | Dueño de |
+|---|---|
+| Santi | Sistema de UI, PWA shell, pantalla **Yo** (`/`): gráfica cruzada trabajo × salud y resumen daily; ranking en Semana |
+| Renzo | **Trabajo** (`/trabajo`) con su resumen daily IA; **acciones del agente en Yo** (mover reuniones, etc.); ingests de Google |
+| Joaco | **Salud** (`/salud`, ex Cuerpo + Comer, con la cámara) y su resumen daily IA; digest semanal, Wrapped, pitch |
 
 Si una tarea cae en el área de otro rol, **avisá y coordiná, no la hagas vos**. Si la base de Santi todavía no está, no la crees: avanzá con lo que no la necesita.
 

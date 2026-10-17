@@ -5,7 +5,7 @@ Hackatón Build 101
 
 1. Cloná el repo y abrí Claude Code en la raíz. Te va a ofrecer instalar el plugin **ECC** (skills, agentes y comandos `/ecc:*`): aceptá.
 2. Los hooks de ECC corren en perfil `minimal` (lo fija `.claude/settings.json`), así no frenan cada edición durante la hackathon.
-3. Abrí tu prompt en `prompts/` (A = Santi, B = Renzo, C = Joaco) y pegalo en tu sesión. El plan completo está en `PLAN.md`.
+3. Abrí tu plan en `plan/` (`santi.md`, `renzo.md`, `joaco.md`); el índice con navegación, dueños y demo es [`plan/README.md`](plan/README.md).
 
 ## Correr la app
 
@@ -22,7 +22,7 @@ npm run smoke                   # chequeo rápido de la DB
 
 ## Diseño
 
-Pantallas, dueños, estados y **dónde engancha cada uno su dato real**: [`docs/pantallas.md`](docs/pantallas.md). Propuesta visual viva: https://claude.ai/artifact/L7vWgdUTTZ2qRHTxsPKoTE
+Pantallas, dueños y tareas: [`plan/README.md`](plan/README.md).
 
 ## Contrato (no romper sin avisar)
 
