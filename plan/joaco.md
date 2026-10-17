@@ -28,19 +28,19 @@ Contrato y firmas: `plan/README.md` → Contrato. Caché y streaming van por `li
 
 **3. Ruta y panel en Salud** (`feat: Salud con resumen daily y comidas reales`)
 - `app/api/summary/health/route.ts`: `POST` → `new Response(streamSummary({ userId, kind: "health", ...buildHealthPrompt(userId) }))`; `GET` → `{ counts }`. Igual que `/api/digest`: texto plano en streaming; el caché lo escribe `lib/summary.ts`, vos no guardás nada.
-- `app/salud/page.tsx`: orden de paneles **resumen → cámara + comidas de hoy → sueño → pulso → movimiento**. `<Summary label="hoy, en el cuerpo" src="/api/summary/health" counts={counts} fallback={EXAMPLE_HEALTH_SUMMARY} />` arriba. Lista "hoy" con `getMealsToday`; `EXAMPLE_MEALS_TODAY` + rótulo `[ejemplo]` solo si está vacía.
+- `app/salud/page.tsx`: orden de paneles **resumen → cámara + comidas de hoy → sueño → pulso → movimiento**. `const { counts } = buildHealthPrompt(user.id)` en la página (server) y `<Summary label="hoy, en el cuerpo" src="/api/summary/health" counts={counts} fallback={EXAMPLE_HEALTH_SUMMARY} />` arriba. Lista "hoy" con `getMealsToday`; `EXAMPLE_MEALS_TODAY` + rótulo `[ejemplo]` solo si está vacía.
 - El `if (!user.hasWearable)` (`app/cuerpo/page.tsx:16`, mañana `app/salud/page.tsx`) hoy tapa toda la pantalla: resumen, cámara y comidas se renderizan **siempre**; solo sueño/pulso/movimiento muestran el `EmptyState` sin wearable. (El `hasWearable` hardcodeado lo arregla Santi en su P2 #9; no lo dupliques.)
 - Terminado: en Salud el resumen cita la comida que acabás de guardar y la noche real; sin `GEMINI_API_KEY` re-tipea `[cache]`; sin caché tipea `[ejemplo]`.
 
 **4. `lib/body.ts` sin ejemplos escondidos en noches reales** (`fix: pulso, HRV y movimiento reales en Salud`)
-- `parseNight` (`lib/body.ts:97`) hace `{ ...exampleNight(), ... }`: una noche real sale con pulso 58, HRV 48, curva de pulso y pasos de ejemplo bajo el rótulo "Google Health" (README → Estado actual #8). `restingBpm`, `hrvMs`, `restingTypical`, `hrvTypical`: de `dayInputs` (hoy, y rango = min–max de los 14 días anteriores). Si no hay dato de hoy, el valor queda `null` y el panel lo muestra como `—`.
+- `parseNight` (`lib/body.ts:97`) hace `{ ...exampleNight(), ... }`: una noche real sale con pulso 58, HRV 48, curva de pulso y pasos de ejemplo bajo el rótulo "Google Health" (README → Estado actual #8). `restingBpm`, `hrvMs`, `restingTypical`, `hrvTypical`: de `dayInputs` (hoy; "típico" con la **misma fórmula que `lib/today.ts` de Santi**, acordar una línea para que Yo y Salud no muestren dos típicos distintos). Si no hay dato de hoy, el valor queda `null` y el panel lo muestra como `—` (cambia la forma de `Night`: avisar, ver Coordinación).
 - `hrNight` y `stepsByHour` **no tienen fuente**: `lib/sources/google.ts` ingesta solo `sleep`, `resting_hr`, `hrv` y `azm`. Propuesta ponytail: sacar la curva de pulso nocturna y el "mínimo a las"; reemplazar el panel "pasos · 08 → 19 h" por **"movimiento · 7 días"** con el AZM diario de `dayInputs` en `sparkline`. Cero datos inventados en pantalla.
 - Terminado: con tu Fitbit sincronizada, reposo y HRV coinciden con la app de Google Health; `isExample` solo cuando no hay noche real o es `_mock`.
 
 ### P1 — domingo hasta las 10:00
 
 **5. Ensayar el beat 0:50 completo** (sin código nuevo si 1–4 están)
-- Foto → Guardar → la lista "hoy" cambia → Regenerar → el resumen nombra la comida y "datos usados" suma 1. Jurado toca el ánimo en Yo → vuelve a Salud → Regenerar → cambia la oración del ánimo. Si Gemini no nombra la comida, el prompt la lista al final con "lo más reciente:" (los modelos pesan más el cierre).
+- Foto → Guardar → la lista "hoy" cambia → Regenerar → el resumen nombra la comida y "datos usados" suma 1. Jurado toca el ánimo en Yo → vuelve a Salud → Regenerar → cambia la oración del ánimo. Si Gemini no nombra la comida, el prompt la lista al final con "lo más reciente:" (los modelos pesan más el cierre). Si el ida y vuelta Yo → Salud pesa en el guion, proponé en el grupo montar `<MoodCheckin>` también en Salud (una línea + `revalidatePath("/salud")` en `app/actions/mood.ts`); es decisión del grupo, ánimo queda en Yo.
 - Fallback de la foto: el guion dice "análisis cacheado `[cache]`", hoy la cámara solo muestra error (`components/meal-camera.tsx:100`). Barato: `app/salud/page.tsx` pasa `lastMeal` (última de `getMealsToday`) como prop a `<MealCamera>`; si `/api/comer/analizar` falla, se muestra con rótulo `[cache · IA no disponible]`. Nunca el `EXAMPLE_ANALYSIS` como si fuera real.
 
 **6. Polish de Semana** (`fix: build101 en el digest y rótulo [cache]`)
@@ -82,6 +82,7 @@ Contrato y firmas: `plan/README.md` → Contrato. Caché y streaming van por `li
 |---|---|---|
 | Santi | `app/salud/page.tsx` | Él hace el rename y pega la cámara en un commit (~21:00) y avisa en el grupo; recién ahí lo abrís. Hasta entonces: tareas 1 y 2. |
 | Santi | `lib/ranking.ts` (`dayInputs`, y si acepta `scoresFor`) | Los consumís, no los editás. Si falta algo, pedíselo. |
+| Santi | `lib/body.ts` (`Night`) | Es tuyo, pero `getLastNight` lo usa su `lib/hourly.ts` (solo start/end) y `Pulse bpm`: si `restingBpm` pasa a nullable, avisá antes de pushear. |
 | Santi | `lib/summary.ts`, `components/summary.tsx`, `lib/ai.ts` | Los consumís. Tu única obligación: `/api/summary/health` pasa por `streamSummary` (es el único que escribe el caché `kind: "health"` que su resumen de Yo lee con `getCachedSummary`) y el texto se entiende solo, porque él lo cita. |
 | Renzo | `lib/work.ts` | Es tuyo históricamente; él cambia 15 líneas (sueño/ánimo reales en el panel de 7 días) y te avisa. No lo toques esta noche. |
 | Renzo | `lib/nudge.ts`, `/api/nudge` | Pasan a ser de él (el nudge vive en el agente). |
