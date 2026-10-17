@@ -79,9 +79,9 @@ Patrón de las demos ganadoras (investigado en la ronda anterior): **input real 
 
 ## Reparto (3 personas, todos con IA)
 
-- **A — Santi — Fitbit + Frontend**: scaffold exprés de la base (destraba a los otros dos) + PWA shell + sistema de UI y componentes compartidos + Google Health OAuth/ingest + vista Cuerpo + polish final de todas las pantallas. Doble camino crítico: scaffold primero, checks manuales de GCP en paralelo (son esperas de consola).
-- **B — Renzo — Comidas**: cámara → Claude vision (gramos + rangos) en el teléfono, check-in de ánimo, túnel de dominio estático + instalación de la PWA en los 3 teléfonos, botón demo del nudge. Dueño del beat 0:45.
-- **C — Joaco — El resto (trabajo + cerebro + pitch)**: ingest GitHub/Linear (+Calendar sobre el OAuth de Santi), digest en streaming, cálculo y envío del nudge (vía `lib/push.ts` de Santi), Wrapped, pitch y dry-runs.
+- **A — Santi — Frontend**: scaffold exprés de la base (destraba a los otros dos) + PWA shell + sistema de UI y componentes compartidos + vista Cuerpo (sobre los datos que ingesta Renzo) + polish final de todas las pantallas.
+- **B — Renzo — Google Health + Comidas**: GCP (consent screen, cliente OAuth, Playground go/no-go) + Google Health OAuth/ingest + plan B; cámara → Claude vision (gramos + rangos) en el teléfono, check-in de ánimo, túnel de dominio estático + instalación de la PWA en los 3 teléfonos, botón demo del nudge. Dueño del go/no-go de salud y del beat 0:45.
+- **C — Joaco — El resto (trabajo + cerebro + pitch)**: ingest GitHub/Linear (+Calendar sobre el OAuth de Renzo), digest en streaming, cálculo y envío del nudge (vía `lib/push.ts` de Santi), Wrapped, pitch y dry-runs.
 
 Costuras (para que todo conecte): A publica `lib/push.ts` (sendPush) y los componentes de UI; B y C arman sus pantallas con esos componentes; C expone el endpoint del nudge que B dispara desde su botón; todos escriben a `raw_events` y el digest de C solo lee de ahí.
 
