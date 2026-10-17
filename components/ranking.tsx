@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { Daemon } from "@/components/daemon/daemon";
 import { Panel } from "@/components/glass/panel";
+import type { BuddyId, DaemonState } from "@/lib/daemon";
+import type { TintId } from "@/lib/tints";
 import { cn } from "@/lib/utils";
 
 export type RankingEntry = {
   userId: string;
   name: string;
   isMe: boolean;
+  buddy: BuddyId;
+  tint: TintId;
   score: number | null;
   note?: string; // "5/7 días", "parcial"
 };
@@ -19,6 +24,16 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "hoy", label: "Hoy" },
   { id: "semana", label: "Semana" },
 ];
+
+// La cara del compañero según el puntaje: el ranking se lee de un vistazo.
+function faceFor(score: number | null): DaemonState {
+  if (score === null) return "durmiendo";
+  if (score >= 80) return "racha";
+  if (score >= 65) return "enforma";
+  if (score >= 50) return "bien";
+  if (score >= 35) return "cansado";
+  return "fundido";
+}
 
 function bar(score: number): string {
   const full = Math.round((score / 100) * BAR_CELLS);
@@ -52,11 +67,12 @@ export function Ranking({ team, today, week, isExample }: { team: string; today:
           <li
             key={r.userId}
             className={cn(
-              "grid grid-cols-[2ch_1fr_auto] items-center gap-x-3 rounded-lg px-2 py-2 font-mono text-[13px] tabular-nums",
+              "grid grid-cols-[2ch_auto_1fr_auto] items-center gap-x-3 rounded-lg px-2 py-1.5 font-mono text-[13px] tabular-nums",
               r.isMe && "bg-mood/10 shadow-[inset_0_0_0_1px_rgb(241_225_91/.3)]",
             )}
           >
             <span className={cn("text-dim", i === 0 && r.score !== null && "text-mood")}>{r.score === null ? "–" : i + 1}</span>
+            <Daemon state={faceFor(r.score)} buddy={r.buddy} tint={r.tint} scale={2} className="-my-2" />
             <span className="min-w-0">
               <span className="block truncate font-sans text-[15px] font-medium">
                 {r.name}

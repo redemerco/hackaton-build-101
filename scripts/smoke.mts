@@ -66,4 +66,13 @@ const rough = scoreDay({ sleep: { asleepMin: 300, deepRemMin: 60, awakeMin: 60 }
 assert.ok(rough && rough.score < 30, `noche mala + recuperación baja puntúa bajo (${rough?.score})`);
 const mid = scoreDay({ sleep: { asleepMin: 400, deepRemMin: 120, awakeMin: 30 }, hrvMs: 48, restingBpm: 59, azm: 10 }, { hrvMs: 50, restingBpm: 58 });
 assert.ok(mid && mid.score > rough!.score && mid.score < 100, `noche media queda en el medio (${mid?.score})`);
+
+// colores del compañero
+const { tintPalette } = await import("../lib/tints.ts");
+const pal = { b: "#969df5", d: "#4c50a8", o: "#161830" };
+assert.deepEqual(tintPalette(pal, "original"), pal, "original no toca nada");
+const coral = tintPalette(pal, "coral");
+assert.notEqual(coral.b, pal.b, "el cuerpo cambia de color");
+assert.equal(coral.o, pal.o, "el contorno no se recolorea");
+assert.ok(parseInt(coral.b.slice(1), 16) !== parseInt(coral.d.slice(1), 16), "se conserva el sombreado (claro ≠ oscuro)");
 console.log("smoke OK");

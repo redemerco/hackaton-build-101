@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { setBuddy } from "@/app/actions/buddy";
+import { setBuddy, setTint } from "@/app/actions/buddy";
 import { deleteMyData } from "@/app/actions/data";
 import { SourcesList } from "@/components/connect/source-card";
 import { Daemon } from "@/components/daemon/daemon";
@@ -11,6 +11,7 @@ import { Sheet } from "@/components/glass/sheet";
 import { PushToggle } from "@/components/push-toggle";
 import type { SourceOverview } from "@/lib/connection-overview";
 import { BUDDIES, buddyName, type BuddyId } from "@/lib/daemon";
+import { TINTS, type TintId } from "@/lib/tints";
 import { USERS, type UserId } from "@/lib/user-list";
 import { cn } from "@/lib/utils";
 
@@ -24,9 +25,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /** Chip de usuario del header: abre Ajustes (usuario, notificaciones, conexiones, tus datos). */
-type SettingsSheetProps = { currentUserId: UserId; currentBuddy: BuddyId; sources: SourceOverview[] };
+type SettingsSheetProps = { currentUserId: UserId; currentBuddy: BuddyId; currentTint: TintId; sources: SourceOverview[] };
 
-export function SettingsSheet({ currentUserId, currentBuddy, sources }: SettingsSheetProps) {
+export function SettingsSheet({ currentUserId, currentBuddy, currentTint, sources }: SettingsSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -49,6 +50,15 @@ export function SettingsSheet({ currentUserId, currentBuddy, sources }: Settings
         toast(`${buddyName(id)} es tu compañero`);
       } catch {
         toast.error("No se pudo cambiar de compañero");
+      }
+    });
+
+  const pickTint = (id: TintId) =>
+    startTransition(async () => {
+      try {
+        await setTint(id);
+      } catch {
+        toast.error("No se pudo cambiar el color");
       }
     });
 
@@ -102,6 +112,29 @@ export function SettingsSheet({ currentUserId, currentBuddy, sources }: Settings
               >
                 <Daemon key={`${id}-${id === currentBuddy}`} state={id === currentBuddy ? "racha" : "bien"} buddy={id} scale={2} />
                 {buddyName(id)}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1" role="group" aria-label="Color de tu compañero">
+            {TINTS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                disabled={isPending}
+                aria-pressed={t.id === currentTint}
+                aria-label={t.label}
+                title={t.label}
+                onClick={() => pickTint(t.id)}
+                className={cn(
+                  "press grid size-11 place-items-center rounded-full transition-[box-shadow] duration-200 disabled:opacity-60",
+                  t.id === currentTint ? "shadow-[0_0_0_2px_var(--mood)]" : "shadow-[inset_0_0_0_1px_rgb(255_255_255/.14)]",
+                )}
+              >
+                {t.swatch ? (
+                  <span className="size-7 rounded-full" style={{ background: t.swatch }} />
+                ) : (
+                  <span className="font-mono text-[11px] text-dim">orig</span>
+                )}
               </button>
             ))}
           </div>

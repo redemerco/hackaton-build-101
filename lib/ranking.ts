@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, gte } from "drizzle-orm";
 import { getConnection } from "@/lib/connections";
 import { db, rawEvents } from "@/lib/db";
+import { getLook, type Look } from "@/lib/profiles";
 import { mean, scoreDay, type DayInput, type DayScore } from "@/lib/score";
 import { USERS, type UserId } from "@/lib/user-list";
 
@@ -19,6 +20,7 @@ export type RankRow = {
   userId: string;
   name: string;
   isMe: boolean;
+  look: Look; // personaje y color de esa persona
   today: DayScore | null;
   week: { score: number; days: number } | null;
 };
@@ -133,7 +135,7 @@ function exampleRanking(me: UserId, team: string | null): Ranking {
   const fake: Record<string, [number, number]> = { santi: [82, 77], renzo: [74, 79], joaco: [61, 66] };
   const rows = USERS.map((u) => {
     const [today, week] = fake[u.id];
-    return { userId: u.id, name: u.name, isMe: u.id === me, today: { score: today, parts: {}, isPartial: false }, week: { score: week, days: 7 } };
+    return { userId: u.id, name: u.name, isMe: u.id === me, look: getLook(u.id), today: { score: today, parts: {}, isPartial: false }, week: { score: week, days: 7 } };
   });
   return { team, rows, isExample: true };
 }
@@ -146,6 +148,7 @@ export function getRanking(me: UserId, now = Date.now()): Ranking {
     userId: u.id,
     name: u.name,
     isMe: u.id === me,
+    look: getLook(u.id),
     ...scoresFor(u.id, now),
   }));
   if (!rows.some((r) => r.today || r.week)) return exampleRanking(me, team);

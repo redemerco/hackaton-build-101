@@ -1,6 +1,7 @@
 // El daemon: qué estado tiene según tus datos, cómo se compone cada cuadro y qué dice.
 // Puro (sin DOM ni server-only): lo usan components/daemon y scripts/smoke.mts.
 import { ACCESSORIES, CHARACTERS, EYES, MOUTHS, SIZE } from "./buddy-art.ts";
+import { DEFAULT_TINT, tintPalette, type TintId } from "./tints.ts";
 
 /** Los compañeros elegibles. Comparten estados y comportamiento; cambia la silueta y la paleta. */
 export type BuddyId = keyof typeof CHARACTERS;
@@ -134,8 +135,9 @@ export function composeAccessory(buddy: BuddyId, kind: AccessoryKind): string[] 
 export type Run = { x: number; y: number; w: number; fill: string };
 
 /** Junta píxeles contiguos del mismo color en una fila: ~10× menos <rect> en el SVG. */
-export function toRuns(buddy: BuddyId, rows: readonly string[]): Run[] {
-  const palette: Record<string, string> = CHARACTERS[buddy].palette;
+/** `tint` recolorea el cuerpo (ver lib/tints.ts); los accesorios se piden sin tint. */
+export function toRuns(buddy: BuddyId, rows: readonly string[], tint: TintId = DEFAULT_TINT): Run[] {
+  const palette = tintPalette(CHARACTERS[buddy].palette, tint);
   const runs: Run[] = [];
   rows.forEach((row, y) => {
     let x = 0;

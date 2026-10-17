@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { SIZE } from "@/lib/buddy-art";
 import { buddyName, composeAccessory, composeBody, DEFAULT_BUDDY, STATES, toRuns, type BuddyId, type DaemonState, type Frame } from "@/lib/daemon";
 import { onDaemonReaction, reactDaemon, type DaemonReaction } from "@/lib/daemon-events";
+import { DEFAULT_TINT, type TintId } from "@/lib/tints";
 import { cn } from "@/lib/utils";
+
+// El color del compañero de quien usa la app; un Daemon sin `tint` explícito usa este.
+const TintContext = createContext<TintId>(DEFAULT_TINT);
+export function DaemonTintProvider({ tint, children }: { tint: TintId; children: ReactNode }) {
+  return <TintContext.Provider value={tint}>{children}</TintContext.Provider>;
+}
 
 const REACTION_MS = 700;
 const GLANCE_MS = 900;
@@ -26,6 +33,8 @@ type DaemonProps = {
   state: DaemonState;
   /** Qué compañero se dibuja (lo elige cada persona en Ajustes). */
   buddy?: BuddyId;
+  /** Color del cuerpo (lib/tints). Si falta, el del usuario actual. */
+  tint?: TintId;
   /** Escala entera del pixel art (3 → 120 px). Entera para que siempre quede nítido. */
   scale?: 2 | 3 | 4;
   /** Pulso en reposo: respira una vez cada 4 latidos. */
@@ -39,7 +48,9 @@ type DaemonProps = {
  * El daemon vivo: respira con tu pulso, parpadea según tu cansancio, mira de reojo,
  * mueve su accesorio y reacciona a lo que pasa en la app (lib/daemon-events).
  */
-export function Daemon({ state, buddy = DEFAULT_BUDDY, scale = 3, bpm = 60, isInteractive = false, className }: DaemonProps) {
+export function Daemon({ state, buddy = DEFAULT_BUDDY, tint: tintProp, scale = 3, bpm = 60, isInteractive = false, className }: DaemonProps) {
+  const userTint = useContext(TintContext);
+  const tint = tintProp ?? userTint;
   const spec = STATES[state];
   const [frame, setFrame] = useState<Frame>({});
   const [reaction, setReaction] = useState<Frame | null>(null);
@@ -104,7 +115,7 @@ export function Daemon({ state, buddy = DEFAULT_BUDDY, scale = 3, bpm = 60, isIn
     };
   }, [isInteractive]);
 
-  const body = useMemo(() => toRuns(buddy, composeBody(buddy, state, { ...frame, ...reaction })), [buddy, state, frame, reaction]);
+  const body = useMemo(() => toRuns(buddy, composeBody(buddy, state, { ...frame, ...reaction }), tint), [buddy, state, frame, reaction, tint]);
   const accessory = useMemo(() => (spec.acc ? toRuns(buddy, composeAccessory(buddy, spec.acc)) : []), [buddy, spec.acc]);
   const breathS = ((60 / Math.max(30, bpm)) * BEATS_PER_BREATH).toFixed(2);
   const px = SIZE * scale;

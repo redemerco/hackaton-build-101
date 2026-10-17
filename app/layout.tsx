@@ -10,7 +10,8 @@ import { SettingsSheet } from "@/components/settings-sheet";
 import { Toaster } from "@/components/ui/sonner";
 import { Suspense } from "react";
 import { ConnectionToast } from "@/components/connection-toast";
-import { getBuddy } from "@/lib/buddy";
+import { getCurrentLook } from "@/lib/buddy";
+import { DaemonTintProvider } from "@/components/daemon/daemon";
 import { getSourcesOverview } from "@/lib/connection-overview";
 import { getConnection } from "@/lib/connections";
 import { getCurrentUser } from "@/lib/users";
@@ -36,7 +37,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
+  const [user, { buddy, tint }] = await Promise.all([getCurrentUser(), getCurrentLook()]);
   // Gate: sin conexión Google no se entra. El login de Google autentica + conecta Fitbit.
   const signedIn = Boolean(getConnection(user.id, "google"));
   return (
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: BOOT_GUARD }} />
       </head>
       <body suppressHydrationWarning className="min-h-full bg-background font-sans text-foreground">
+        <DaemonTintProvider tint={tint}>
         <BootSequence buddy={buddy} />
         <AsciiField />
         <GlassGlow />
@@ -60,6 +62,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <SettingsSheet
                   currentUserId={user.id}
                   currentBuddy={buddy}
+                  currentTint={tint}
                   sources={getSourcesOverview(user.id)}
                 />
               </header>
@@ -74,6 +77,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense>
           <ConnectionToast />
         </Suspense>
+        </DaemonTintProvider>
       </body>
     </html>
   );

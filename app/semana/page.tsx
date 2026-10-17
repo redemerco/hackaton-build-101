@@ -8,7 +8,7 @@ import { getRanking, sortToday, sortWeek, type RankRow } from "@/lib/ranking";
 import { getCurrentUser } from "@/lib/users";
 import { EXAMPLE_DIGEST } from "@/lib/week";
 
-const toEntry = (r: RankRow, score: number | null, note?: string): RankingEntry => ({ userId: r.userId, name: r.name, isMe: r.isMe, score, note });
+const toEntry = (r: RankRow, score: number | null, note?: string): RankingEntry => ({ userId: r.userId, name: r.name, isMe: r.isMe, ...r.look, score, note });
 
 export default async function SemanaPage() {
   const user = await getCurrentUser();

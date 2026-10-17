@@ -1,14 +1,19 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { BUDDY_COOKIE } from "@/lib/buddy";
 import { isBuddyId } from "@/lib/daemon";
-
-const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+import { saveLook } from "@/lib/profiles";
+import { isTintId } from "@/lib/tints";
+import { getCurrentUser } from "@/lib/users";
 
 export async function setBuddy(id: string): Promise<void> {
   if (!isBuddyId(id)) throw new Error(`Compañero desconocido: ${id}`);
-  (await cookies()).set(BUDDY_COOKIE, id, { maxAge: ONE_YEAR_SECONDS, sameSite: "lax" });
+  saveLook((await getCurrentUser()).id, { buddy: id });
+  revalidatePath("/", "layout");
+}
+
+export async function setTint(id: string): Promise<void> {
+  if (!isTintId(id)) throw new Error(`Color desconocido: ${id}`);
+  saveLook((await getCurrentUser()).id, { tint: id });
   revalidatePath("/", "layout");
 }
