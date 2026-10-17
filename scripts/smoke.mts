@@ -115,4 +115,6 @@ assert.deepEqual(crossInsights(dailySeries([], days, false)).ready, [], "sin dat
 const late = dailySeries([ev("github", "commit", "2026-10-02T03:30:00Z")], ["2026-10-01", "2026-10-02"], false);
 assert.ok((late[0].lastWorkMinute ?? 0) >= 23 * 60, "la madrugada es la noche del día anterior");
 assert.equal(late[1].lateCommits, 1);
+// un evento con fecha rota no rompe nada
+assert.doesNotThrow(() => dailySeries([ev("github", "commit", "no-es-fecha"), ev("google", "sleep", "x", { sleep: { interval: { startTime: "x", endTime: "y" } } })], days, true));
 console.log("smoke OK");

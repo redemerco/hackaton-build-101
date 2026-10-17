@@ -11,7 +11,10 @@ const LATE_NIGHT_END_MIN = 4 * 60;
 
 /** "YYYY-MM-DD" y minuto del día en hora local. */
 export function local(iso: string | number): { day: string; minute: number } {
-  const d = new Date((typeof iso === "number" ? iso : Date.parse(iso)) + TZ_OFFSET_MIN * MIN);
+  const ms = typeof iso === "number" ? iso : Date.parse(iso);
+  // un ts roto en un evento no puede tirar abajo toda la pantalla: cae en un día que nadie pide
+  if (!Number.isFinite(ms)) return { day: "invalid", minute: 0 };
+  const d = new Date(ms + TZ_OFFSET_MIN * MIN);
   return { day: d.toISOString().slice(0, 10), minute: d.getUTCHours() * 60 + d.getUTCMinutes() };
 }
 
