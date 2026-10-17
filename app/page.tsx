@@ -63,13 +63,8 @@ export default async function Hoy() {
 
   return (
     <Screen>
-<<<<<<< Updated upstream
-      <Pulse bpm={today.restingBpm} stress={stressOf(today)} />
-      <h1 className="sr-only">Yo, {user.name}</h1>
-=======
       <Pulse bpm={today.restingBpm ?? 60} stress={stressOf(today)} />
-      <h1 className="sr-only">Hoy, {user.name}</h1>
->>>>>>> Stashed changes
+      <h1 className="sr-only">Yo, {user.name}</h1>
 
       <Panel className="gap-4">
         <div className="grid grid-cols-[auto_1fr] items-center gap-3">

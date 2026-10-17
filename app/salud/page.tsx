@@ -8,7 +8,7 @@ import { Screen } from "@/components/screen";
 import { MealCamera } from "@/components/meal-camera";
 import { asciiLine, fitMonoFontSize, formatDuration, sparkline } from "@/lib/ascii";
 import { getLastNight, getMealsToday, minutesByStage } from "@/lib/body";
-import { EXAMPLE_MEALS_TODAY, formatRange, totalKcal } from "@/lib/meals";
+import { formatRange, totalKcal } from "@/lib/meals";
 import { getCurrentUser } from "@/lib/users";
 
 const STEPS_TRACKING_EM = 0.35;
@@ -20,8 +20,7 @@ const PLATE_ART = `   .-~~~~~~~-.
 
 /** Comidas: la cámara (Gemini vision) y lo que comiste hoy. Antes era la pestaña Comer. */
 function FoodPanels({ userId }: { userId: string }) {
-  const saved = getMealsToday(userId);
-  const meals = saved.length ? saved : EXAMPLE_MEALS_TODAY;
+  const meals = getMealsToday(userId);
   return (
     <>
       <Panel label="comida">
@@ -41,7 +40,7 @@ function FoodPanels({ userId }: { userId: string }) {
             </li>
           ))}
         </ul>
-        {!saved.length && <p className="font-mono text-xs text-faint">[ejemplo] hasta que guardes tu primera comida</p>}
+        {!meals.length && <p className="text-[15px] text-dim">Todavía no guardaste comidas hoy. Sacale una foto a la próxima.</p>}
       </Panel>
     </>
   );
@@ -88,13 +87,8 @@ export default async function SaludPage() {
 
   return (
     <Screen>
-<<<<<<< Updated upstream:app/salud/page.tsx
-      <Pulse bpm={night.restingBpm} stress={0.2} />
-      <PageHeader title="Salud" subtitle={night.isExample ? "[ejemplo] hasta conectar Google Health" : "Google Health"} />
-=======
       <Pulse bpm={night.restingBpm ?? 60} stress={0.2} />
-      <PageHeader title="Cuerpo" subtitle="Google Health" />
->>>>>>> Stashed changes:app/cuerpo/page.tsx
+      <PageHeader title="Salud" subtitle={night.isSimulated ? "[datos simulados]" : "Google Health"} />
 
       <Panel label="sueño · anoche" meta={`${night.start} → ${night.end}`}>
         <p className="font-mono text-[28px] font-semibold leading-none tracking-tight">
@@ -110,28 +104,8 @@ export default async function SaludPage() {
         </p>
       </Panel>
 
-<<<<<<< Updated upstream:app/salud/page.tsx
       <FoodPanels userId={user.id} />
 
-      <Panel
-        label="pulso · noche"
-        meta={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> {night.restingBpm} reposo</span>}
-      >
-        <div className="@container">
-          <pre aria-hidden className="m-0 font-mono leading-none text-heart" style={{ fontSize: fitMonoFontSize(night.hrNight.length, 20) }}>
-            {asciiLine(night.hrNight, 5)}
-          </pre>
-        </div>
-        <dl className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 font-mono text-[13px] tabular-nums">
-          <dt className="text-dim">reposo</dt><dd className="font-semibold"><Count value={night.restingBpm} /> bpm</dd>
-          <dd className="text-right text-xs text-dim">típico {night.restingTypical[0]}–{night.restingTypical[1]}</dd>
-          <dt className="text-dim">hrv</dt><dd className="font-semibold"><Count value={night.hrvMs} /> ms</dd>
-          <dd className="text-right text-xs text-dim">típico {night.hrvTypical[0]}–{night.hrvTypical[1]}</dd>
-          <dt className="text-dim">mínimo</dt><dd className="font-semibold"><Count value={Math.round(minBpm)} /> bpm</dd>
-          <dd className="text-right text-xs text-dim">a las {minAtText}</dd>
-        </dl>
-      </Panel>
-=======
       {hasHr && night.restingBpm !== null ? (
         <Panel
           label="pulso · noche"
@@ -164,7 +138,6 @@ export default async function SaludPage() {
           <p className="text-[15px] text-dim">Google Health no mandó pulso ni HRV para esta noche todavía.</p>
         </Panel>
       )}
->>>>>>> Stashed changes:app/cuerpo/page.tsx
 
       {steps > 0 && (
         <Panel label="pasos · 08 → 19 h" meta={<Count value={steps} />}>

@@ -14,11 +14,7 @@ export type Night = {
   hrvTypical: [number, number] | null;
   stepsByHour: number[]; // 08..19 (puede venir vacío)
   stageMinutes?: Record<SleepStage, number>; // minutos reales por etapa (del summary de Fitbit); si falta, se derivan de stages
-<<<<<<< Updated upstream
-  isExample: boolean;
-  isSimulated?: boolean; // noche de scripts/seed-demo.mts (_mock): no es real, pero tampoco el ejemplo fijo
-=======
->>>>>>> Stashed changes
+  isSimulated?: boolean; // noche de scripts/seed-demo.mts (_mock): se rotula [datos simulados]
 };
 
 // Hora local del dato usando el offset que trae Google (ej. "-10800s" = UTC-3), no la del server.
@@ -74,10 +70,7 @@ function parseNight(data: Record<string, unknown>): Night | null {
       startHour: startLocal.getUTCHours(),
       stages,
       stageMinutes,
-<<<<<<< Updated upstream
-      isExample: data._mock === true, // scripts/seed-demo.mts: se rotula como ejemplo
       isSimulated: data._mock === true,
-=======
       // El dato de sueño no trae HR/HRV/pasos junto; sin fuente real, no inventamos.
       hrNight: [],
       restingBpm: null,
@@ -85,7 +78,6 @@ function parseNight(data: Record<string, unknown>): Night | null {
       hrvMs: null,
       hrvTypical: null,
       stepsByHour: [],
->>>>>>> Stashed changes
     };
   } catch {
     return null;

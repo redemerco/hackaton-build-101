@@ -69,7 +69,7 @@ function sleepOf(data: Json): { key: string; sleep: NonNullable<DayInput["sleep"
 }
 
 /** Insumos del puntaje por día local, para un usuario. */
-function dayInputs(userId: string, sinceMs: number): { days: Map<string, DayInput>; isSimulated: boolean } {
+export function dayInputs(userId: string, sinceMs: number): { days: Map<string, DayInput>; isSimulated: boolean } {
   const rows = db
     .select()
     .from(rawEvents)
@@ -113,7 +113,7 @@ function dayInputs(userId: string, sinceMs: number): { days: Map<string, DayInpu
   return { days, isSimulated };
 }
 
-function scoresFor(userId: string, now: number): Pick<RankRow, "today" | "week" | "isSimulated"> {
+export function scoresFor(userId: string, now: number): Pick<RankRow, "today" | "week" | "isSimulated"> {
   const { days, isSimulated } = dayInputs(userId, now - (WEEK_DAYS + BASELINE_DAYS) * DAY_MS);
   const scoreOn = (offset: number): DayScore | null => {
     const key = keyOf(now - offset * DAY_MS);
