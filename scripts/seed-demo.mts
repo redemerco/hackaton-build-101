@@ -31,7 +31,10 @@ CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL, name
 if (process.argv.includes("--clear")) {
   const ev = sqlite.prepare(`DELETE FROM raw_events WHERE json LIKE '%"_mock":true%'`).run();
   const cn = sqlite.prepare(`DELETE FROM connections WHERE token = ?`).run(MOCK_TOKEN);
-  console.log(`borrados: ${ev.changes} eventos simulados, ${cn.changes} conexiones simuladas`);
+  // los usuarios que creó el seed (email @demo.build101) y sus personajes; los reales no se tocan
+  const pr = sqlite.prepare(`DELETE FROM profiles WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@demo.build101')`).run();
+  const us = sqlite.prepare(`DELETE FROM users WHERE email LIKE '%@demo.build101'`).run();
+  console.log(`borrados: ${ev.changes} eventos, ${cn.changes} conexiones, ${us.changes} usuarios y ${pr.changes} personajes simulados`);
   process.exit(0);
 }
 
