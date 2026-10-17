@@ -12,24 +12,11 @@ import { formatRange, totalKcal } from "@/lib/meals";
 import { getCurrentUser } from "@/lib/users";
 
 const STEPS_TRACKING_EM = 0.35;
-const PLATE_ART = `   .-~~~~~~~-.
- .'  ~  ~  ~  '.
-:   (  )   ==   :
- '.   ~~~~~   .'
-   '-._____.-'`;
-
-/** Comidas: la cámara (Gemini vision) y lo que comiste hoy. Antes era la pestaña Comer. */
+/** Lo que comiste hoy. La cámara (Gemini vision) vive arriba a la derecha, en el header. Antes era la pestaña Comer. */
 function FoodPanels({ userId }: { userId: string }) {
   const meals = getMealsToday(userId);
   return (
     <>
-      <Panel label="comida">
-        <div className="grid justify-items-center gap-4 py-3">
-          <pre aria-hidden className="idle-bob m-0 font-pixel text-[11px] leading-[1.15] text-food">{PLATE_ART}</pre>
-          <MealCamera />
-          <p className="text-sm text-dim">foto → gramos y kcal por ítem, en rangos</p>
-        </div>
-      </Panel>
       <Panel label="comidas de hoy" meta={<span className="text-food">{formatRange(totalKcal(meals))} kcal</span>}>
         <ul className="grid gap-3">
           {meals.map((m) => (
@@ -40,7 +27,7 @@ function FoodPanels({ userId }: { userId: string }) {
             </li>
           ))}
         </ul>
-        {!meals.length && <p className="text-[15px] text-dim">Todavía no guardaste comidas hoy. Sacale una foto a la próxima.</p>}
+        {!meals.length && <p className="text-[15px] text-dim">Todavía no guardaste comidas hoy. Tocá la cámara de arriba para sacarle una foto a la próxima.</p>}
       </Panel>
     </>
   );
@@ -51,7 +38,7 @@ export default async function SaludPage() {
   if (!user.hasWearable) {
     return (
       <Screen>
-        <PageHeader title="Salud" subtitle="Funciona sin wearable." />
+        <PageHeader title="Salud" subtitle="Funciona sin wearable." action={<MealCamera />} />
         <FoodPanels userId={user.id} />
         <EmptyState
           art="(•_•)"
@@ -66,7 +53,8 @@ export default async function SaludPage() {
   if (!night) {
     return (
       <Screen>
-        <PageHeader title="Cuerpo" subtitle="Conectá tu wearable para ver tu sueño." />
+        <PageHeader title="Salud" subtitle="Conectá tu wearable para ver tu sueño." action={<MealCamera />} />
+        <FoodPanels userId={user.id} />
         <EmptyState
           art="(-_-) zzz"
           title="Todavía no hay noches registradas"
@@ -88,7 +76,7 @@ export default async function SaludPage() {
   return (
     <Screen>
       <Pulse bpm={night.restingBpm ?? 60} stress={0.2} />
-      <PageHeader title="Salud" subtitle={night.isSimulated ? "[datos simulados]" : "Google Health"} />
+      <PageHeader title="Salud" subtitle={night.isSimulated ? "[datos simulados]" : "Google Health"} action={<MealCamera />} />
 
       <Panel label="sueño · anoche" meta={`${night.start} → ${night.end}`}>
         <p className="font-mono text-[28px] font-semibold leading-none tracking-tight">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { CameraIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AsciiScan } from "@/components/ascii/ascii-scan";
 import { Decode } from "@/components/ascii/count";
@@ -67,12 +68,8 @@ export function MealCamera() {
 
   return (
     <>
-      <label
-        htmlFor={inputId}
-        className="glass press press-strong mx-auto grid size-24 cursor-pointer place-items-center rounded-full"
-        style={{ background: "radial-gradient(circle at 32% 24%, rgb(255 255 255 / .62), transparent 46%), rgb(255 255 255 / .14)" }}
-      >
-        <span className="size-[72px] rounded-full bg-white/90 shadow-[inset_0_-3px_8px_rgb(0_0_0/.18)]" />
+      <label htmlFor={inputId} className="glass press grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-food">
+        <CameraIcon className="size-5" aria-hidden />
         <span className="sr-only">Sacarle una foto a la comida</span>
       </label>
       <input

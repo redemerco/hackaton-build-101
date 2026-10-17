@@ -85,11 +85,10 @@ function parseNight(data: Record<string, unknown>): Night | null {
 }
 
 // Lee la última noche real de raw_events (source "google", kind "sleep"); si no hay, null (estado vacío en la UI).
-export function getLastNight(userId?: string): Night | null {
+export function getLastNight(userId: string): Night | null {
   try {
-    const where = userId
-      ? and(eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), eq(rawEvents.userId, userId))
-      : and(eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"));
+    // Siempre filtrada por usuario: sin userId devolvería la noche de cualquiera.
+    const where = and(eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), eq(rawEvents.userId, userId));
     const row = db.select().from(rawEvents).where(where).orderBy(desc(rawEvents.ts)).limit(1).get();
     if (row) return parseNight(JSON.parse(row.json));
   } catch (error) {
