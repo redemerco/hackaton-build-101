@@ -39,5 +39,22 @@ Pantallas, dueños, estados y **dónde engancha cada uno su dato real**: [`docs/
 | `components/screen.tsx` | `Screen`: envolvé el contenido de cada `page.tsx` con esto (transición entre tabs + entrada en cascada) |
 | `components/` | `PageHeader`, `EmptyState`, `StatCard`, `ui/*` (shadcn). Colores por dominio: `text-sleep`, `text-heart`, `text-food`, `text-work`, `text-mood`; fuente pixel: `font-pixel` |
 
+| `lib/connections.ts` | Tokens OAuth por usuario (tabla `connections`, aparte de `raw_events` para que nunca lleguen al digest): `getConnectionStatus(userId)` → `{ github, linear, slack }` con la cuenta conectada o `null` (server-only: pasalo como prop a componentes cliente), `deleteConnection` |
+| `lib/digest.ts` + `POST /api/digest` | Digest de 7 días en streaming (lo consume `<Digest src="/api/digest">`). Si Gemini falla, re-tipea el último digest guardado |
+| `lib/sources/{github,linear,slack}.ts` | Ingests de trabajo → `raw_events`. Cada uno: `sync<Fuente>User(userId)` (token OAuth del usuario) + respaldo con la key de `.env.local` |
+
 `raw_events`: `source` = fuente (`google_health`, `github`, `linear`, `meal`, `mood`…), `kind` = tipo dentro de la fuente, `ts` = ISO 8601 UTC, `json` = payload crudo.
+
+### Conexiones (OAuth de GitHub, Linear y Slack · Joaco)
+
+| Ruta | Para qué |
+|---|---|
+| `GET /api/connect/github\|linear\|slack` | Botón "Conectar": tiene que ser un `<a href>` (redirección de navegador), no `fetch` |
+| `GET /api/connect/<p>/callback` | Vuelta del login: guarda el token del usuario actual y vuelve a `/?conexion=<p>-ok` o `<p>-error` (para un toast) |
+| `DELETE /api/connect/<p>` | Desconectar |
+| `GET /api/sync/github\|linear\|slack` | Re-sincroniza a todos los conectados. Idempotente (`{ inserted }`), sirve para el pull-to-sync |
+
+- Slack: token de usuario con `search:read`; solo se guarda la hora y el tipo de canal de cada mensaje, **nunca el contenido**.
+- Variables: `GITHUB_CLIENT_ID/SECRET`, `LINEAR_CLIENT_ID/SECRET`, `SLACK_CLIENT_ID/SECRET`, `SLACK_TEAM_ID`, y `APP_URL` con el origen público (la URL del túnel). Callbacks registrados: `https://pulso.renzodemarco.com.uy/api/connect/<p>/callback` y `https://localhost:3000/...` (Slack exige HTTPS: localmente `npm run dev:https`).
+- Workspaces de la demo: Linear `linear.app/pulso-hackaton`, Slack `app-bwf1423.slack.com`.
 Next 16.4 con `cacheComponents` **apagado**: todas las páginas son dinámicas, podés usar `getCurrentUser()` sin `Suspense`.
