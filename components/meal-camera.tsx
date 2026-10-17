@@ -8,14 +8,15 @@ import { Spinner } from "@/components/ascii/spinner";
 import { StreamText } from "@/components/ascii/stream-text";
 import { Sheet } from "@/components/glass/sheet";
 import { reactDaemon } from "@/lib/daemon-events";
-import { formatRange, scaleItem, totalKcal, type MealAnalysis } from "@/lib/meals";
+import { saveMeal } from "@/app/actions/meal";
+import { formatRange, scaleItem, totalKcal, type MealAnalysis, type MealItem } from "@/lib/meals";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
 /**
  * Burbuja de cámara → foto → hoja con el escaneo ASCII → ítems en gramos y rangos de kcal.
  * Usa <input capture> (no getUserMedia: tiene bugs en PWAs standalone de iOS).
- * ponytail: muestra EXAMPLE_ANALYSIS; Renzo reemplaza `analysis` por la respuesta de su endpoint de Gemini.
+ * Analiza con /api/comer/analizar (Gemini) y "Guardar" escribe la comida en raw_events (app/actions/meal.ts).
  */
 export function MealCamera() {
   const inputId = useId();
@@ -105,8 +106,14 @@ export function MealCamera() {
             <Spinner label="analizando con IA" className="font-mono text-[13px]" />
           </div>
         )}
-        {isScanned && analysis && <MealResult analysis={analysis} onSave={() => {
-          toast("[meal] guardada");
+        {isScanned && analysis && <MealResult analysis={analysis} onSave={async (items) => {
+          try {
+            await saveMeal(items, analysis.comment.map((p) => (typeof p === "string" ? p : p.chip)).join(""));
+          } catch {
+            toast.error("No se pudo guardar la comida. Probá de nuevo.");
+            return; // la hoja queda abierta para reintentar
+          }
+          toast("comida guardada");
           reactDaemon({ mood: "happy", text: "comida anotada. buen provecho." });
           close();
         }} />}
@@ -120,8 +127,9 @@ type Portion = (typeof PORTIONS)[number];
 const PORTION_LABEL: Record<Portion, string> = { 0.5: "½×", 1: "1×", 2: "2×" };
 
 /** Resultado: cada ítem se confirma con su porción (patrón MyFitnessPal) antes de guardar. */
-function MealResult({ analysis, onSave }: { analysis: MealAnalysis; onSave: () => void }) {
+function MealResult({ analysis, onSave }: { analysis: MealAnalysis; onSave: (items: MealItem[]) => Promise<void> }) {
   const [portions, setPortions] = useState<Record<string, Portion>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const items = analysis.items.map((it) => scaleItem(it, portions[it.name] ?? 1));
 
   return (
@@ -158,8 +166,17 @@ function MealResult({ analysis, onSave }: { analysis: MealAnalysis; onSave: () =
         </span>
       </div>
       <StreamText fallback={analysis.comment} tokenMs={70} className="text-[15px] leading-relaxed text-foreground/90" />
-      <button type="button" onClick={onSave} className="glass press h-12 rounded-full bg-food/30 text-[15px] font-semibold">
-        Guardar comida
+      <button
+        type="button"
+        disabled={isSaving}
+        onClick={async () => {
+          setIsSaving(true);
+          await onSave(items);
+          setIsSaving(false);
+        }}
+        className="glass press h-12 rounded-full bg-food/30 text-[15px] font-semibold disabled:opacity-60"
+      >
+        {isSaving ? "Guardando…" : "Guardar comida"}
       </button>
     </div>
   );

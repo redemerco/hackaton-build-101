@@ -1,6 +1,6 @@
 import type { SleepStage } from "@/lib/ascii";
 import { db, rawEvents } from "@/lib/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 
 export type Night = {
   start: string; // "23:48"
@@ -132,4 +132,28 @@ export function minutesByStage(stages: readonly SleepStage[]): Record<SleepStage
   const out: Record<SleepStage, number> = { awake: 0, rem: 0, light: 0, deep: 0 };
   stages.forEach((s) => { out[s] += 15; });
   return out;
+}
+
+const MEAL_TZ = "America/Montevideo";
+const mealDay = new Intl.DateTimeFormat("en-CA", { timeZone: MEAL_TZ });
+const mealTime = new Intl.DateTimeFormat("es-UY", { timeZone: MEAL_TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/** Comidas guardadas hoy (raw_events source "meal", día local), en orden. Misma forma que MealEntry de lib/meals.ts. */
+export function getMealsToday(userId: string): { time: string; title: string; kcal: [number, number] }[] {
+  const today = mealDay.format(Date.now());
+  return db
+    .select({ ts: rawEvents.ts, json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "meal"), gte(rawEvents.ts, new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString())))
+    .orderBy(rawEvents.ts)
+    .all()
+    .filter((r) => mealDay.format(Date.parse(r.ts)) === today)
+    .map((r) => {
+      const meal = JSON.parse(r.json) as { items?: { name: string }[]; totalKcal?: [number, number] };
+      return {
+        time: mealTime.format(Date.parse(r.ts)),
+        title: (meal.items ?? []).map((it) => it.name).join(", "),
+        kcal: meal.totalKcal ?? [0, 0],
+      };
+    });
 }
