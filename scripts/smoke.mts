@@ -22,4 +22,10 @@ assert.equal(asciiLine([1, 2, 3], 3).split("\n").length, 3);
 const field = asciiField({ cols: 20, rows: 5, t: 1, bpm: 60, stress: 0.9 });
 assert.deepEqual(field.split("\n").map((l) => l.length), [20, 20, 20, 20, 20]);
 
+// porciones de comida
+const { scaleItem, totalKcal } = await import("../lib/meals.ts");
+const half = scaleItem({ name: "x", grams: [100, 150], kcal: [200, 300] }, 0.5);
+assert.deepEqual(half.kcal, [100, 150]);
+assert.deepEqual(totalKcal([half, { kcal: [10, 20] }]), [110, 170]);
+
 console.log("smoke OK");

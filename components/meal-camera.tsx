@@ -7,7 +7,7 @@ import { Decode } from "@/components/ascii/count";
 import { Spinner } from "@/components/ascii/spinner";
 import { StreamText } from "@/components/ascii/stream-text";
 import { Sheet } from "@/components/glass/sheet";
-import { EXAMPLE_ANALYSIS, formatRange, totalKcal, type MealAnalysis } from "@/lib/meals";
+import { EXAMPLE_ANALYSIS, formatRange, scaleItem, totalKcal, type MealAnalysis } from "@/lib/meals";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -80,22 +80,46 @@ export function MealCamera() {
   );
 }
 
+const PORTIONS = [0.5, 1, 2] as const;
+type Portion = (typeof PORTIONS)[number];
+const PORTION_LABEL: Record<Portion, string> = { 0.5: "½×", 1: "1×", 2: "2×" };
+
+/** Resultado: cada ítem se confirma con su porción (patrón MyFitnessPal) antes de guardar. */
 function MealResult({ analysis, onSave }: { analysis: MealAnalysis; onSave: () => void }) {
+  const [portions, setPortions] = useState<Record<string, Portion>>({});
+  const items = analysis.items.map((it) => scaleItem(it, portions[it.name] ?? 1));
+
   return (
     <div className="stagger grid gap-4">
-      <ul className="stagger grid gap-3">
-        {analysis.items.map((it) => (
-          <li key={it.name} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-[15px]">
+      <ul className="stagger grid gap-4">
+        {items.map((it) => (
+          <li key={it.name} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5 text-[15px]">
             <span className="font-medium">{it.name}</span>
-            <Decode text={formatRange(it.kcal)} className="row-span-2 self-center text-right font-mono text-[15px] font-semibold tabular-nums text-food" />
+            <Decode text={formatRange(it.kcal)} className="text-right font-mono text-[15px] font-semibold tabular-nums text-food" />
             <span className="font-mono text-[13px] tabular-nums text-dim">{formatRange(it.grams)} g</span>
+            <div role="group" aria-label={`Porción de ${it.name}`} className="flex justify-end gap-1">
+              {PORTIONS.map((p) => {
+                const isOn = (portions[it.name] ?? 1) === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={isOn}
+                    onClick={() => setPortions((prev) => ({ ...prev, [it.name]: p }))}
+                    className={`press h-9 min-w-11 rounded-lg px-2 font-mono text-[13px] transition-[background-color,color] duration-150 ${isOn ? "bg-food/25 text-food shadow-[inset_0_0_0_1px_var(--food)]" : "bg-white/6 text-dim"}`}
+                  >
+                    {PORTION_LABEL[p]}
+                  </button>
+                );
+              })}
+            </div>
           </li>
         ))}
       </ul>
       <div className="flex items-baseline justify-between border-t border-dashed border-white/20 pt-3">
         <span className="text-sm text-dim">total estimado</span>
         <span className="font-mono text-2xl font-semibold tabular-nums text-food">
-          <Decode text={formatRange(totalKcal(analysis.items))} /> <span className="text-sm font-normal text-dim">kcal</span>
+          <Decode text={formatRange(totalKcal(items))} /> <span className="text-sm font-normal text-dim">kcal</span>
         </span>
       </div>
       <StreamText fallback={analysis.comment} tokenMs={70} className="text-[15px] leading-relaxed text-foreground/90" />

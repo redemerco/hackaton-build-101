@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { AsciiField } from "@/components/ascii/ascii-field";
 import { BOOT_GUARD, BootSequence } from "@/components/boot-sequence";
 import { GlassGlow } from "@/components/glass/glass-glow";
+import { PullToSync } from "@/components/pull-to-sync";
 import { TabBar } from "@/components/glass/tab-bar";
 import { SettingsSheet } from "@/components/settings-sheet";
 import { Toaster } from "@/components/ui/sonner";
@@ -35,7 +36,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_GUARD }} />
       </head>
-      <body className="min-h-full bg-background font-sans text-foreground">
+      <body suppressHydrationWarning className="min-h-full bg-background font-sans text-foreground">
         <BootSequence />
         <AsciiField />
         <GlassGlow />
@@ -46,7 +47,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </span>
             <SettingsSheet currentUserId={user.id} />
           </header>
-          <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">{children}</main>
+          <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">
+            <PullToSync>{children}</PullToSync>
+          </main>
         </div>
         <TabBar />
         <Toaster theme="dark" position="top-center" />

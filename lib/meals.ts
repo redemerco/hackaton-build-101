@@ -9,6 +9,13 @@ export const sumRanges = (ranges: readonly (readonly [number, number])[]): [numb
   ranges.reduce<[number, number]>(([lo, hi], [a, b]) => [lo + a, hi + b], [0, 0]);
 export const totalKcal = (items: readonly { kcal: [number, number] }[]): [number, number] => sumRanges(items.map((it) => it.kcal));
 
+/** Escala gramos y kcal por la porción confirmada (½×, 1×, 2×). Devuelve un ítem nuevo. */
+export const scaleItem = (it: MealItem, factor: number): MealItem => ({
+  ...it,
+  grams: [Math.round(it.grams[0] * factor), Math.round(it.grams[1] * factor)],
+  kcal: [Math.round(it.kcal[0] * factor), Math.round(it.kcal[1] * factor)],
+});
+
 export const formatRange = ([lo, hi]: readonly [number, number]): string => `${lo}–${hi}`;
 
 // ponytail: análisis de ejemplo hasta que Renzo conecte Gemini vision; misma forma que debería devolver el endpoint.
