@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Cuerpo y Comer se fundieron en Salud: los links viejos (PWA instalada, push) siguen andando.
+  async redirects() {
+    return [
+      { source: "/cuerpo", destination: "/salud", permanent: false },
+      { source: "/comer", destination: "/salud", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

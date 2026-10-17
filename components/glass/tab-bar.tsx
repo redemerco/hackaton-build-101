@@ -3,13 +3,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BriefcaseIcon, CalendarRangeIcon, HeartPulseIcon, SparkleIcon } from "lucide-react";
+import { BriefcaseIcon, CalendarRangeIcon, HeartPulseIcon, UserRoundIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/", label: "Hoy", Icon: SparkleIcon },
-  { href: "/cuerpo", label: "Cuerpo", Icon: HeartPulseIcon },
-  { href: "/comer", label: "Comer", Icon: null }, // la cámara, al centro
+  { href: "/", label: "Yo", Icon: UserRoundIcon },
+  { href: "/salud", label: "Salud", Icon: HeartPulseIcon },
   { href: "/trabajo", label: "Trabajo", Icon: BriefcaseIcon },
   { href: "/semana", label: "Semana", Icon: CalendarRangeIcon },
 ] as const;
@@ -35,7 +34,7 @@ export function TabBar() {
     const measure = () => {
       const nav = navRef.current;
       const tab = tabRefs.current[active];
-      if (!nav || !tab || TABS[active]?.Icon === null) return setPill(null);
+      if (!nav || !tab) return setPill(null);
       const n = nav.getBoundingClientRect();
       const t = tab.getBoundingClientRect();
       setPill({ x: t.left - n.left, width: t.width });
@@ -50,7 +49,7 @@ export function TabBar() {
     <nav
       ref={navRef}
       aria-label="Principal"
-      className="glass fixed inset-x-3 z-40 mx-auto grid h-16 max-w-md grid-cols-[1fr_1fr_72px_1fr_1fr] items-center rounded-full px-1"
+      className="glass fixed inset-x-3 z-40 mx-auto grid h-16 max-w-md grid-cols-4 items-center rounded-full px-1"
       style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)", viewTransitionName: "tab-bar" }}
     >
       <span
@@ -66,22 +65,6 @@ export function TabBar() {
         const isActive = i === active;
         const types = i === active ? undefined : [i > active ? "nav-forward" : "nav-back"];
         const setRef = (el: HTMLAnchorElement | null) => { tabRefs.current[i] = el; };
-        if (tab.Icon === null) {
-          return (
-            <Link
-              key={tab.href}
-              ref={setRef}
-              href={tab.href}
-              transitionTypes={types}
-              aria-label="Sacarle una foto a la comida"
-              aria-current={isActive ? "page" : undefined}
-              className="press press-strong -mt-7 grid size-14 place-items-center justify-self-center rounded-full shadow-[inset_0_1px_0_rgb(255_255_255/.5),0_8px_24px_rgb(0_0_0/.4)]"
-              style={{ background: "radial-gradient(circle at 32% 26%, rgb(255 255 255 / .6), transparent 46%), rgb(255 179 64 / .32)" }}
-            >
-              <span className={cn("size-6 rounded-full border-2 border-foreground transition-transform duration-300", isActive && "scale-75 bg-foreground")} />
-            </Link>
-          );
-        }
         return (
           <Link
             key={tab.href}

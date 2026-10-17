@@ -5,18 +5,55 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Panel } from "@/components/glass/panel";
 import { Screen } from "@/components/screen";
+import { MealCamera } from "@/components/meal-camera";
 import { asciiLine, fitMonoFontSize, formatDuration, sparkline } from "@/lib/ascii";
-
-const STEPS_TRACKING_EM = 0.35;
-import { getLastNight, minutesByStage } from "@/lib/body";
+import { getLastNight, getMealsToday, minutesByStage } from "@/lib/body";
+import { EXAMPLE_MEALS_TODAY, formatRange, totalKcal } from "@/lib/meals";
 import { getCurrentUser } from "@/lib/users";
 
-export default async function CuerpoPage() {
+const STEPS_TRACKING_EM = 0.35;
+const PLATE_ART = `   .-~~~~~~~-.
+ .'  ~  ~  ~  '.
+:   (  )   ==   :
+ '.   ~~~~~   .'
+   '-._____.-'`;
+
+/** Comidas: la cámara (Gemini vision) y lo que comiste hoy. Antes era la pestaña Comer. */
+function FoodPanels({ userId }: { userId: string }) {
+  const saved = getMealsToday(userId);
+  const meals = saved.length ? saved : EXAMPLE_MEALS_TODAY;
+  return (
+    <>
+      <Panel label="comida">
+        <div className="grid justify-items-center gap-4 py-3">
+          <pre aria-hidden className="idle-bob m-0 font-pixel text-[11px] leading-[1.15] text-food">{PLATE_ART}</pre>
+          <MealCamera />
+          <p className="text-sm text-dim">foto → gramos y kcal por ítem, en rangos</p>
+        </div>
+      </Panel>
+      <Panel label="comidas de hoy" meta={<span className="text-food">{formatRange(totalKcal(meals))} kcal</span>}>
+        <ul className="grid gap-3">
+          {meals.map((m) => (
+            <li key={m.time + m.title} className="grid grid-cols-[48px_1fr_auto] items-baseline gap-2 text-[15px]">
+              <span className="font-mono text-[13px] text-dim">{m.time}</span>
+              <span className="truncate">{m.title}</span>
+              <span className="font-mono text-[13px] tabular-nums text-food">{formatRange(m.kcal)}</span>
+            </li>
+          ))}
+        </ul>
+        {!saved.length && <p className="font-mono text-xs text-faint">[ejemplo] hasta que guardes tu primera comida</p>}
+      </Panel>
+    </>
+  );
+}
+
+export default async function SaludPage() {
   const user = await getCurrentUser();
   if (!user.hasWearable) {
     return (
       <Screen>
-        <PageHeader title="Cuerpo" subtitle="Funciona sin wearable." />
+        <PageHeader title="Salud" subtitle="Funciona sin wearable." />
+        <FoodPanels userId={user.id} />
         <EmptyState
           art="(•_•)"
           title="Sin wearable, igual te leemos"
@@ -38,7 +75,7 @@ export default async function CuerpoPage() {
   return (
     <Screen>
       <Pulse bpm={night.restingBpm} stress={0.2} />
-      <PageHeader title="Cuerpo" subtitle={night.isExample ? "[ejemplo] hasta conectar Google Health" : "Google Health"} />
+      <PageHeader title="Salud" subtitle={night.isExample ? "[ejemplo] hasta conectar Google Health" : "Google Health"} />
 
       <Panel label="sueño · anoche" meta={`${night.start} → ${night.end}`}>
         <p className="font-mono text-[28px] font-semibold leading-none tracking-tight">
@@ -53,6 +90,8 @@ export default async function CuerpoPage() {
           {byStage.awake > 0 && <span className="text-[#ff9b8f]">█ despierto {formatDuration(byStage.awake)}</span>}
         </p>
       </Panel>
+
+      <FoodPanels userId={user.id} />
 
       <Panel
         label="pulso · noche"
