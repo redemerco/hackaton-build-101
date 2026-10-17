@@ -1,4 +1,4 @@
-# Prompt — Rol B · Renzo: Comidas
+# Prompt — Rol B · Renzo: Google Health + Comidas
 
 Pegá todo esto en tu sesión de Claude Code parado en la raíz del repo.
 
@@ -18,7 +18,28 @@ CONTRATO COMPARTIDO (no romperlo — Santi y Joaco trabajan en paralelo):
 - Ritual obligatorio (ES el dataset de la demo): cada feature arranca como issue de GitHub con el scope en el body → rama → PR con "closes #N" → review con al menos un comment real. Nunca commit directo a main.
 - El spine de PLAN.md no se negocia; stretch solo si sobra. Simple > completo.
 
-TU ROL: B — RENZO — COMIDAS (dueño del beat 0:45 de la demo: la foto en vivo frente a los jueces)
+TU ROL: B — RENZO — GOOGLE HEALTH + COMIDAS (dueño del go/no-go de salud y del beat 0:45 de la demo: la foto en vivo frente a los jueces)
+
+0) GOOGLE HEALTH — CAMINO CRÍTICO, arranca en H0 (lo recibiste de Santi):
+   Estado al 17-oct (ya hecho por Santi):
+   - Fitbit: la app Google Health muestra los datos (cuenta migrada ✅).
+   - Proyecto GCP **`build-101`** (ID `build-101-511915`, dueño: gmail personal de Santi) con **Google Health API** (`health.googleapis.com`, v4) y **Google Calendar API** habilitadas ✅.
+   - Pedile a Santi que te sume como **Owner** del proyecto con tu gmail personal (IAM).
+   Lo que falta (manual, en https://console.cloud.google.com/auth/overview?project=build-101-511915):
+   a. Consent screen: app name `build101` (el nombre del producto todavía no está definido), External, modo **Testing** (no publicar), los 3 como test users con **gmails personales**.
+   b. Data Access, scopes (pegarlos a mano):
+      `https://www.googleapis.com/auth/googlehealth.sleep.readonly`
+      `https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly`
+      `https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly`
+      `https://www.googleapis.com/auth/calendar.events.readonly`
+   c. Clients → Web application, redirect URIs: `http://localhost:3000/api/health/callback` y `https://developers.google.com/oauthplayground`. Client ID/secret → `.env.local` de cada uno (pasalos por privado, nunca al repo).
+   d. **Go/no-go**: OAuth 2.0 Playground con "Use your own OAuth credentials", logueado con la cuenta del dueño de la Fitbit: un request de hoy y uno de **sleep de hace 3 meses**. Si la historia viene vacía, las correlaciones usan solo la ventana de la hackathon — avisar al equipo. Discovery doc: `https://health.googleapis.com/$discovery/rest?version=v4`.
+   Código:
+   - `lib/sources/googleHealth.ts` + `app/api/health/connect` (OAuth authorization code, `access_type=offline`, callback `http://localhost:3000/api/health/callback`) + `app/api/health/sync`. El login lo hace el dueño de la Fitbit, una vez, en la laptop (nunca por el túnel).
+   - Ingest a `raw_events` (source `google_health`): sueño con etapas, resting HR diario, HR intraday, pasos, HRV. Historia en chunks: **máx 14 días por query para heart-rate, 90 para el resto**. Límite: 300 req/min.
+   - Gotchas: access token dura 1h (refresh expira a los 7 días en Testing — alcanza); los datos aparecen **solo cuando el dispositivo sincroniza** (sync manual antes de cada demo).
+   - La vista "Cuerpo" la arma Santi leyendo tus `raw_events` — acordá con él el shape de `kind`/`json`.
+   - PLAN B (gate: si Google Health no fluye a H6, se activa sin discusión): parser de export de Apple Health (zip→XML) O generador de datos sintéticos realistas declarado en el pitch — escribe `raw_events` igual.
 
 1) MIENTRAS SANTI SCAFFOLDEA (H0-2, no te bloquees):
    - Issue + diseño del prompt de visión: probalo DIRECTO contra la API de Claude con 2-3 fotos reales de comida (un script suelto alcanza) hasta que el output sea bueno.
@@ -36,6 +57,6 @@ TU ROL: B — RENZO — COMIDAS (dueño del beat 0:45 de la demo: la foto en viv
    - Instalar la PWA en los 3 teléfonos apenas exista (iOS: el push requiere **home screen**, 16.4+).
    - Botón oculto "enviar ahora" para el beat del nudge (1:50): llama al endpoint de Joaco, que calcula y envía vía `lib/push.ts` de Santi. Vos solo el disparador de demo. SIN cron ni scheduler.
 
-COSTURAS: usás los componentes UI de Santi y `lib/claude.ts`; el nudge lo calcula Joaco — vos ponés el botón.
-NO HAGAS: scaffold/sistema de UI (Santi), OAuth de salud (Santi), digest/ingests de trabajo (Joaco).
-CHECKPOINT H8: foto → análisis end-to-end funcionando EN EL TELÉFONO.
+COSTURAS: usás los componentes UI de Santi y `lib/claude.ts`; el nudge lo calcula Joaco — vos ponés el botón; Joaco reusa tu OAuth de Google para Calendar; Santi muestra tus datos de salud en "Cuerpo".
+NO HAGAS: scaffold/sistema de UI ni vista Cuerpo (Santi), digest/ingests de trabajo (Joaco).
+CHECKPOINTS: H8 datos reales de Google Health en `raw_events` + foto → análisis end-to-end funcionando EN EL TELÉFONO.
