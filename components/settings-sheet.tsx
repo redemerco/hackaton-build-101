@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { setBuddy, setTint } from "@/app/actions/buddy";
 import { deleteMyData } from "@/app/actions/data";
+import { logout } from "@/app/actions/user";
 import { SourcesList } from "@/components/connect/source-card";
 import { Daemon } from "@/components/daemon/daemon";
 import { Sheet } from "@/components/glass/sheet";
@@ -50,6 +51,17 @@ export function SettingsSheet({ currentUserId, currentBuddy, currentTint, source
         await setTint(id);
       } catch {
         toast.error("No se pudo cambiar el color");
+      }
+    });
+
+  const signOut = () =>
+    startTransition(async () => {
+      try {
+        await logout();
+      } catch (error) {
+        // redirect() de la action llega como "error" de navegación: no es una falla
+        if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) return;
+        toast.error("No se pudo cerrar la sesión");
       }
     });
 
@@ -136,6 +148,15 @@ export function SettingsSheet({ currentUserId, currentBuddy, currentTint, source
             )}
           </div>
           {isConfirmingDelete && <p className="text-sm text-dim">Borra tus comidas, ánimo y datos de salud y trabajo de esta app. No se puede deshacer.</p>}
+        </Section>
+
+        <Section title="sesión">
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate text-sm text-dim">{account ? `Entraste como ${account}` : "Sesión abierta"}</p>
+            <button type="button" disabled={isPending} onClick={signOut} className="glass press h-11 shrink-0 rounded-full px-5 text-[15px] font-medium disabled:opacity-60">
+              Cerrar sesión
+            </button>
+          </div>
         </Section>
       </Sheet>
     </>
