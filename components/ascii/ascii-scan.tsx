@@ -6,6 +6,7 @@ const CHARS = " .:-=+*#%@";
 const CELLS = [24, 16, 10, 6] as const; // tamaño de celda por pasada, de grueso a fino
 const STEP_MS = 1100;
 const REVEAL_MS = 900;
+const FRAME_MS = 66;
 const BG = "#07080c";
 const SCAN_COLOR = "255,179,64"; // --food
 
@@ -78,7 +79,14 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
 
       const start = performance.now();
       const scanEnd = STEP_MS * CELLS.length;
+      let lastDraw = 0;
       const frame = (now: number) => {
+        // ~15 fps: la pasada fina son ~10k fillText, no hace falta repetirla a 60 fps
+        if (now - lastDraw < FRAME_MS) {
+          raf = requestAnimationFrame(frame);
+          return;
+        }
+        lastDraw = now;
         const t = now - start;
         if (t < scanEnd) {
           const stage = Math.floor(t / STEP_MS);

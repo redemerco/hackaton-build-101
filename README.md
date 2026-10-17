@@ -22,7 +22,7 @@ npm run smoke                   # chequeo rápido de la DB
 
 ## Diseño
 
-Pantallas, dueños y estados: [`docs/pantallas.md`](docs/pantallas.md). Propuesta visual viva: https://claude.ai/artifact/L7vWgdUTTZ2qRHTxsPKoTE
+Pantallas, dueños, estados y **dónde engancha cada uno su dato real**: [`docs/pantallas.md`](docs/pantallas.md). Propuesta visual viva: https://claude.ai/artifact/L7vWgdUTTZ2qRHTxsPKoTE
 
 ## Contrato (no romper sin avisar)
 
@@ -33,8 +33,8 @@ Pantallas, dueños y estados: [`docs/pantallas.md`](docs/pantallas.md). Propuest
 | `lib/user-list.ts` | lo mismo sin `server-only`, para componentes cliente |
 | `lib/ai.ts` | Gemini: `MODEL` (`gemini-flash-latest`), `getAI()`, `streamText({ contents, config? }): ReadableStream` → `return new Response(streamText({...}))`. Imágenes: partes `{ inlineData: { mimeType, data } }` |
 | `lib/push.ts` | `sendPush(userId, { title, body, url? })` → `{ sent, removed }`, `saveSubscription` |
-| `components/glass/` | `Panel` (tarjeta de vidrio con `label`/`meta`), `TabBar`, utilidades CSS `glass`, `glass-panel`, `press` |
-| `components/ascii/` | `AsciiField` + `<Pulse bpm stress/>` (fondo vivo), `Mascot`, `Hypnogram`, `Spinner`, `Caret` |
+| `components/glass/` | `Panel` (tarjeta de vidrio con `label`/`meta`), `Sheet` (hoja inferior, `<dialog>` nativo), `TabBar`, utilidades CSS `glass`, `glass-panel`, `press` |
+| `components/ascii/` | `AsciiField` + `<Pulse bpm stress/>` (fondo vivo), `Mascot`, `Hypnogram`, `Spinner`, `Caret`, `AsciiScan` (foto → ASCII), `StreamText` (`src` real con respaldo tipeado; pasale un `fallback` constante, no un array inline), `DataChip` |
 | `lib/ascii.ts` | `sparkline()`, `asciiLine()`, `hypnogramLanes()`, `formatDuration()`, `asciiField()` (puras, testeadas en `npm run smoke`) |
 | `components/` | `PageHeader`, `EmptyState`, `StatCard`, `ui/*` (shadcn). Colores por dominio: `text-sleep`, `text-heart`, `text-food`, `text-work`, `text-mood`; fuente pixel: `font-pixel` |
 

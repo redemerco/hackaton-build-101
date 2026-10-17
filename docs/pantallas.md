@@ -4,6 +4,23 @@ Propuesta visual completa (viva, con las 9 pantallas): https://claude.ai/artifac
 
 Nav nueva: **Hoy · Cuerpo · ◉ (cámara) · Trabajo · Semana**. Ajustes se abre tocando el chip de usuario arriba a la derecha.
 
+## Estado (17-oct)
+
+Las 10 pantallas ya existen como capa visual (las armó Santi). Todo lo que todavía no es real dice `[ejemplo]` en pantalla. Los dueños de la tabla siguen siendo los mismos: cada uno reemplaza el ejemplo por su dato real en el punto de enganche de abajo, sin tocar la UI.
+
+### Dónde se engancha cada uno
+
+| Quién | Qué | Dónde |
+|---|---|---|
+| Renzo | Análisis real de la foto (Gemini vision) | `components/meal-camera.tsx`: reemplazar `const analysis = EXAMPLE_ANALYSIS` por la respuesta de tu endpoint. La forma es `MealAnalysis` en `lib/meals.ts` (ítems con `grams` y `kcal` como rangos `[min, max]`, más `comment`). |
+| Renzo | Comidas guardadas de hoy | `app/comer/page.tsx` usa `EXAMPLE_MEALS_TODAY` (`MealEntry[]`). Cambiarlo por una query a `raw_events` source `meal`. |
+| Renzo | Ánimo | **Ya es real.** `saveMood()` en `app/actions/mood.ts` escribe `raw_events` source `mood`, kind `checkin`, `{ mood: 1..5 }`. No hace falta otro. |
+| Renzo | Google Health | `getLastNight()` en `lib/body.ts` (forma `Night`: etapas cada 15 min, HR de la noche, HRV, pasos por hora) y sueño/pulso en `getToday()` de `lib/today.ts`. |
+| Joaco | Digest real | `app/semana/page.tsx`: `<Digest src="/api/digest" … />`. El endpoint devuelve texto en streaming (POST, `new Response(streamText(...))`). `EXAMPLE_DIGEST` queda como respaldo cacheado si la IA falla en vivo. |
+| Joaco | Trabajo | `getWorkDay()` en `lib/work.ts` (forma `WorkDay`). Tu ingest ya guarda `raw_events` source `github`, kinds `commit` / `pr` / `review` / `issue`. Ojo: `/commits` no trae `additions`/`deletions`; si las querés, hay que pedir cada commit o mostrarlo sin stats. |
+| Joaco | Nudge | `EXAMPLE_NUDGE` en `app/page.tsx` → el texto que calcules. La push sale con `sendPush()` de `lib/push.ts`. |
+| Joaco | Wrapped | `EXAMPLE_WRAPPED` en `lib/week.ts`. |
+
 ## Inventario
 
 | # | Pantalla | Ruta | Spine | Dueño | Lee de | Estima |

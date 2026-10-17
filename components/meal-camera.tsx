@@ -57,7 +57,7 @@ export function MealCamera() {
       <Sheet open={photoUrl !== null} onClose={close} title={isScanned ? "Tu plato" : "Analizando"} subtitle="Estimación desde la foto: siempre en rangos.">
         {photoUrl && (
           <div className="relative overflow-hidden rounded-3xl bg-[#07080c]">
-            <AsciiScan src={photoUrl} onDone={() => setIsScanned(true)} className="block h-52 w-full" />
+            <AsciiScan src={photoUrl} onDone={() => setIsScanned(true)} className="block h-52 w-full object-cover" />
             <span className="glass absolute bottom-2.5 left-2.5 rounded-full px-2.5 py-1 font-mono text-[11px]">
               {isScanned ? `✓ ${analysis.items.length} ítems` : <Spinner label="escaneando" />}
             </span>
