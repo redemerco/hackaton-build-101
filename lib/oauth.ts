@@ -84,7 +84,7 @@ export const PROVIDERS: Record<Provider, Config> = {
     // offline + consent: para recibir refresh_token y re-mostrar el consentimiento.
     // SIN include_granted_scopes: ese parámetro acumulaba scopes viejos (Calendar) y la
     // Health API rechaza el token si trae scopes que no son de Health (403 DISALLOWED_OAUTH_SCOPES).
-    extraAuthParams: { access_type: "offline", prompt: "consent" },
+    extraAuthParams: { access_type: "offline", prompt: "select_account consent" }, // select_account: después de "Cerrar sesión" deja elegir otra cuenta
     account: async (token) => {
       const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${token}` },

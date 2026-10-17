@@ -4,6 +4,7 @@ import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
 import { Ranking, type RankingEntry } from "@/components/ranking";
 import { Screen } from "@/components/screen";
+import { ToolsProbe } from "./tools-probe";
 import { getRanking, sortToday, sortWeek, type RankRow } from "@/lib/ranking";
 import { getCurrentUser } from "@/lib/users";
 import type { StreamPart } from "@/components/ascii/stream-text";
@@ -45,6 +46,7 @@ export default async function SemanaPage() {
           </p>
         </Panel>
       )}
+      <ToolsProbe />
     </Screen>
   );
 }
