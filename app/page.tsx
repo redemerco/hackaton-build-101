@@ -1,3 +1,4 @@
+import { AgentActions } from "@/components/agent-actions";
 import { Pulse } from "@/components/ascii/ascii-field";
 import { Count, DurationCount } from "@/components/ascii/count";
 import { CrossChart } from "@/components/cross-chart";
@@ -7,7 +8,6 @@ import { PageHeader } from "@/components/page-header";
 import { Daemon } from "@/components/daemon/daemon";
 import { DaemonSpeech } from "@/components/daemon/daemon-speech";
 import { MoodCheckin } from "@/components/mood-checkin";
-import { NudgeBanner } from "@/components/nudge-banner";
 import { Screen } from "@/components/screen";
 import { StatCard } from "@/components/stat-card";
 import { Summary } from "@/components/summary";
@@ -17,7 +17,6 @@ import { contributors, daemonInput, getToday, stressOf, type Contributor } from 
 import { getBuddy } from "@/lib/buddy";
 import { getCross } from "@/lib/cross";
 import type { Insight, Pending } from "@/lib/insights";
-import { getNudge } from "@/lib/nudge";
 import { buildMePrompt, ME_FALLBACK } from "@/lib/summary-me";
 import { getCurrentUser } from "@/lib/users";
 
@@ -89,7 +88,6 @@ export default async function Yo() {
   const input = daemonInput(today, user.id);
   const state = deriveState(input);
   const spec = STATES[state];
-  const nudge = getNudge(user.id);
 
   return (
     <Screen>
@@ -130,8 +128,6 @@ export default async function Yo() {
         <MoodCheckin mood={today.mood} />
       </div>
 
-      {nudge && <NudgeBanner text={nudge.body} />}
-
       <Panel label="tu día · por hora" meta="hoy">
         <CrossChart day={cross.today} nowHour={cross.nowHour} />
       </Panel>
@@ -154,8 +150,10 @@ export default async function Yo() {
         )}
       </Panel>
 
-      {/* Renzo monta acá <AgentActions /> (acciones del agente: mover reuniones, bloquear foco, nudge). */}
-      <section id="acciones" className="contents" />
+      {/* Acciones del agente (Renzo): mover reuniones, bloquear foco, nudge. */}
+      <section id="acciones" className="contents">
+        <AgentActions />
+      </section>
     </Screen>
   );
 }
