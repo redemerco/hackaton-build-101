@@ -7,11 +7,20 @@ import { buttonVariants } from "@/components/ui/button";
 
 const MESSAGE_WIDTH = 21;
 
-function ConnectSlackButton() {
+function ConnectButtons() {
+  const items = [
+    { href: "/api/github/connect", label: "Conectar GitHub" },
+    { href: "/api/linear/connect", label: "Conectar Linear" },
+    { href: "/api/slack/connect", label: "Conectar Slack" },
+  ];
   return (
-    <a href="/api/slack/connect" className={buttonVariants({ variant: "default", size: "lg", className: "w-full" })}>
-      Conectar Slack
-    </a>
+    <div className="grid gap-2">
+      {items.map((it) => (
+        <a key={it.href} href={it.href} className={buttonVariants({ variant: "default", size: "lg", className: "w-full" })}>
+          {it.label}
+        </a>
+      ))}
+    </div>
   );
 }
 
@@ -42,7 +51,7 @@ export default function TrabajoPage() {
     <>
       <Pulse bpm={60} stress={0.35} />
       <PageHeader title="Trabajo" subtitle={day.isExample ? "[ejemplo] hasta conectar GitHub, Linear y Calendar" : "GitHub · Linear · Calendar"} />
-      <ConnectSlackButton />
+      <ConnectButtons />
 
       <Panel label="git log · hoy" meta={`${day.commits} commits`}>
         <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-[10.5px] leading-[1.55]">
