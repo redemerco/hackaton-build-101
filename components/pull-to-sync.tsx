@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { SPINNER } from "@/lib/ascii";
 import { reactDaemon } from "@/lib/daemon-events";
 
-// Endpoints que se llaman al soltar. Renzo suma acá el sync de Google Health cuando exista.
-const SYNC_ENDPOINTS = ["/api/sync/github"] as const;
+// Endpoints que se llaman al soltar.
+const SYNC_ENDPOINTS = ["/api/sync/github", "/api/sync/health"] as const;
 const TRIGGER_PX = 72;
 const MAX_PULL_PX = 110;
 const RESISTANCE = 0.5;

@@ -1,13 +1,83 @@
-import { getConnection } from "@/lib/connections";
+import { getConnection, listConnections } from "@/lib/connections";
 import { insertRawEvents, type RawEventInput } from "@/lib/db";
 import { freshToken } from "@/lib/oauth";
 
-// Ingest de Google Health (Fitbit) → raw_events (source "google", kind "sleep").
-// Forma real del dato (verificado contra la API con la cuenta de Santi):
+// Ingest de Google Health (Fitbit) → raw_events (source "google").
+// Forma real del sueño (verificado contra la API con la cuenta de Santi):
 //   dataPoint.sleep = { interval:{startTime,endTime,startUtcOffset}, type:"STAGES", stages:[{startTime,endTime,type}], summary }
 // El endpoint rechaza el filtro data_type.*; traemos sin filtro y recortamos por fecha en JS.
-const DAYS = 90;
+// Los diarios y AZM tienen la forma de la referencia v4 (users.dataTypes.dataPoints):
+//   dailyRestingHeartRate:{date:{year,month,day}, beatsPerMinute}
+//   dailyHeartRateVariability:{date, averageHeartRateVariabilityMilliseconds}
+//   activeZoneMinutes:{interval:{startTime}, heartRateZone, activeZoneMinutes}
+const SLEEP_DAYS = 90;
+const DAILY_DAYS = 21; // 7 días de ranking + 14 de línea base
 const BASE = "https://health.googleapis.com/v4/users/me";
+const MAX_PAGES = 20;
+
+type Point = Record<string, unknown>;
+type Pick = (p: Point) => { kind: string; ts: string } | null;
+
+// {year,month,day} → medianoche UTC de esa fecha (clave estable para el día local del usuario).
+function dateTs(d: unknown): string | null {
+  const { year, month, day } = (d ?? {}) as Record<string, number>;
+  return year && month && day ? new Date(Date.UTC(year, month - 1, day)).toISOString() : null;
+}
+
+const TYPES: { type: string; days: number; pick: Pick }[] = [
+  {
+    type: "sleep",
+    days: SLEEP_DAYS,
+    pick: (p) => {
+      const start = (((p.sleep ?? {}) as Point).interval as Record<string, string> | undefined)?.startTime;
+      return start ? { kind: "sleep", ts: new Date(start).toISOString() } : null;
+    },
+  },
+  {
+    type: "daily-resting-heart-rate",
+    days: DAILY_DAYS,
+    pick: (p) => {
+      const ts = dateTs((p.dailyRestingHeartRate as Point | undefined)?.date);
+      return ts ? { kind: "resting_hr", ts } : null;
+    },
+  },
+  {
+    type: "daily-heart-rate-variability",
+    days: DAILY_DAYS,
+    pick: (p) => {
+      const ts = dateTs((p.dailyHeartRateVariability as Point | undefined)?.date);
+      return ts ? { kind: "hrv", ts } : null;
+    },
+  },
+  {
+    type: "active-zone-minutes",
+    days: DAILY_DAYS,
+    pick: (p) => {
+      const start = (((p.activeZoneMinutes ?? {}) as Point).interval as Record<string, string> | undefined)?.startTime;
+      return start ? { kind: "azm", ts: new Date(start).toISOString() } : null;
+    },
+  },
+];
+
+async function fetchType(hdr: HeadersInit, userId: string, { type, days, pick }: (typeof TYPES)[number]): Promise<RawEventInput[]> {
+  const since = Date.now() - days * 86400_000;
+  const rows: RawEventInput[] = [];
+  const url = (tok?: string) => `${BASE}/dataTypes/${type}/dataPoints?page_size=100${tok ? `&page_token=${tok}` : ""}`;
+  let next: string | undefined = url();
+  let guard = 0;
+  while (next && guard++ < MAX_PAGES) {
+    const res: Response = await fetch(next, { headers: hdr, cache: "no-store" });
+    if (!res.ok) throw new Error(`google-health ${type} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const page: Point = await res.json();
+    for (const p of (page.dataPoints as Point[]) ?? []) {
+      const hit = pick(p);
+      if (hit && Date.parse(hit.ts) >= since) rows.push({ source: "google", kind: hit.kind, userId, ts: hit.ts, data: p });
+    }
+    const tok = page.nextPageToken as string | undefined;
+    next = tok ? url(tok) : undefined;
+  }
+  return rows;
+}
 
 export async function syncGoogleUser(userId: string): Promise<number> {
   const conn = getConnection(userId, "google");
@@ -15,30 +85,24 @@ export async function syncGoogleUser(userId: string): Promise<number> {
   const token = await freshToken(conn);
   const hdr = { Authorization: `Bearer ${token}`, Accept: "application/json" };
 
-  const since = Date.now() - DAYS * 86400_000;
-  const rows: RawEventInput[] = [];
-
-  try {
-    let next: string | undefined = `${BASE}/dataTypes/sleep/dataPoints?page_size=100`;
-    let guard = 0;
-    while (next && guard++ < 20) {
-      const res: Response = await fetch(next, { headers: hdr, cache: "no-store" });
-      if (!res.ok) throw new Error(`google-health ${res.status}: ${(await res.text()).slice(0, 200)}`);
-      const page: Record<string, unknown> = await res.json();
-      const points = (page.dataPoints as Array<Record<string, unknown>>) ?? [];
-      for (const p of points) {
-        const sleep = (p.sleep ?? {}) as Record<string, unknown>;
-        const interval = (sleep.interval ?? {}) as Record<string, string>;
-        const start = interval.startTime;
-        if (!start || Date.parse(start) < since) continue;
-        rows.push({ source: "google", kind: "sleep", userId, ts: new Date(start).toISOString(), data: p });
-      }
-      const tok = page.nextPageToken as string | undefined;
-      next = tok ? `${BASE}/dataTypes/sleep/dataPoints?page_size=100&page_token=${tok}` : undefined;
-    }
-  } catch (error) {
-    console.error("[sync/google] sleep", error);
-  }
-
+  // Cada tipo por separado: si uno falla (scope, 403), los demás igual entran.
+  const results = await Promise.allSettled(TYPES.map((t) => fetchType(hdr, userId, t)));
+  const rows = results.flatMap((r, i) => {
+    if (r.status === "fulfilled") return r.value;
+    console.error(`[sync/google] ${TYPES[i].type}`, r.reason);
+    return [];
+  });
   return rows.length ? insertRawEvents(rows) : 0;
+}
+
+/** Todos los usuarios con login de Google (para /api/sync/health y pull-to-sync). */
+export async function syncGoogle(): Promise<number> {
+  let total = 0;
+  for (const c of listConnections("google")) {
+    total += await syncGoogleUser(c.userId).catch((error) => {
+      console.error(`[sync/google] ${c.userId}`, error);
+      return 0;
+    });
+  }
+  return total;
 }

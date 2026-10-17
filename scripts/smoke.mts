@@ -52,4 +52,18 @@ assert.equal(daemon.deriveState({ ...baseDay, mood: 2 }), "cansado");
 assert.equal(daemon.deriveState({ ...baseDay, mealMinutesAgo: 10 }), "comiendo");
 assert.equal(daemon.deriveState(baseDay), "enforma");
 
+
+// puntaje build101
+const { scoreDay } = await import("../lib/score.ts");
+const goodNight = { asleepMin: 460, deepRemMin: 190, awakeMin: 10 };
+assert.equal(scoreDay({}, {}), null, "sin datos no hay puntaje");
+assert.equal(scoreDay({ sleep: goodNight }, {})?.score, 100, "solo sueño: se puntúa sobre lo que hay");
+assert.equal(scoreDay({ sleep: goodNight }, {})?.isPartial, true);
+const full = scoreDay({ sleep: goodNight, hrvMs: 55, restingBpm: 56, azm: 30 }, { hrvMs: 50, restingBpm: 58 });
+assert.equal(full?.score, 100);
+assert.equal(full?.isPartial, false);
+const rough = scoreDay({ sleep: { asleepMin: 300, deepRemMin: 60, awakeMin: 60 }, hrvMs: 36, restingBpm: 64, azm: 0 }, { hrvMs: 50, restingBpm: 58 });
+assert.ok(rough && rough.score < 30, `noche mala + recuperación baja puntúa bajo (${rough?.score})`);
+const mid = scoreDay({ sleep: { asleepMin: 400, deepRemMin: 120, awakeMin: 30 }, hrvMs: 48, restingBpm: 59, azm: 10 }, { hrvMs: 50, restingBpm: 58 });
+assert.ok(mid && mid.score > rough!.score && mid.score < 100, `noche media queda en el medio (${mid?.score})`);
 console.log("smoke OK");

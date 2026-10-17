@@ -68,7 +68,7 @@ export function SettingsSheet({ currentUserId, currentBuddy, sources }: Settings
       <button type="button" onClick={() => setIsOpen(true)} className="glass press h-11 min-w-11 rounded-full px-4 text-sm font-medium">
         {current.id} ▾
       </button>
-      <Sheet open={isOpen} onClose={() => { setIsOpen(false); setIsConfirmingDelete(false); }} title="Ajustes" subtitle="Tus datos, tu dispositivo. Nadie más los ve.">
+      <Sheet open={isOpen} onClose={() => { setIsOpen(false); setIsConfirmingDelete(false); }} title="Ajustes" subtitle="Tus datos, tu dispositivo. Con tu equipo solo compartís el puntaje.">
         <Section title="usuario">
           <div className="grid grid-cols-3 gap-2">
             {USERS.map((u) => (

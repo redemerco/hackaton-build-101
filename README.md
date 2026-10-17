@@ -46,6 +46,8 @@ Pantallas, dueños, estados y **dónde engancha cada uno su dato real**: [`docs/
 
 `raw_events`: `source` = fuente (`google_health`, `github`, `linear`, `meal`, `mood`…), `kind` = tipo dentro de la fuente, `ts` = ISO 8601 UTC, `json` = payload crudo.
 
+Google Health escribe `source: "google"` con `kind` `sleep`, `resting_hr`, `hrv` (`ts` = medianoche UTC de la fecha) y `azm` (un registro por minuto en zona). `lib/score.ts` arma el puntaje build101 (0–100) y `lib/ranking.ts` el ranking del workspace de Slack. Re-sync: `GET /api/sync/health`.
+
 ### Conexiones (OAuth de GitHub, Linear y Slack · Joaco)
 
 | Ruta | Para qué |

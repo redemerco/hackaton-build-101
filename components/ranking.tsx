@@ -1,0 +1,85 @@
+"use client";
+
+import { useState } from "react";
+import { Panel } from "@/components/glass/panel";
+import { cn } from "@/lib/utils";
+
+export type RankingEntry = {
+  userId: string;
+  name: string;
+  isMe: boolean;
+  score: number | null;
+  note?: string; // "5/7 días", "parcial"
+};
+
+type Tab = "hoy" | "semana";
+
+const BAR_CELLS = 12;
+const TABS: { id: Tab; label: string }[] = [
+  { id: "hoy", label: "Hoy" },
+  { id: "semana", label: "Semana" },
+];
+
+function bar(score: number): string {
+  const full = Math.round((score / 100) * BAR_CELLS);
+  return "█".repeat(full) + "░".repeat(BAR_CELLS - full);
+}
+
+/** Ranking del workspace por puntaje build101. Las listas llegan ya ordenadas del server. */
+export function Ranking({ team, today, week, isExample }: { team: string; today: RankingEntry[]; week: RankingEntry[]; isExample: boolean }) {
+  const [tab, setTab] = useState<Tab>("hoy");
+  const rows = tab === "hoy" ? today : week;
+  const hasPartial = rows.some((r) => r.note === "parcial");
+
+  return (
+    <Panel label={`ranking · ${team}`} meta={isExample ? "[ejemplo · sin pulseras]" : "puntaje build101"}>
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Período del ranking">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            aria-pressed={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={cn("glass press h-10 rounded-xl text-[15px] font-medium transition-[background-color] duration-200", tab === t.id && "bg-mood/25")}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <ol className="grid gap-1">
+        {rows.map((r, i) => (
+          <li
+            key={r.userId}
+            className={cn(
+              "grid grid-cols-[2ch_1fr_auto] items-center gap-x-3 rounded-lg px-2 py-2 font-mono text-[13px] tabular-nums",
+              r.isMe && "bg-mood/10 shadow-[inset_0_0_0_1px_rgb(241_225_91/.3)]",
+            )}
+          >
+            <span className={cn("text-dim", i === 0 && r.score !== null && "text-mood")}>{r.score === null ? "–" : i + 1}</span>
+            <span className="min-w-0">
+              <span className="block truncate font-sans text-[15px] font-medium">
+                {r.name}
+                {r.isMe && <span className="ml-1.5 font-mono text-xs text-dim">vos</span>}
+              </span>
+              {r.score !== null ? (
+                <span aria-hidden className="block truncate text-[11px] tracking-[1px] text-mood/80">{bar(r.score)}</span>
+              ) : (
+                <span className="block text-[11px] text-faint">sin datos de la pulsera</span>
+              )}
+            </span>
+            <span className="text-right">
+              <span className="block text-[20px] font-semibold leading-none">{r.score ?? "—"}</span>
+              {r.note && <span className="block text-[11px] text-dim">{r.note}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      <p className="text-xs leading-relaxed text-dim">
+        0–100 con tu sueño (50), tu HRV y pulso en reposo contra tu propia media (35) y minutos en zona activa (15). Lo calculamos nosotros: no es el score de Fitbit.
+        {hasPartial && " “parcial” = todavía no hay HRV, pulso o línea base: se puntúa sobre lo que hay."} Con tu equipo solo se comparte el puntaje.
+      </p>
+    </Panel>
+  );
+}
