@@ -35,6 +35,7 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
 
   useEffect(() => {
     let isCancelled = false;
+    const abort = new AbortController(); // regenerar o salir de la pantalla corta el POST en curso
     const timers: ReturnType<typeof setTimeout>[] = [];
     const all = tokenize(JSON.parse(fallbackKey) as StreamPart[]);
 
@@ -53,7 +54,7 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
     };
 
     const readStream = async (url: string) => {
-      const res = await fetch(url, { method: "POST" });
+      const res = await fetch(url, { method: "POST", signal: abort.signal });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let text = "";
@@ -71,6 +72,7 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
       setIsDone(false);
       if (!src) return typeFallback();
       readStream(src).catch((error) => {
+        if (abort.signal.aborted) return;
         console.error("[stream-text] falló, uso el respaldo", error);
         if (!isCancelled) typeFallback();
       });
@@ -78,6 +80,7 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
 
     return () => {
       isCancelled = true;
+      abort.abort();
       timers.forEach(clearTimeout);
     };
   }, [fallbackKey, src, runId, tokenMs]);

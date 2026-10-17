@@ -19,6 +19,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 export function MealCamera() {
   const inputId = useId();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [isScanned, setIsScanned] = useState(false);
   const analysis: MealAnalysis = EXAMPLE_ANALYSIS;
 
@@ -30,8 +31,14 @@ export function MealCamera() {
     if (file.size > MAX_BYTES) return toast.error("La foto pesa más de 10 MB. Sacala con menos resolución.");
     setIsScanned(false);
     setPhotoUrl(URL.createObjectURL(file));
+    setIsOpen(true);
   };
-  const close = () => setPhotoUrl(null);
+  // Cerrar anima la hoja; la foto se suelta recién en onClose, así el contenido no se vacía mientras baja.
+  const close = () => setIsOpen(false);
+  const onClosed = () => {
+    setIsOpen(false);
+    setPhotoUrl(null);
+  };
 
   return (
     <>
@@ -55,7 +62,7 @@ export function MealCamera() {
         }}
       />
 
-      <Sheet open={photoUrl !== null} onClose={close} title={isScanned ? "Tu plato" : "Analizando"} subtitle="Estimación desde la foto: siempre en rangos.">
+      <Sheet open={isOpen} onClose={onClosed} title={isScanned ? "Tu plato" : "Analizando"} subtitle="Estimación desde la foto: siempre en rangos.">
         {photoUrl && (
           <div className="relative overflow-hidden rounded-xl bg-[#07080c] ring-1 ring-inset ring-white/10">
             <AsciiScan src={photoUrl} onDone={() => setIsScanned(true)} className="block aspect-[5/4] w-full" />

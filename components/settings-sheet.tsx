@@ -55,7 +55,7 @@ export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)} className="glass press h-10 rounded-full px-4 text-sm font-medium">
+      <button type="button" onClick={() => setIsOpen(true)} className="glass press h-11 min-w-11 rounded-full px-4 text-sm font-medium">
         {current.id} ▾
       </button>
       <Sheet open={isOpen} onClose={() => { setIsOpen(false); setIsConfirmingDelete(false); }} title="Ajustes" subtitle="Tus datos, tu dispositivo. Nadie más los ve.">

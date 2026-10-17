@@ -5,17 +5,18 @@ import { SPINNER } from "@/lib/ascii";
 
 const FRAME_MS = 90;
 
-/** Spinner braille ⠋ con un texto tipo log: "⠋ leyendo sueño…". */
+/** Spinner braille ⠋ con un texto tipo log: "⠋ leyendo sueño…". El glifo es decorativo; el lector solo oye el texto. */
 export function Spinner({ label, className }: { label?: string; className?: string }) {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = setInterval(() => setFrame((f) => (f + 1) % SPINNER.length), FRAME_MS);
     return () => clearInterval(id);
   }, []);
   return (
     <span role="status" className={className ?? "font-mono text-[13px] text-dim"}>
-      {SPINNER[frame]}
-      {label ? ` ${label}` : ""}
+      <span aria-hidden>{SPINNER[frame]}</span>
+      {label ? ` ${label}` : <span className="sr-only">cargando</span>}
     </span>
   );
 }

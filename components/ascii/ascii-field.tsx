@@ -50,7 +50,8 @@ export function AsciiField() {
     let last = 0;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
-      if (document.hidden || now - last < FRAME_MS) return;
+      // pausa con la pestaña oculta o con una hoja abierta (no se ve y le saca GPU al vidrio de la hoja)
+      if (document.hidden || now - last < FRAME_MS || document.querySelector("dialog[open]")) return;
       last = now;
       draw(now / 1000);
     };

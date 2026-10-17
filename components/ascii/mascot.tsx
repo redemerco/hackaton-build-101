@@ -19,11 +19,15 @@ export function Mascot({ mood, size = "md", className }: { mood: MascotMood; siz
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let blinkTimer: ReturnType<typeof setTimeout> | undefined;
     const id = setInterval(() => {
       setIsBlinking(true);
-      setTimeout(() => setIsBlinking(false), BLINK_MS);
+      blinkTimer = setTimeout(() => setIsBlinking(false), BLINK_MS);
     }, BLINK_EVERY_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      clearTimeout(blinkTimer);
+    };
   }, []);
 
   // Departure Mono solo queda nítida en múltiplos de 11px

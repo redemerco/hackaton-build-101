@@ -48,13 +48,14 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* radios fijos (no derivados de --radius): chips 12, cards 16, hojas 24 */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
 }
 
 :root {
@@ -63,7 +64,7 @@
   --ink: #0a0c12;
   --ink-2: #121520;
   --dim: #9097aa;
-  --faint: #5d6478;
+  --faint: #8088a0; /* ~4.6:1 sobre panel: alcanza AA para texto chico */
   /* un color por dominio de datos (nunca se mezclan) */
   --sleep: #a7acff;
   --heart: #ff6b5e;
@@ -72,7 +73,7 @@
   --mood: #f1e15b;
   /* vidrio: control (tabs, botones) y panel (texto legible) */
   --glass-ctrl: rgb(255 255 255 / 0.1);
-  --glass-panel: rgb(16 19 28 / 0.62);
+  --glass-panel: rgb(16 19 28 / 0.8);
   --glass-blur: blur(18px) saturate(170%);
   --field-alpha: 0.5;
   --spring: cubic-bezier(0.34, 1.56, 0.5, 1);
@@ -101,7 +102,7 @@
   --chart-3: var(--food);
   --chart-4: var(--work);
   --chart-5: var(--mood);
-  --radius: 1.25rem;
+  --radius: 10px;
   --sidebar: var(--ink-2);
   --sidebar-foreground: #eceff6;
   --sidebar-primary: var(--mood);
@@ -149,8 +150,12 @@
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E");
   }
 }
+/* Panel: sin backdrop-filter a propósito. Con ~10 paneles sobre un fondo que repinta a 12 fps, el blur
+   costaba batería y fluidez en el iPhone y casi no se veía (el panel es 80% opaco). El blur queda en tabs y hojas. */
 @utility glass-panel {
   background: var(--glass-panel);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 /* Se aplasta con rebote al tocarlo: lo "líquido" está en el movimiento. */
 @utility press {
@@ -177,20 +182,21 @@
   --stagger: 45ms;
 }
 /* Cada pantalla entra en cascada: los hijos directos de <main> suben 8px y se desenfocan. */
+/* sin filter: blur en elementos con backdrop-filter (en Safari parpadea y deja una capa extra) */
 @keyframes enter-up {
-  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-  to { opacity: 1; transform: none; filter: blur(0); }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes token-in {
-  from { opacity: 0; filter: blur(2px); }
-  to { opacity: 1; filter: blur(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes idle-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-1.5px); }
 }
 .stagger > * {
-  animation: enter-up var(--dur-enter) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: enter-up var(--dur-enter) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 .stagger > :nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
 .stagger > :nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
@@ -198,7 +204,7 @@
 .stagger > :nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
 .stagger > :nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
 .stagger > :nth-child(n + 7) { animation-delay: calc(var(--stagger) * 6); }
-.token-in { animation: token-in 220ms ease-out both; }
+.token-in { animation: token-in 220ms ease-out backwards; }
 .idle-bob { animation: idle-bob 2.6s ease-in-out infinite; }
 
 /* Tabs: desliza en la dirección de la tab elegida. Header, barra y fondo quedan anclados. */
@@ -237,10 +243,11 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .press, .press:active { transition: none; transform: none; }
-  *, ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) {
+  *, ::before, ::after, ::backdrop, ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
   }
 }
 
@@ -273,5 +280,5 @@
 @keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 dialog[data-sheet][open] { animation: sheet-in 420ms cubic-bezier(0.2, 0.9, 0.25, 1) backwards; } /* backwards: al terminar manda el transform inline del arrastre */
-dialog[data-sheet]::backdrop { background: rgb(5 6 10 / 0.55); animation: backdrop-in 260ms ease-out both; }
+dialog[data-sheet]::backdrop { background: rgb(5 6 10 / 0.55); animation: backdrop-in 260ms ease-out backwards; }
 dialog[data-sheet][data-state="closing"]::backdrop { opacity: 0; transition: opacity 200ms ease-in; }

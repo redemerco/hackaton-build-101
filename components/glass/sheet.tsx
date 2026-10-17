@@ -23,10 +23,12 @@ const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: r
 export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const drag = useRef<{ startY: number; startT: number; dy: number } | null>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const finish = useCallback(() => {
     const dialog = ref.current;
     if (!dialog) return;
+    clearTimeout(exitTimer.current);
     delete dialog.dataset.state;
     dialog.style.transition = "";
     dialog.style.transform = "";
@@ -42,12 +44,20 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
     dialog.dataset.state = "closing";
     dialog.style.transition = `transform ${EXIT_MS}ms cubic-bezier(.4,0,1,1)`;
     dialog.style.transform = "translateY(100%)";
-    setTimeout(finish, EXIT_MS);
+    exitTimer.current = setTimeout(finish, EXIT_MS);
   }, [finish]);
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
+    if (open && dialog.dataset.state === "closing") {
+      // la reabrieron mientras salía: cancelar la salida y volver a su lugar
+      clearTimeout(exitTimer.current);
+      delete dialog.dataset.state;
+      dialog.style.transition = "transform 420ms cubic-bezier(.34,1.56,.5,1)";
+      dialog.style.transform = "";
+      return;
+    }
     if (open && !dialog.open) {
       dialog.showModal();
       document.documentElement.style.overflow = "hidden";
@@ -55,9 +65,13 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
     if (!open && dialog.open) dismiss();
   }, [open, dismiss]);
 
-  useEffect(() => () => { document.documentElement.style.overflow = ""; }, []);
+  useEffect(() => () => {
+    clearTimeout(exitTimer.current);
+    document.documentElement.style.overflow = "";
+  }, []);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    if (ref.current?.dataset.state === "closing") return;
     drag.current = { startY: e.clientY, startT: performance.now(), dy: 0 };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     if (ref.current) ref.current.style.transition = "none";
@@ -92,14 +106,14 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
       }}
       onClick={(e) => e.target === e.currentTarget && dismiss()}
       aria-label={title}
-      className="glass glass-panel fixed inset-x-0 bottom-0 top-auto m-0 mx-auto max-h-[88dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-3xl p-0 text-foreground"
+      className="glass fixed inset-x-0 bottom-0 top-auto m-0 mx-auto max-h-[88dvh] w-full max-w-md overflow-hidden rounded-t-3xl bg-[rgb(16_19_28/.82)] p-0 text-foreground open:flex open:flex-col"
     >
       <div
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="sticky top-0 z-10 grid cursor-grab touch-none gap-3 px-5 pb-1 pt-3 active:cursor-grabbing"
+        className="grid shrink-0 cursor-grab touch-none gap-3 px-5 pb-1 pt-3 active:cursor-grabbing"
       >
         <span aria-hidden className="h-[5px] w-10 justify-self-center rounded-full bg-white/30" />
         <div>
@@ -107,7 +121,7 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
           {subtitle && <p className="mt-1 text-sm text-dim">{subtitle}</p>}
         </div>
       </div>
-      <div className="grid gap-4 px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">{children}</div>
+      <div className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">{children}</div>
     </dialog>
   );
 }

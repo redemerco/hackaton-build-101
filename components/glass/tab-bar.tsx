@@ -29,6 +29,7 @@ export function TabBar() {
   const navRef = useRef<HTMLElement>(null);
   const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [pill, setPill] = useState<Pill>(null);
+  const [isAnimated, setIsAnimated] = useState(false);
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -38,6 +39,7 @@ export function TabBar() {
       const n = nav.getBoundingClientRect();
       const t = tab.getBoundingClientRect();
       setPill({ x: t.left - n.left, width: t.width });
+      requestAnimationFrame(() => setIsAnimated(true));
     };
     measure();
     window.addEventListener("resize", measure);
@@ -53,7 +55,11 @@ export function TabBar() {
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-1.5 left-0 rounded-full bg-white/12 shadow-[inset_0_1px_0_rgb(255_255_255/.35)] transition-[transform,width,opacity] duration-500 ease-[cubic-bezier(.34,1.56,.5,1)]"
+        className={cn(
+          "pointer-events-none absolute inset-y-1.5 left-0 rounded-full bg-white/12 shadow-[inset_0_1px_0_rgb(255_255_255/.35)]",
+          // sin transición hasta la primera medida: si no, en cada carga desliza desde la izquierda
+          isAnimated && "transition-[transform,width,opacity] duration-500 ease-[cubic-bezier(.34,1.56,.5,1)]",
+        )}
         style={{ width: pill?.width ?? 0, transform: `translateX(${pill?.x ?? 0}px)`, opacity: pill ? 1 : 0 }}
       />
       {TABS.map((tab, i) => {
@@ -69,7 +75,7 @@ export function TabBar() {
               transitionTypes={types}
               aria-label="Sacarle una foto a la comida"
               aria-current={isActive ? "page" : undefined}
-              className="glass press press-strong -mt-7 grid size-14 place-items-center justify-self-center rounded-full"
+              className="press press-strong -mt-7 grid size-14 place-items-center justify-self-center rounded-full shadow-[inset_0_1px_0_rgb(255_255_255/.5),0_8px_24px_rgb(0_0_0/.4)]"
               style={{ background: "radial-gradient(circle at 32% 26%, rgb(255 255 255 / .6), transparent 46%), rgb(255 179 64 / .32)" }}
             >
               <span className={cn("size-6 rounded-full border-2 border-foreground transition-transform duration-300", isActive && "scale-75 bg-foreground")} />

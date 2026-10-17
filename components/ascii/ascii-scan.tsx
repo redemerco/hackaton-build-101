@@ -55,7 +55,7 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d", { willReadFrequently: true });
+    const ctx = canvas?.getContext("2d"); // GPU; los píxeles se leen una sola vez en un canvas aparte
     if (!canvas || !ctx) return;
 
     let raf = 0;
@@ -69,15 +69,22 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
       canvas.height = Math.round((canvas.clientHeight || 428) * dpr);
       const cells = CELLS.map((c) => c * dpr);
       const { width: w, height: h } = canvas;
-      drawCover(ctx, img, w, h);
-      const pixels = ctx.getImageData(0, 0, w, h).data;
       const photo = document.createElement("canvas");
       photo.width = w;
       photo.height = h;
-      photo.getContext("2d")?.drawImage(canvas, 0, 0);
+      const photoCtx = photo.getContext("2d", { willReadFrequently: true });
+      if (!photoCtx) return;
+      drawCover(photoCtx, img, w, h);
+      const pixels = photoCtx.getImageData(0, 0, w, h).data;
+      // el ASCII fino se dibuja una vez y se reusa en el revelado (antes se recalculaba en cada frame)
+      const fine = document.createElement("canvas");
+      fine.width = w;
+      fine.height = h;
+      const fineCtx = fine.getContext("2d");
+      if (fineCtx) asciiPass(fineCtx, pixels, w, h, cells[cells.length - 1], 0, h);
 
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        asciiPass(ctx, pixels, w, h, cells[cells.length - 1], 0, h);
+        ctx.drawImage(fine, 0, 0);
         onDoneRef.current?.();
         return;
       }
@@ -108,7 +115,7 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
           return;
         }
         // revelado: la foto real aparece sobre el ASCII fino
-        asciiPass(ctx, pixels, w, h, cells[cells.length - 1], 0, h);
+        ctx.drawImage(fine, 0, 0);
         ctx.globalAlpha = Math.min(1, (t - scanEnd) / REVEAL_MS);
         ctx.drawImage(photo, 0, 0);
         ctx.globalAlpha = 1;
@@ -126,5 +133,5 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
     };
   }, [src]);
 
-  return <canvas ref={canvasRef} width={536} height={428} aria-label="Foto de la comida analizándose" className={className} />;
+  return <canvas ref={canvasRef} width={536} height={428} role="img" aria-label="Foto de la comida analizándose" className={className} />;
 }

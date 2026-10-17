@@ -56,7 +56,7 @@ export default async function TrabajoPage() {
           {series.map((s) => (
             <div key={s.label} className="grid grid-cols-[76px_1fr] items-center">
               <span className="text-xs text-dim">{s.label}</span>
-              <span aria-label={`${s.label}: ${s.values.join(", ")}`} className={`text-lg tracking-[3px] ${s.className}`}>{sparkline(s.values)}</span>
+              <span role="img" aria-label={`${s.label}: ${s.values.join(", ")}`} className={`text-lg tracking-[3px] ${s.className}`}>{sparkline(s.values)}</span>
             </div>
           ))}
         </div>

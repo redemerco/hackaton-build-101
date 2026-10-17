@@ -33,6 +33,13 @@ export function DurationCount({ minutes }: { minutes: number }) {
 
 /** Texto que se "decodifica" con caracteres al azar antes de quedarse quieto (cifras de la IA). */
 export function Decode({ text, className }: { text: string; className?: string }) {
-  const { ref } = useScramble({ text, speed: 0.5, tick: 2, step: 1, scramble: 6, seed: 2, range: [48, 57], overdrive: false });
-  return <span ref={ref} aria-label={text} className={className} />;
+  const [isReduced] = useState(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const { ref } = useScramble({ text, speed: isReduced ? 100 : 0.5, tick: 2, step: 1, scramble: isReduced ? 0 : 6, seed: 2, range: [48, 57], overdrive: false });
+  // el lector de pantalla lee el valor final, nunca los dígitos mezclados
+  return (
+    <span className={className}>
+      <span ref={ref} aria-hidden />
+      <span className="sr-only">{text}</span>
+    </span>
+  );
 }

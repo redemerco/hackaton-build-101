@@ -32,7 +32,7 @@ export default async function Hoy() {
       </Panel>
 
       <div className="grid grid-cols-3 gap-2">
-        <StatCard label="sueño" value={<DurationCount minutes={today.sleepMin} />} hint={<span className="text-sleep">{sparkline(today.sleepWeek)}</span>} />
+        <StatCard label="sueño" value={<DurationCount minutes={today.sleepMin} />} hint={<span role="img" aria-label={`sueño de la semana: ${today.sleepWeek.map(formatDuration).join(", ")}`} className="text-sleep">{sparkline(today.sleepWeek)}</span>} />
         <StatCard
           label="pulso"
           value={<Count value={today.restingBpm} />}
