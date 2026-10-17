@@ -8,7 +8,7 @@ export type SummaryCountView = { label: string; value: number };
 
 type SummaryProps = {
   label: string; // "salud · hoy"
-  src: string; // "/api/summary/health"
+  src: string; // "/api/summary/health" (el ↻ le agrega ?force=1: el route debe aceptarlo)
   /** Qué datos entraron al prompt: se muestran abajo para que se vea en qué se apoya la IA. */
   counts: readonly SummaryCountView[];
   /** Se tipea solo si la IA no responde y no hay caché. Rotulado como "[sin IA]", nunca como IA. */
@@ -24,7 +24,7 @@ export function Summary({ label, src, counts, fallback }: SummaryProps) {
 
   return (
     <Panel label={label} meta={meta} className="content-start">
-      <StreamText fallback={[fallback]} src={src} runId={runId} tokenMs={55} onSource={setSource} className="text-[15px] leading-relaxed" />
+      <StreamText fallback={[fallback]} src={runId > 0 ? `${src}?force=1` : src} runId={runId} tokenMs={55} onSource={setSource} className="text-[15px] leading-relaxed" />
       <div className="flex items-end justify-between gap-3 border-t border-white/10 pt-2.5">
         <p className="font-mono text-xs leading-relaxed text-faint">
           {used.length ? `datos usados: ${used.map((c) => `${c.value} ${c.label}`).join(" · ")}` : "sin datos todavía: conectá tus fuentes"}

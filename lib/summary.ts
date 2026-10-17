@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { streamText } from "@/lib/ai";
 import { db, insertRawEvents, rawEvents } from "@/lib/db";
@@ -13,7 +14,9 @@ export type SummaryCount = { label: string; value: number };
 export const CACHE_PREFIX = "[cache · IA no disponible] ";
 const WORD_MS = 40;
 
-export function getCachedSummary(userId: string, kind: SummaryKind): { text: string; ts: string } | null {
+const hashOf = (system: string, prompt: string) => createHash("sha256").update(system).update("\0").update(prompt).digest("hex").slice(0, 16);
+
+export function getCachedSummary(userId: string, kind: SummaryKind): { text: string; ts: string; hash?: string } | null {
   const row = db
     .select()
     .from(rawEvents)
@@ -21,17 +24,47 @@ export function getCachedSummary(userId: string, kind: SummaryKind): { text: str
     .orderBy(desc(rawEvents.ts))
     .get();
   if (!row) return null;
-  const text = (JSON.parse(row.json) as { text?: unknown }).text;
-  return typeof text === "string" ? { text, ts: row.ts } : null;
+  const { text, hash } = JSON.parse(row.json) as { text?: unknown; hash?: unknown };
+  return typeof text === "string" ? { text, ts: row.ts, hash: typeof hash === "string" ? hash : undefined } : null;
 }
 
-function saveSummary(userId: string, kind: SummaryKind, text: string) {
-  insertRawEvents([{ source: "summary", kind, userId, ts: new Date().toISOString(), data: { text } }]);
+function saveSummary(userId: string, kind: SummaryKind, text: string, hash: string) {
+  insertRawEvents([{ source: "summary", kind, userId, ts: new Date().toISOString(), data: { text, hash } }]);
 }
 
-/** Response en streaming para un route handler: `return streamSummary({ userId, kind, system, prompt })`. */
-export function streamSummary({ userId, kind, system, prompt }: { userId: string; kind: SummaryKind; system: string; prompt: string }): Response {
+const REPLAY_MS = 12;
+
+/** Re-tipea un texto guardado palabra por palabra. */
+function replay(text: string, prefix = ""): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const words = text.split(/(?<=\s)/);
+  return new ReadableStream({
+    async start(controller) {
+      if (prefix) controller.enqueue(encoder.encode(prefix));
+      for (const w of words) {
+        controller.enqueue(encoder.encode(w));
+        await new Promise((r) => setTimeout(r, REPLAY_MS));
+      }
+      controller.close();
+    },
+  });
+}
+
+type StreamSummaryParams = { userId: string; kind: SummaryKind; system: string; prompt: string; force?: boolean };
+
+/**
+ * Response en streaming para un route handler: `return streamSummary({ userId, kind, system, prompt, force })`.
+ * Si los datos (el prompt) no cambiaron desde el último resumen, lo reusa sin llamar a la IA: ahorra cuota en
+ * vivo y da la misma respuesta para la misma entrada. `force` (botón ↻) siempre pide uno nuevo.
+ */
+export function streamSummary({ userId, kind, system, prompt, force = false }: StreamSummaryParams): Response {
   const cached = getCachedSummary(userId, kind);
+  const hash = hashOf(system, prompt);
+  if (!force && cached?.hash === hash) {
+    return new Response(replay(cached.text), { headers: { "Content-Type": "text/plain; charset=utf-8", "X-Summary": "reused", "X-Summary-Hash": hash } });
+  }
+  // sin IA configurada ni nada guardado: 503 limpio (el cliente tipea su respaldo rotulado [sin IA])
+  if (!process.env.GEMINI_API_KEY && !cached) return new Response("IA no configurada", { status: 503 });
   const source = streamText({ contents: prompt, config: { systemInstruction: system } }).getReader();
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
@@ -42,7 +75,7 @@ export function streamSummary({ userId, kind, system, prompt }: { userId: string
       try {
         const { done, value } = await source.read();
         if (done) {
-          if (text.trim()) saveSummary(userId, kind, text.trim());
+          if (text.trim()) saveSummary(userId, kind, text.trim(), hash);
           return controller.close();
         }
         text += decoder.decode(value, { stream: true });
@@ -60,5 +93,5 @@ export function streamSummary({ userId, kind, system, prompt }: { userId: string
       }
     },
   });
-  return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8", "X-Summary": "live", "X-Summary-Hash": hash } });
 }
