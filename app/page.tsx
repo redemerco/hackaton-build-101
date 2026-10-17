@@ -1,6 +1,6 @@
 import { Pulse } from "@/components/ascii/ascii-field";
 import { Count, DurationCount } from "@/components/ascii/count";
-import { StreamText } from "@/components/ascii/stream-text";
+import { CrossChart } from "@/components/cross-chart";
 import { EmptyState } from "@/components/empty-state";
 import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
@@ -10,11 +10,15 @@ import { MoodCheckin } from "@/components/mood-checkin";
 import { NudgeBanner } from "@/components/nudge-banner";
 import { Screen } from "@/components/screen";
 import { StatCard } from "@/components/stat-card";
+import { Summary } from "@/components/summary";
 import { formatDuration, sparkline } from "@/lib/ascii";
 import { deriveState, linesFor, STATES } from "@/lib/daemon";
 import { contributors, daemonInput, getToday, stressOf, type Contributor } from "@/lib/today";
 import { getBuddy } from "@/lib/buddy";
+import { getCross } from "@/lib/cross";
+import type { Insight, Pending } from "@/lib/insights";
 import { getNudge } from "@/lib/nudge";
+import { buildMePrompt, ME_FALLBACK } from "@/lib/summary-me";
 import { getCurrentUser } from "@/lib/users";
 
 
@@ -33,16 +37,42 @@ function ContributorRow({ c }: { c: Contributor }) {
   );
 }
 
-export default async function Hoy() {
+function InsightRow({ i }: { i: Insight }) {
+  return (
+    <li className="grid gap-1 border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
+      <p className="text-[13px] font-medium text-dim">{i.question}</p>
+      <p className="text-[15px] leading-relaxed text-pretty">{i.text}</p>
+      <p className="font-mono text-[11px] text-faint">
+        {i.basis} · {i.isHypothesis ? <span className="text-mood">{i.evidence}</span> : i.evidence}
+      </p>
+    </li>
+  );
+}
+
+function PendingRow({ p }: { p: Pending }) {
+  return (
+    <li className="grid gap-0.5">
+      <span className="text-[13px] text-dim">{p.question}</span>
+      <span className="font-mono text-[11px] text-faint">{p.need}</span>
+    </li>
+  );
+}
+
+const MAX_INSIGHTS = 4;
+const MAX_PENDING = 3;
+
+export default async function Yo() {
   const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
   const today = getToday(user.id);
+  const cross = getCross(user.id);
+  const hasWork = cross.series.some((d) => d.commits > 0 || d.lastWorkMinute !== null || d.meetingMin > 0);
 
   // Sin ningún dato real: estado vacío honesto, pero el check-in de ánimo sigue disponible (es un dato que se crea acá).
-  if (today.isEmpty) {
+  if (today.isEmpty && !hasWork) {
     return (
       <Screen>
         <Pulse bpm={60} stress={0.2} />
-        <PageHeader title={`Hola, ${user.name}`} subtitle="Pulso cruza tu cuerpo con tu trabajo." />
+        <PageHeader title={`Hola, ${user.name}`} subtitle="build101 cruza tu cuerpo con tu trabajo." />
         <EmptyState
           art="(._.)"
           title="Todavía no hay datos tuyos"
@@ -102,11 +132,29 @@ export default async function Hoy() {
 
       {nudge && <NudgeBanner text={nudge.body} />}
 
-      {today.insight && (
-        <Panel label="observación" meta="gemini">
-          <StreamText fallback={[today.insight]} tokenMs={45} className="text-[15px] leading-relaxed" />
-        </Panel>
-      )}
+      <Panel label="tu día · por hora" meta="hoy">
+        <CrossChart day={cross.today} nowHour={cross.nowHour} />
+      </Panel>
+
+      <Summary label="hoy, en una" src="/api/summary/me" counts={buildMePrompt(user.id, today, cross).counts} fallback={ME_FALLBACK} />
+
+      <Panel label="cruces con tus datos" meta={`${cross.insights.length} con respaldo`}>
+        {cross.insights.length > 0 ? (
+          <ul className="grid gap-3">
+            {cross.insights.slice(0, MAX_INSIGHTS).map((i) => <InsightRow key={i.id} i={i} />)}
+          </ul>
+        ) : (
+          <p className="text-[15px] leading-relaxed text-dim">Todavía no hay suficientes días para afirmar nada. Preferimos no inventar: cada cruce aparece recién cuando tus datos lo sostienen.</p>
+        )}
+        {cross.pending.length > 0 && (
+          <ul className="grid gap-1.5 border-t border-white/10 pt-3" aria-label="Cruces que todavía no tienen datos suficientes">
+            {cross.pending.slice(0, MAX_PENDING).map((p) => <PendingRow key={p.id} p={p} />)}
+          </ul>
+        )}
+      </Panel>
+
+      {/* Renzo monta acá <AgentActions /> (acciones del agente: mover reuniones, bloquear foco, nudge). */}
+      <section id="acciones" className="contents" />
     </Screen>
   );
 }

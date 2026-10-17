@@ -4,6 +4,7 @@ import { db, rawEvents } from "@/lib/db";
 import type { DaemonInput } from "@/lib/daemon";
 import type { UserId } from "@/lib/users";
 import { getLastNight } from "@/lib/body";
+import { getCross, recentVitals } from "@/lib/cross";
 
 export type Today = {
   sleepMin: number | null;
@@ -60,18 +61,22 @@ export function getToday(userId: UserId, now = new Date()): Today {
   const sleepWeek = sleepWeekFor(userId, now);
   const mood = todaysMood(userId);
   const meetings = meetingsToday(userId, now);
+  // pulso y HRV vienen como diarios de Google Health (no dentro de la noche): de la serie de lib/cross
+  const series = getCross(userId, now.getTime()).series;
+  const vitals = recentVitals(series);
+  const lastNightMin = series.at(-1)?.sleepMin ?? null;
 
   return {
-    sleepMin,
-    sleepWeek,
-    restingBpm: night?.restingBpm ?? null,
-    restingTypical: night?.restingTypical ?? null,
-    hrvMs: night?.hrvMs ?? null,
-    hrvTypical: night?.hrvTypical ?? null,
+    sleepMin: sleepMin || lastNightMin,
+    sleepWeek: sleepWeek.some((m) => m > 0) ? sleepWeek : series.slice(-7).map((d) => d.sleepMin ?? 0),
+    restingBpm: vitals.restingBpm ?? night?.restingBpm ?? null,
+    restingTypical: vitals.restingTypical ?? night?.restingTypical ?? null,
+    hrvMs: vitals.hrvMs ?? night?.hrvMs ?? null,
+    hrvTypical: vitals.hrvTypical ?? night?.hrvTypical ?? null,
     mood,
     meetings,
     insight: null, // la observación real la escribe la IA (StreamText con src); sin IA no inventamos texto.
-    isEmpty: sleepMin === null && mood === null && meetings === 0 && sleepWeek.every((m) => m === 0),
+    isEmpty: (sleepMin || lastNightMin) === null && mood === null && meetings === 0 && sleepWeek.every((m) => m === 0),
   };
 }
 

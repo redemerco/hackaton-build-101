@@ -38,3 +38,23 @@ export function streamText({ model = MODEL, ...params }: StreamTextParams): Read
     },
   });
 }
+
+const RETRIES = 3;
+const RETRY_BASE_MS = 600;
+const isTransient = (e: unknown) => /503|UNAVAILABLE|429/.test(e instanceof Error ? e.message : String(e));
+
+/**
+ * Pide un JSON a Gemini (`responseMimeType: application/json`) y lo parsea. Reintenta ante 503/429 con backoff.
+ * Quien llama valida la forma: esto solo garantiza que es JSON.
+ */
+export async function generateJson<T>({ model = MODEL, config, ...params }: StreamTextParams): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      const res = await getAI().models.generateContent({ ...params, model, config: { ...config, responseMimeType: "application/json" } });
+      return JSON.parse((res.text ?? "").trim()) as T;
+    } catch (error) {
+      if (!isTransient(error) || i === RETRIES - 1) throw error;
+      await new Promise((r) => setTimeout(r, RETRY_BASE_MS * 2 ** i));
+    }
+  }
+}

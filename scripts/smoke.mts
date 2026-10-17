@@ -75,4 +75,40 @@ const coral = tintPalette(pal, "coral");
 assert.notEqual(coral.b, pal.b, "el cuerpo cambia de color");
 assert.equal(coral.o, pal.o, "el contorno no se recolorea");
 assert.ok(parseInt(coral.b.slice(1), 16) !== parseInt(coral.d.slice(1), 16), "se conserva el sombreado (claro ≠ oscuro)");
+
+// datos por hora y cruces (lib/hourly + lib/insights)
+const { hourlyFor, dailySeries } = await import("../lib/hourly.ts");
+const { crossInsights } = await import("../lib/insights.ts");
+const ev = (source: string, kind: string, ts: string, data: object = {}) => ({ source, kind, ts, json: JSON.stringify(data) });
+const hDay = hourlyFor(
+  [
+    ev("github", "commit", "2026-10-17T13:10:00Z"), // 10:10 local
+    ev("github", "commit", "2026-10-17T13:40:00Z"),
+    ev("calendar", "event", "2026-10-17T17:00:00Z", { start: "2026-10-17T17:00:00Z", end: "2026-10-17T18:30:00Z" }), // 14:00–15:30
+    ev("mood", "checkin", "2026-10-17T15:00:00Z", { mood: 4 }),
+  ],
+  "2026-10-17",
+);
+assert.equal(hDay.hours[10].commits, 2, "los commits caen en su hora local");
+assert.equal(hDay.hours[14].meetingMin, 60);
+assert.equal(hDay.hours[15].meetingMin, 30, "la reunión se reparte por hora");
+assert.equal(hDay.mood, 4);
+
+// 20 días: noches cortas → ánimo bajo; tiene que aparecer el cruce sueño-ánimo, y no uno inventado de movimiento.
+const days = Array.from({ length: 20 }, (_, i) => `2026-10-${String(i + 1).padStart(2, "0")}`);
+const rows20 = days.flatMap((day, i) => {
+  const isShort = i % 3 === 0;
+  const end = Date.parse(`${day}T10:00:00Z`);
+  const minutes = isShort ? 330 : 450;
+  return [
+    ev("google", "sleep", new Date(end - minutes * 60000).toISOString(), {
+      sleep: { interval: { startTime: new Date(end - minutes * 60000).toISOString(), endTime: new Date(end).toISOString() }, summary: { stagesSummary: [{ type: "LIGHT", minutes: String(minutes) }] } },
+    }),
+    ev("mood", "checkin", `${day}T18:00:00Z`, { mood: isShort ? 2 : 4 }),
+  ];
+});
+const { ready } = crossInsights(dailySeries(rows20, days, false));
+assert.ok(ready.some((r) => r.id === "sueno-animo"), "detecta noche corta → ánimo bajo");
+assert.ok(!ready.some((r) => r.id === "movimiento"), "sin minutos activos no inventa el cruce de movimiento");
+assert.deepEqual(crossInsights(dailySeries([], days, false)).ready, [], "sin datos no hay cruces");
 console.log("smoke OK");

@@ -25,10 +25,11 @@ sqlite.exec(`
 CREATE TABLE IF NOT EXISTS connections (user_id TEXT NOT NULL, provider TEXT NOT NULL, account TEXT NOT NULL, token TEXT NOT NULL,
   refresh_token TEXT, expires_at TEXT, created_at TEXT NOT NULL, PRIMARY KEY (user_id, provider));
 CREATE TABLE IF NOT EXISTS profiles (user_id TEXT PRIMARY KEY, buddy TEXT NOT NULL, tint TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT NOT NULL, has_wearable INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
 `);
 
 if (process.argv.includes("--clear")) {
-  const ev = sqlite.prepare(`DELETE FROM raw_events WHERE source = 'google' AND json LIKE '%"_mock":true%'`).run();
+  const ev = sqlite.prepare(`DELETE FROM raw_events WHERE json LIKE '%"_mock":true%'`).run();
   const cn = sqlite.prepare(`DELETE FROM connections WHERE token = ?`).run(MOCK_TOKEN);
   console.log(`borrados: ${ev.changes} eventos simulados, ${cn.changes} conexiones simuladas`);
   process.exit(0);
@@ -42,6 +43,8 @@ const jitter = (value: number, spread: number) => value + (rand() * 2 - 1) * spr
 const now = new Date();
 const isoZ = (ms: number) => new Date(ms).toISOString();
 const insert = sqlite.prepare(`INSERT OR IGNORE INTO raw_events (source, kind, user_id, ts, json) VALUES ('google', ?, ?, ?, ?)`);
+const insertAny = sqlite.prepare(`INSERT OR IGNORE INTO raw_events (source, kind, user_id, ts, json) VALUES (?, ?, ?, ?, ?)`);
+const NAMES: Record<string, string> = { santi: "Santi", renzo: "Renzo", joaco: "Joaco" };
 const hasReal = sqlite.prepare(`SELECT 1 FROM raw_events WHERE source = 'google' AND user_id = ? AND json NOT LIKE '%"_mock":true%' LIMIT 1`);
 
 // Todos al mismo workspace de Slack: el del primero que tenga Slack real, o uno de demo.
@@ -53,6 +56,8 @@ for (const p of PEOPLE) {
   sqlite
     .prepare(`INSERT OR IGNORE INTO connections (user_id, provider, account, token, created_at) VALUES (?, 'slack', ?, ?, ?)`)
     .run(p.id, `${p.id}@${team}`, MOCK_TOKEN, now.toISOString());
+  // usuario simulado (el login real crea el suyo con el id de Google; este no lo pisa)
+  sqlite.prepare(`INSERT OR IGNORE INTO users (id, email, name, has_wearable, created_at) VALUES (?, ?, ?, 1, ?)`).run(p.id, `${p.id}@demo.build101`, NAMES[p.id], now.toISOString());
   // el personaje solo si la persona todavía no eligió uno
   sqlite.prepare(`INSERT OR IGNORE INTO profiles (user_id, buddy, tint, updated_at) VALUES (?, ?, ?, ?)`).run(p.id, p.buddy, p.tint, now.toISOString());
 
@@ -108,6 +113,30 @@ for (const p of PEOPLE) {
       const point = { activeZoneMinutes: { interval: { startTime: isoZ(t), startUtcOffset: TZ_OFFSET }, heartRateZone: "FAT_BURN", activeZoneMinutes: "1" }, _mock: true };
       events += insert.run("azm", p.id, isoZ(t), JSON.stringify(point)).changes;
     }
+
+    // trabajo del día: commits, Slack y reuniones (horarios), más un check-in de ánimo que acompaña a la noche
+    const at = (h: number) => midnightUtc + h * 3600_000;
+    const isHeavy = i % 4 === 1; // días de muchas reuniones
+    const late = isBadNight ? [23.3, 23.8, 0.6 + 24] : []; // las noches malas vienen de trabajar tarde
+    const commitHours = [10.2, 11.1, 15.4, 16.2, 17.5, ...late].map((h) => jitter(h, 0.3));
+    for (const h of commitHours) {
+      const t = at(h);
+      if (t > now.getTime()) continue;
+      events += insertAny.run("github", "commit", p.id, isoZ(t), JSON.stringify({ commit: { message: "commit simulado", author: { date: isoZ(t) } }, _mock: true })).changes;
+    }
+    for (let k = 0; k < 18; k++) {
+      const t = at(jitter(13, 4));
+      if (t <= now.getTime()) events += insertAny.run("slack", "message", p.id, isoZ(t), JSON.stringify({ _mock: true })).changes;
+    }
+    const meetings = isHeavy ? [[9.5, 11], [11.5, 13], [14, 15.5], [16, 17.5]] : [[10, 10.5], [15, 16]];
+    for (const [a, b] of meetings) {
+      const start = at(a);
+      if (start > now.getTime()) continue;
+      events += insertAny.run("calendar", "event", p.id, isoZ(start), JSON.stringify({ start: isoZ(start), end: isoZ(at(b)), _mock: true })).changes;
+    }
+    const moodAt = at(jitter(13, 1));
+    const mood = Math.max(1, Math.min(5, Math.round(jitter(isBadNight ? 2.3 : isHeavy ? 3 : 4, 0.6))));
+    if (moodAt <= now.getTime()) events += insertAny.run("mood", "checkin", p.id, isoZ(moodAt), JSON.stringify({ mood, _mock: true })).changes;
   }
 }
 console.log(`listo: ${events} eventos simulados en ${DB_PATH} (workspace "${team}"). Borrar: npm run seed:demo -- --clear`);
