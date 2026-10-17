@@ -16,7 +16,7 @@ CONTRATO COMPARTIDO (no romperlo — Renzo y Joaco trabajan en paralelo):
 - Cliente Claude compartido en `lib/claude.ts`, modelo `claude-sonnet-5-5`, helper de streaming.
 - `.env.local` (NUNCA se commitea): ANTHROPIC_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
 - Ingests en `lib/sources/<fuente>.ts`.
-- Ritual obligatorio (ES el dataset de la demo): cada feature arranca como issue de GitHub con el scope en el body → rama → PR con "closes #N" → review con al menos un comment real. Nunca commit directo a main.
+- Git: commits chicos y frecuentes directo a `main` (son parte del dataset de la demo). `git pull --rebase` antes de pushear; nunca `push --force`.
 - El spine de PLAN.md no se negocia; stretch solo si sobra. Simple > completo.
 
 TU ROL: A — SANTI — FITBIT + FRONTEND (doble camino crítico: el scaffold destraba a Renzo y Joaco, Google Health es el go/no-go)

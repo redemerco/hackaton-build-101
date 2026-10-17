@@ -16,10 +16,10 @@ CONTRATO COMPARTIDO (no romperlo — Santi y Renzo trabajan en paralelo):
 - Cliente Claude compartido en `lib/claude.ts`, modelo `claude-sonnet-5-5`, helper de streaming.
 - `.env.local` (NUNCA se commitea): ANTHROPIC_API_KEY, GITHUB_TOKEN, LINEAR_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
 - Ingests en `lib/sources/<fuente>.ts`.
-- Ritual obligatorio (ES el dataset de la demo): cada feature arranca como issue de GitHub con el scope en el body → rama → PR con "closes #N" → review con al menos un comment real. Nunca commit directo a main.
+- Git: commits chicos y frecuentes directo a `main` (son parte del dataset de la demo). `git pull --rebase` antes de pushear; nunca `push --force`.
 - El spine de PLAN.md no se negocia; stretch solo si sobra. Simple > completo.
 
-TU ROL: C — JOACO — EL RESTO: trabajo + cerebro + pitch (y guardián del ritual)
+TU ROL: C — JOACO — EL RESTO: trabajo + cerebro + pitch
 
 1) INGESTS DE TRABAJO (arrancá por acá: no necesitan la base de Santi):
    - `lib/sources/github.ts`: Octokit con GITHUB_TOKEN (PAT) → commits, PRs, issues, reviews **de este mismo repo** → `raw_events`.
@@ -36,7 +36,7 @@ TU ROL: C — JOACO — EL RESTO: trabajo + cerebro + pitch (y guardián del rit
 
 4) WRAPPED (beat 2:20): card compartible "Semana Wrapped" con lo mejor del período (stats + una línea escrita por Claude).
 
-5) PITCH Y DRY-RUNS: sos dueño del demo script de PLAN.md y hacés cumplir el ritual (issues→PR→review — es el dataset de la demo). A H26: **3 dry-runs cronometrados**, Fitbit sincronizada antes de cada uno, matar túnel y wifi en el dry-run 2.
+5) PITCH Y DRY-RUNS: sos dueño del demo script de PLAN.md. A H26: **3 dry-runs cronometrados**, Fitbit sincronizada antes de cada uno, matar túnel y wifi en el dry-run 2.
 
 COSTURAS: leés todo de `raw_events`; enviás push con `lib/push.ts` de Santi; tus pantallas usan los componentes de Santi.
 NO HAGAS: scaffold/PWA/sistema de UI (Santi), cámara/comidas (Renzo).
