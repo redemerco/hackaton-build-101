@@ -24,7 +24,10 @@ export const EXAMPLE_NUDGE: Nudge = {
   isExample: true,
 };
 
-type Meeting = { start: string; title?: string };
+// Calendar guarda solo horarios (sin título ni invitados): ver lib/sources/calendar.ts.
+type Meeting = { start: string; allDay?: boolean };
+
+const freeTime = (min: number) => (min < 60 ? `${min} min` : formatDuration(min));
 
 export function getNudge(userId: string, now = new Date()): Nudge {
   const since = new Date(now.getTime() - 12 * 60 * MIN).toISOString();
@@ -54,9 +57,10 @@ export function getNudge(userId: string, now = new Date()): Nudge {
   const next = events
     .filter((e) => e.source === "calendar")
     .map((e) => JSON.parse(e.json) as Meeting)
+    .filter((m) => !m.allDay)
     .map((m) => ({ ...m, t: Date.parse(m.start) }))
-    .find((m) => m.t > now.getTime());
-  const gap = next ? ` y tenés ${formatDuration(Math.round((next.t - now.getTime()) / MIN))} libres antes de ${next.title ?? "tu próxima reunión"}` : "";
+    .find((m) => m.t > now.getTime() && m.t - now.getTime() < 3 * 60 * MIN);
+  const gap = next ? ` y tenés ${freeTime(Math.round((next.t - now.getTime()) / MIN))} libres antes de tu próxima reunión` : "";
 
   const hour = localHour(now);
   if (isWorkingNow && hour < 6) {

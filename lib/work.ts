@@ -24,7 +24,7 @@ const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour: "2-digit", m
 const LOG_MAX = 8;
 
 // Commits y PRs reales de raw_events. Sin datos de GitHub, cae al día de ejemplo.
-// ponytail: reuniones, sueño y ánimo siguen de ejemplo hasta que entren Calendar (Joaco) y Google Health/ánimo (Renzo).
+// ponytail: sueño y ánimo de la semana siguen de ejemplo hasta que se conecten a google_health y mood.
 export function getWorkDay(userId: string): WorkDay {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const rows = db
@@ -55,9 +55,31 @@ export function getWorkDay(userId: string): WorkDay {
     ...EXAMPLE_DAY,
     log,
     commits: commitsPerDay[6],
+    meetingSlots: meetingSlotsToday(userId),
     week: { ...EXAMPLE_DAY.week, commits: commitsPerDay },
     isExample: false,
   };
+}
+
+const minutesOfDay = (t: number) => {
+  const [h, m] = hhmm.format(t).split(":").map(Number);
+  return h * 60 + m;
+};
+
+// Reuniones de hoy (source "calendar", solo horarios) en franjas de 20 min entre 09 y 18. Sin Calendar conectado: ninguna.
+function meetingSlotsToday(userId: string): [number, number][] {
+  const today = dayKey.format(Date.now());
+  const events = db
+    .select({ json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "calendar"), gte(rawEvents.ts, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())))
+    .all()
+    .map((r) => JSON.parse(r.json) as { start: string; end: string | null; allDay?: boolean })
+    .filter((e) => !e.allDay && e.end && dayKey.format(Date.parse(e.start)) === today);
+  const slot = (min: number) => Math.min(MEETING_SLOTS_PER_DAY, Math.max(0, Math.floor((min - 9 * 60) / 20)));
+  return events
+    .map((e): [number, number] => [slot(minutesOfDay(Date.parse(e.start))), slot(minutesOfDay(Date.parse(e.end!)) + 19)])
+    .filter(([a, b]) => b > a);
 }
 
 const EXAMPLE_DAY: WorkDay = {

@@ -6,7 +6,7 @@ import { EXAMPLE_WRAPPED, type WrappedHighlight, type WrappedRow } from "@/lib/w
 
 // Semana Wrapped con datos reales de raw_events, con la misma forma que EXAMPLE_WRAPPED.
 // Solo entra lo que tiene datos: no se mezclan números de ejemplo con reales (la consigna de rotular ejemplos).
-// ponytail: sueño entra cuando Renzo ingeste google_health; reuniones cuando entre Calendar.
+// ponytail: sueño entra cuando se lea google_health (Renzo ya lo ingesta).
 
 export type Wrapped = {
   week: number;
@@ -52,6 +52,9 @@ export function getWrapped(userId: string, now = new Date()): Wrapped {
   const issuesDone = rows.filter((r) => r.source === "linear" && r.kind === "issue_completed").length;
   const issuesOpened = rows.filter((r) => r.source === "linear" && r.kind === "issue_created").length;
   const meals = rows.filter((r) => r.source === "meal");
+  const isMeeting = (r: (typeof rows)[number]) => r.source === "calendar" && r.t <= now.getTime() && !JSON.parse(r.json).allDay;
+  const meetings = rows.filter(isMeeting);
+  const meetingsPerDay = perDay(isMeeting);
   const moods = rows.filter((r) => r.source === "mood").map((r) => ({ day: r.day, mood: Number(JSON.parse(r.json).mood) }));
   const moodAvg = moods.length ? moods.reduce((s, m) => s + m.mood, 0) / moods.length : null;
 
@@ -65,6 +68,8 @@ export function getWrapped(userId: string, now = new Date()): Wrapped {
       ? { name: "Búho de merges", why: `${plural(nightCommits, "commit")} de tus ${commits.length} fueron entre la medianoche y las 6` }
       : messages.length > commits.length * 3
         ? { name: "Hilo infinito", why: `${plural(messages.length, "mensaje")} en Slack contra ${plural(commits.length, "commit")}` }
+        : meetings.length > commits.length
+          ? { name: "Agenda llena", why: `${plural(meetings.length, "reunión", "reuniones")} contra ${plural(commits.length, "commit")}` }
         : issuesDone >= 3
           ? { name: "Cierra-tickets", why: `${plural(issuesDone, "issue")} terminados en Linear` }
           : { name: "Ritmo constante", why: `${plural(commits.length, "commit")} repartidos en ${plural(commitsPerDay.filter(Boolean).length, "día")}` };
@@ -73,6 +78,7 @@ export function getWrapped(userId: string, now = new Date()): Wrapped {
   if (commits.length) wrappedRows.push({ label: "commits", value: String(commits.length), spark: sparkline(commitsPerDay), kind: "work" });
   if (messages.length) wrappedRows.push({ label: "slack", value: String(messages.length), spark: sparkline(messagesPerDay), kind: "work" });
   if (issuesOpened + issuesDone) wrappedRows.push({ label: "issues", value: String(issuesOpened), note: `${issuesDone} cerrados`, kind: "work" });
+  if (meetings.length) wrappedRows.push({ label: "reuniones", value: String(meetings.length), spark: sparkline(meetingsPerDay), kind: "work" });
   if (meals.length) wrappedRows.push({ label: "comidas", value: String(meals.length), kind: "food" });
   if (moodAvg !== null) wrappedRows.push({ label: "ánimo", value: moodFace(Math.round(moodAvg)), note: `${moodAvg.toFixed(1)} / 5`, kind: "mood" });
 
@@ -125,7 +131,7 @@ export function getWrapped(userId: string, now = new Date()): Wrapped {
     bestDay: {
       name: weekday.format(Date.parse(`${best}T12:00:00-03:00`)),
       lines: [
-        `${plural(commitsPerDay[bestIdx], "commit")} · ${plural(messagesPerDay[bestIdx], "mensaje")}`,
+        `${plural(commitsPerDay[bestIdx], "commit")} · ${plural(meetingsPerDay[bestIdx], "reunión", "reuniones")}`,
         bestMood ? `ánimo ${moodFace(bestMood)}` : "",
       ].filter(Boolean),
     },
