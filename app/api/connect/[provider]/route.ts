@@ -24,6 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     state,
     response_type: "code",
   }).toString();
+  for (const [k, v] of Object.entries(cfg.extraParams ?? {})) if (v) url.searchParams.set(k, v);
   return Response.redirect(url, 302);
 }
 

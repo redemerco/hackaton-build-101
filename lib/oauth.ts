@@ -8,6 +8,8 @@ type Config = {
   scope: string;
   /** Slack pide los permisos de usuario en `user_scope`; el resto en `scope`. */
   scopeParam?: "scope" | "user_scope";
+  /** Parámetros extra para la URL de login. */
+  extraParams?: Record<string, string | undefined>;
   clientId?: string;
   clientSecret?: string;
   /** Login o email de la cuenta, para mostrar "conectado como …". */
@@ -51,6 +53,8 @@ export const PROVIDERS: Record<Provider, Config> = {
     // Token de usuario, solo búsqueda: contamos mensajes y horarios, jamás leemos el contenido.
     scope: "search:read",
     scopeParam: "user_scope",
+    // Con el team, Slack va directo al workspace de la demo en vez de preguntar "¿cuál es tu workspace?".
+    extraParams: { team: process.env.SLACK_TEAM_ID },
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
     account: async (token) => {
