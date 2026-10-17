@@ -4,11 +4,12 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { setBuddy } from "@/app/actions/buddy";
 import { deleteMyData } from "@/app/actions/data";
-import { ConnectionsList, type ConnectionConfig, type ConnectionStatus } from "@/components/connections-list";
+import { SourcesList } from "@/components/connect/source-card";
 import { Daemon } from "@/components/daemon/daemon";
 import { setCurrentUser } from "@/app/actions/user";
 import { Sheet } from "@/components/glass/sheet";
 import { PushToggle } from "@/components/push-toggle";
+import type { SourceOverview } from "@/lib/connection-overview";
 import { BUDDIES, buddyName, type BuddyId } from "@/lib/daemon";
 import { USERS, type UserId } from "@/lib/user-list";
 import { cn } from "@/lib/utils";
@@ -23,9 +24,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /** Chip de usuario del header: abre Ajustes (usuario, notificaciones, conexiones, tus datos). */
-type SettingsSheetProps = { currentUserId: UserId; currentBuddy: BuddyId; connections: ConnectionStatus; configured: ConnectionConfig };
+type SettingsSheetProps = { currentUserId: UserId; currentBuddy: BuddyId; sources: SourceOverview[] };
 
-export function SettingsSheet({ currentUserId, currentBuddy, connections, configured }: SettingsSheetProps) {
+export function SettingsSheet({ currentUserId, currentBuddy, sources }: SettingsSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -111,7 +112,7 @@ export function SettingsSheet({ currentUserId, currentBuddy, connections, config
         </Section>
 
         <Section title="conexiones">
-          <ConnectionsList status={connections} configured={configured} />
+          <SourcesList sources={sources} />
         </Section>
 
         <Section title="esto es tuyo">

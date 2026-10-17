@@ -11,7 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Suspense } from "react";
 import { ConnectionToast } from "@/components/connection-toast";
 import { getBuddy } from "@/lib/buddy";
-import { getConnectionStatus } from "@/lib/connections";
+import { getSourcesOverview } from "@/lib/connection-overview";
 import { getCurrentUser } from "@/lib/users";
 import "./globals.css";
 
@@ -52,8 +52,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <SettingsSheet
               currentUserId={user.id}
               currentBuddy={buddy}
-              connections={getConnectionStatus(user.id)}
-              configured={{ github: Boolean(process.env.GITHUB_CLIENT_ID), linear: Boolean(process.env.LINEAR_CLIENT_ID), slack: Boolean(process.env.SLACK_CLIENT_ID) }}
+              sources={getSourcesOverview(user.id)}
             />
           </header>
           <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">

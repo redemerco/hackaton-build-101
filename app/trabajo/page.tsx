@@ -6,6 +6,8 @@ import { formatDuration, sparkline } from "@/lib/ascii";
 import { confidenceStars, getWorkDay, MEETING_SLOTS_PER_DAY, meetingMinutes, MIN_DAYS_FOR_CORRELATION, type WorkLogEntry } from "@/lib/work";
 import { getCurrentUser } from "@/lib/users";
 import { getLinearWeek, getSlackToday, type SlackToday } from "@/lib/work-signals";
+import { SourcesList } from "@/components/connect/source-card";
+import { getSourcesOverview } from "@/lib/connection-overview";
 
 const MESSAGE_WIDTH = 21;
 
@@ -102,6 +104,8 @@ export default async function TrabajoPage() {
   const linear = getLinearWeek(userId);
   const slack = getSlackToday(userId);
   const sources = [!day.isExample && "GitHub", linear.hasData && "Linear", slack.hasData && "Slack"].filter(Boolean).join(" · ");
+  const oauthSources = getSourcesOverview(userId).filter((s) => s.connect === "oauth");
+  const hasAnyConnected = oauthSources.some((s) => s.account);
   const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => day.meetingSlots.some(([a, b]) => i >= a && i < b));
   const series = [
     { label: "sueño", values: day.week.sleepMin, className: "text-sleep" },
@@ -113,6 +117,13 @@ export default async function TrabajoPage() {
     <Screen>
       <Pulse bpm={60} stress={0.35} />
       <PageHeader title="Trabajo" subtitle={sources ? `${sources} · Calendar pendiente` : "[ejemplo] hasta conectar fuentes en Ajustes"} />
+
+      {!hasAnyConnected && (
+        <Panel label="conectá tus fuentes" meta="privado, solo vos">
+          <p className="text-[15px] leading-relaxed text-foreground/90">Conectá al menos una para que build101 cruce tu trabajo con tu cuerpo. Leemos horarios y cantidades, nunca contenido.</p>
+          <SourcesList sources={oauthSources} />
+        </Panel>
+      )}
 
       <Panel label="git log · hoy" meta={`${day.commits} commits`}>
         <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-xs leading-[1.7]">
