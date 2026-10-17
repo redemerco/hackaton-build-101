@@ -4,7 +4,8 @@ import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
 import { Screen } from "@/components/screen";
 import { formatDuration, sparkline } from "@/lib/ascii";
-import { confidenceStars, getWorkDay, MEETING_SLOTS_PER_DAY, meetingMinutes, MIN_DAYS_FOR_CORRELATION, type WorkLogEntry } from "@/lib/work";
+import { confidenceStars, getWorkDay, MEETING_SLOTS_PER_DAY, meetingSlotsToday, meetingsToday, MIN_DAYS_FOR_CORRELATION, type WorkLogEntry } from "@/lib/work";
+import { getConnection } from "@/lib/connections";
 import { getCurrentUser } from "@/lib/users";
 import { getLinearWeek, getSlackToday, type SlackToday } from "@/lib/work-signals";
 import { SourcesList } from "@/components/connect/source-card";
@@ -50,11 +51,8 @@ function CorrelationNote({ days }: { days: number }) {
           </span>
         )}
       </p>
-      {hasEnough ? (
-        <p className="text-[15px] leading-relaxed text-foreground/90">
-          Los días que dormiste menos de 6 h hiciste menos commits y tu ánimo bajó.
-        </p>
-      ) : (
+      {/* Con datos suficientes no hay oración fija: la lectura del cruce la hace el resumen IA. */}
+      {!hasEnough && (
         <p className="text-[15px] leading-relaxed text-foreground/90">
           Todavía no alcanza: hacen falta {MIN_DAYS_FOR_CORRELATION} días para decir algo.
         </p>
@@ -62,6 +60,13 @@ function CorrelationNote({ days }: { days: number }) {
       <p className="text-xs leading-relaxed text-dim">Correlación, no causa: puede ser una cosa sobre la otra, un tercer factor o casualidad.</p>
     </div>
   );
+}
+
+/** Sparkline con huecos: los días sin dato (null) van como "·" y no cuentan para la escala. */
+function sparkGaps(values: readonly (number | null)[]): string {
+  const known = sparkline(values.filter((v): v is number => v !== null));
+  let i = 0;
+  return values.map((v) => (v === null ? "·" : known[i++])).join("");
 }
 
 const HOUR_BLOCKS = "▁▂▃▄▅▆▇█";
@@ -109,9 +114,11 @@ export default async function TrabajoPage() {
   const slack = getSlackToday(userId);
   const oauthSources = getSourcesOverview(userId).filter((s) => s.connect === "oauth");
   const hasAnyConnected = oauthSources.some((s) => s.account);
+  const hasCalendar = !!getConnection(userId, "calendar");
+  const meetings = meetingsToday(userId);
 
-  // Sin GitHub, Linear ni Slack: estado vacío honesto, con el panel de fuentes para conectar.
-  if (!day && !linear.hasData && !slack.hasData) {
+  // Sin GitHub, Linear, Slack ni Calendar: estado vacío honesto, con el panel de fuentes para conectar.
+  if (!day && !linear.hasData && !slack.hasData && !hasCalendar && meetings.length === 0) {
     return (
       <Screen>
         <Pulse bpm={60} stress={0.2} />
@@ -129,11 +136,12 @@ export default async function TrabajoPage() {
   }
 
   const { counts } = buildWorkPrompt(userId);
-  const connected = [day && "GitHub", linear.hasData && "Linear", slack.hasData && "Slack"].filter(Boolean).join(" · ");
-  const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => (day?.meetingSlots ?? []).some(([a, b]) => i >= a && i < b));
+  const connected = [day && "GitHub", linear.hasData && "Linear", slack.hasData && "Slack", (hasCalendar || meetings.length > 0) && "Calendar"].filter(Boolean).join(" · ");
+  const meetingSlots = meetingSlotsToday(userId);
+  const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => meetingSlots.some(([a, b]) => i >= a && i < b));
   const series = day
     ? [
-        { label: "sueño", values: day.week.sleepMin, className: "text-sleep" },
+        { label: day.sleepIsSimulated ? "sueño [simulado]" : "sueño", values: day.week.sleepMin, className: "text-sleep" },
         { label: "commits", values: day.week.commits, className: "text-work" },
         { label: "ánimo", values: day.week.mood, className: "text-mood" },
       ]
@@ -142,7 +150,7 @@ export default async function TrabajoPage() {
   return (
     <Screen>
       <Pulse bpm={60} stress={0.35} />
-      <PageHeader title="Trabajo" subtitle={connected ? `${connected}${day?.meetingSlots.length ? " · Calendar" : ""}` : "Conectá fuentes en Ajustes"} />
+      <PageHeader title="Trabajo" subtitle={connected || "Conectá fuentes en Ajustes"} />
 
       {!hasAnyConnected && (
         <Panel label="conectá tus fuentes" meta="privado, solo vos">
@@ -189,12 +197,16 @@ export default async function TrabajoPage() {
 
       <SlackPanel s={slack} />
 
-      {day && day.meetingSlots.length > 0 ? (
-        <Panel label="reuniones · hoy" meta={`${day.meetingSlots.length} · ${formatDuration(meetingMinutes(day.meetingSlots))}`}>
+      {meetings.length > 0 ? (
+        <Panel label="reuniones · hoy" meta={`${meetings.length} · ${formatDuration(meetings.reduce((sum, m) => sum + m.durationMin, 0))}`}>
           <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] leading-tight">
             {slots.map((busy, i) => <span key={i} className={busy ? "text-work" : "text-[#2d3345]"}>{busy ? "█" : "░"}</span>)}
           </pre>
           <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] text-faint">{"09       12       15       18"}</pre>
+        </Panel>
+      ) : hasCalendar ? (
+        <Panel label="reuniones · hoy" meta="0">
+          <p className="text-[15px] text-dim">Sin reuniones hoy.</p>
         </Panel>
       ) : (
         <Panel label="reuniones · hoy" meta="sin conectar">
@@ -208,7 +220,7 @@ export default async function TrabajoPage() {
             {series.map((s) => (
               <div key={s.label} className="grid grid-cols-[76px_1fr] items-center">
                 <span className="text-xs text-dim">{s.label}</span>
-                <span role="img" aria-label={`${s.label}: ${s.values.join(", ")}`} className={`text-lg tracking-[3px] ${s.className}`}>{sparkline(s.values)}</span>
+                <span role="img" aria-label={`${s.label}: ${s.values.map((v) => v ?? "sin dato").join(", ")}`} className={`text-lg tracking-[3px] ${s.className}`}>{sparkGaps(s.values)}</span>
               </div>
             ))}
           </div>

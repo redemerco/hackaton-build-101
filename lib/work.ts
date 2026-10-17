@@ -1,6 +1,7 @@
 import "server-only";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db, rawEvents } from "@/lib/db";
+import { dayInputs } from "@/lib/ranking";
 
 export type Commit ={ time: string; message: string; additions: number; deletions: number };
 export type WorkLogEntry = ({ type: "commit" } & Commit) | { type: "pr"; title: string };
@@ -8,18 +9,19 @@ export type WorkLogEntry = ({ type: "commit" } & Commit) | { type: "pr"; title: 
 export type WorkDay = {
   log: WorkLogEntry[];
   commits: number;
-  /** Reuniones en franjas de 20 min entre 09 y 18 h: [desde, hasta) en índices de franja. */
-  meetingSlots: [number, number][];
-  week: { sleepMin: number[]; commits: number[]; mood: number[] }; // lu..hoy (0 donde no hay dato)
+  /** De hace 6 días a hoy. Sueño y ánimo van en null el día que no hay dato (la sparkline lo muestra como "·"). */
+  week: { sleepMin: (number | null)[]; commits: number[]; mood: (number | null)[] };
+  /** El sueño viene de datos de scripts/seed-demo.mts (se rotula en la UI). */
+  sleepIsSimulated: boolean;
   /** Días con los tres datos (sueño, commits, ánimo). Por debajo de MIN_DAYS_FOR_CORRELATION no se afirma nada. */
   daysOfData: number;
 };
 
 export const MEETING_SLOTS_PER_DAY = 27; // 09 → 18 en franjas de 20 min
 
-const TZ = "America/Argentina/Buenos_Aires";
+const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }); // YYYY-MM-DD local
-const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const hhmm = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const LOG_MAX = 8;
 
 // Commits y PRs reales de raw_events. Sin datos de GitHub devuelve null → la página muestra estado vacío.
@@ -48,50 +50,25 @@ export function getWorkDay(userId: string): WorkDay | null {
   // Últimos 7 días, de hace 6 días a hoy, en hora local.
   const days = Array.from({ length: 7 }, (_, i) => dayKey.format(new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000)));
   const commitsPerDay = days.map((day) => rows.filter((r) => r.kind === "commit" && dayKey.format(new Date(r.ts)) === day).length);
-  const sleepPerDay = sleepWeek(userId, days);
+  // Sueño real por día local con la misma lectura que el ranking (lib/ranking.ts), sin reparsear Google Health.
+  const sleep = dayInputs(userId, Date.now() - 8 * 24 * 60 * 60 * 1000);
+  const sleepPerDay = days.map((d) => sleep.days.get(d)?.sleep?.asleepMin ?? null);
   const moodPerDay = moodWeek(userId, days);
 
   // Un día "completo" tiene sueño, commits y ánimo: la correlación solo se afirma con suficientes.
-  const daysOfData = days.filter((_, i) => sleepPerDay[i] > 0 && commitsPerDay[i] > 0 && moodPerDay[i] > 0).length;
+  const daysOfData = days.filter((_, i) => sleepPerDay[i] !== null && commitsPerDay[i] > 0 && moodPerDay[i] !== null).length;
 
   return {
     log,
     commits: commitsPerDay[6],
-    meetingSlots: meetingSlotsToday(userId),
     week: { sleepMin: sleepPerDay, commits: commitsPerDay, mood: moodPerDay },
+    sleepIsSimulated: sleep.isSimulated,
     daysOfData,
   };
 }
 
-/** Minutos de sueño reales por día (0 sin dato), desde google_health. */
-function sleepWeek(userId: string, days: string[]): number[] {
-  const rows = db
-    .select({ json: rawEvents.json })
-    .from(rawEvents)
-    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), gte(rawEvents.ts, new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString())))
-    .all();
-  const byDay = new Map<string, number>();
-  for (const r of rows) {
-    try {
-      const sleep = (JSON.parse(r.json).sleep ?? {}) as Record<string, unknown>;
-      const interval = (sleep.interval ?? {}) as Record<string, string>;
-      const ss = ((sleep.summary ?? {}) as Record<string, unknown>).stagesSummary as Array<Record<string, string>> | undefined;
-      if (!interval.endTime || !ss?.length) continue;
-      const min = ss.reduce((sum, row) => {
-        const t = String(row.type).toUpperCase();
-        return t === "AWAKE" || t === "WAKE" ? sum : sum + (parseInt(row.minutes ?? "0", 10) || 0);
-      }, 0);
-      const key = dayKey.format(Date.parse(interval.endTime));
-      byDay.set(key, (byDay.get(key) ?? 0) + min);
-    } catch {
-      continue;
-    }
-  }
-  return days.map((d) => byDay.get(d) ?? 0);
-}
-
-/** Último ánimo real por día (0 sin check-in). */
-function moodWeek(userId: string, days: string[]): number[] {
+/** Último ánimo real por día (null sin check-in). */
+function moodWeek(userId: string, days: string[]): (number | null)[] {
   const rows = db
     .select({ ts: rawEvents.ts, json: rawEvents.json })
     .from(rawEvents)
@@ -103,13 +80,8 @@ function moodWeek(userId: string, days: string[]): number[] {
     const mood = Number((JSON.parse(r.json) as { mood?: unknown }).mood);
     if (mood > 0) byDay.set(dayKey.format(new Date(r.ts)), mood);
   }
-  return days.map((d) => byDay.get(d) ?? 0);
+  return days.map((d) => byDay.get(d) ?? null);
 }
-
-const minutesOfDay = (t: number) => {
-  const [h, m] = hhmm.format(t).split(":").map(Number);
-  return h * 60 + m;
-};
 
 export type Meeting = { start: string; end: string; durationMin: number };
 
