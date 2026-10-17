@@ -11,6 +11,7 @@ import { StatCard } from "@/components/stat-card";
 import { formatDuration, sparkline } from "@/lib/ascii";
 import { deriveState, linesFor, STATES } from "@/lib/daemon";
 import { contributors, daemonInput, getToday, stressOf, type Contributor } from "@/lib/today";
+import { getBuddy } from "@/lib/buddy";
 import { getCurrentUser } from "@/lib/users";
 
 // ponytail: nudge fijo de ejemplo; Joaco lo reemplaza por el que calcula de calendar + actividad.
@@ -32,7 +33,7 @@ function ContributorRow({ c }: { c: Contributor }) {
 }
 
 export default async function Hoy() {
-  const user = await getCurrentUser();
+  const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
   const today = getToday(user.id);
   const input = daemonInput(today, user.id);
   const state = deriveState(input);
@@ -45,7 +46,7 @@ export default async function Hoy() {
 
       <Panel className="gap-4">
         <div className="grid grid-cols-[auto_1fr] items-center gap-3">
-          <Daemon state={state} bpm={today.restingBpm} isInteractive className="-my-2 -ml-2" />
+          <Daemon state={state} buddy={buddy} bpm={today.restingBpm} isInteractive className="-my-2 -ml-2" />
           <div className="grid min-w-0 gap-2">
             <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="font-pixel text-[22px] leading-none" style={{ color: `var(--${spec.tone})` }}>{spec.title}</span>

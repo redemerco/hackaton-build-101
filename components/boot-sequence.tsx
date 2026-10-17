@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Daemon } from "@/components/daemon/daemon";
+import type { BuddyId } from "@/lib/daemon";
 
 export const BOOT_KEY = "b101-booted";
 // Se ejecuta en <head> antes de pintar: si ya booteó en esta sesión, el overlay ni aparece (sin parpadeo).
@@ -17,7 +18,7 @@ const LINES = [
  * Primer frame de la sesión: la app "despierta" como una terminal (~1.5 s) y funde a Hoy.
  * Todo el tipeo es CSS (`boot-*` en globals.css); un toque lo saltea. Con reduced-motion no se muestra.
  */
-export function BootSequence() {
+export function BootSequence({ buddy }: { buddy: BuddyId }) {
   const [isSkipped, setIsSkipped] = useState(false);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function BootSequence() {
       className="boot fixed inset-0 z-[60] grid place-items-center bg-ink px-6"
     >
       <div className="grid w-full max-w-sm gap-6">
-        <Daemon state="enforma" scale={4} className="boot-mascot justify-self-center" />
+        <Daemon state="enforma" buddy={buddy} scale={4} className="boot-mascot justify-self-center" />
         <div className="grid gap-1.5 font-mono text-[13px]">
           {LINES.map((line, i) => (
             <p key={line.text} className={`boot-line ${line.className}`} style={{ ["--n" as string]: line.text.length, ["--i" as string]: i }}>

@@ -8,6 +8,7 @@ import { PullToSync } from "@/components/pull-to-sync";
 import { TabBar } from "@/components/glass/tab-bar";
 import { SettingsSheet } from "@/components/settings-sheet";
 import { Toaster } from "@/components/ui/sonner";
+import { getBuddy } from "@/lib/buddy";
 import { getCurrentUser } from "@/lib/users";
 import "./globals.css";
 
@@ -30,14 +31,14 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const user = await getCurrentUser();
+  const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
   return (
     <html lang="es" suppressHydrationWarning className={`dark ${geistSans.variable} ${geistMono.variable} ${departure.variable} h-full antialiased`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_GUARD }} />
       </head>
       <body suppressHydrationWarning className="min-h-full bg-background font-sans text-foreground">
-        <BootSequence />
+        <BootSequence buddy={buddy} />
         <AsciiField />
         <GlassGlow />
         <div id="app" className="mx-auto flex min-h-dvh max-w-md flex-col">
@@ -45,7 +46,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <span className="font-pixel text-[22px] leading-none text-dim">
               ~/<span className="text-foreground">build101</span>
             </span>
-            <SettingsSheet currentUserId={user.id} />
+            <SettingsSheet currentUserId={user.id} currentBuddy={buddy} />
           </header>
           <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">
             <PullToSync>{children}</PullToSync>

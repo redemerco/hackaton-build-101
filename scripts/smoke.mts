@@ -32,14 +32,17 @@ const baseDay = { sleepMin: 432, avgSleepMin: 420, meetings: 2, mood: 4, lateCom
 // daemon: cada estado y cada cara compone una grilla de 40×40 sin desarmarse
 const daemon = await import("../lib/daemon.ts");
 for (const st of Object.keys(daemon.STATES) as (keyof typeof daemon.STATES)[]) {
-  for (const eyes of [undefined, "blink", "wide", "happy"] as const) {
-    const rows = daemon.composeBody(st, { eyes });
-    assert.equal(rows.length, 40);
-    assert.ok(rows.every((r) => r.length === 40), `${st}/${eyes} desarmado`);
+  for (const buddy of daemon.BUDDIES) {
+    for (const eyes of [undefined, "blink", "wide", "happy"] as const) {
+      const rows = daemon.composeBody(buddy, st, { eyes });
+      assert.equal(rows.length, 40);
+      assert.ok(rows.every((r) => r.length === 40), `${buddy}/${st}/${eyes} desarmado`);
+      assert.ok(daemon.toRuns(buddy, rows).every((r) => r.fill !== "#ff00ff"), `${buddy}/${st} usa un color sin paleta`);
+    }
   }
   assert.ok(daemon.linesFor(st, baseDay).length > 0, `${st} sin frases`);
 }
-assert.ok(daemon.toRuns(daemon.composeBody("enforma")).length > 50);
+assert.equal(daemon.BUDDIES.length, 4);
 // prioridad: lo urgente gana
 assert.equal(daemon.deriveState({ ...baseDay, hour: 3 }), "durmiendo");
 assert.equal(daemon.deriveState({ ...baseDay, sleepMin: 250 }), "fundido");

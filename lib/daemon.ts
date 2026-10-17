@@ -1,6 +1,13 @@
 // El daemon: qué estado tiene según tus datos, cómo se compone cada cuadro y qué dice.
 // Puro (sin DOM ni server-only): lo usan components/daemon y scripts/smoke.mts.
-import { ACCESSORIES, BASE, BASE_MELT, EYES, MOUTHS, PALETTE, SIZE } from "./daemon-art.ts";
+import { ACCESSORIES, CHARACTERS, EYES, MOUTHS, SIZE } from "./buddy-art.ts";
+
+/** Los compañeros elegibles. Comparten estados y comportamiento; cambia la silueta y la paleta. */
+export type BuddyId = keyof typeof CHARACTERS;
+export const BUDDIES = Object.keys(CHARACTERS) as BuddyId[];
+export const DEFAULT_BUDDY: BuddyId = "daemon";
+export const isBuddyId = (v: unknown): v is BuddyId => typeof v === "string" && v in CHARACTERS;
+export const buddyName = (id: BuddyId): string => CHARACTERS[id].name;
 
 export type DaemonState =
   | "enforma" | "bien" | "cansado" | "fundido" | "reunionitis" | "buho" | "racha" | "durmiendo" | "comiendo";
@@ -90,10 +97,6 @@ export function linesFor(state: DaemonState, i: DaemonInput): string[] {
 
 export type Frame = { eyes?: EyeKind; mouth?: MouthKind; gaze?: [number, number] };
 
-const EYE_POS: [[number, number], [number, number]] = [[12, 17], [23, 17]];
-const MOUTH_POS: [number, number] = [17, 25];
-const CHEEKS: [number, number][] = [[9, 24], [29, 24]];
-
 function stamp(grid: string[][], x0: number, y0: number, rows: readonly string[], mirror = false) {
   rows.forEach((row, dy) => {
     const r = mirror ? [...row].reverse().join("") : row;
@@ -105,30 +108,34 @@ function stamp(grid: string[][], x0: number, y0: number, rows: readonly string[]
   });
 }
 
-/** Cuerpo + cara para un estado y un cuadro (parpadeo, mirada, reacción). Devuelve filas de caracteres de paleta. */
-export function composeBody(state: DaemonState, frame: Frame = {}): string[] {
+/** Cuerpo + cara de un compañero para un estado y un cuadro (parpadeo, mirada, reacción). Filas de caracteres de paleta. */
+export function composeBody(buddy: BuddyId, state: DaemonState, frame: Frame = {}): string[] {
+  const c = CHARACTERS[buddy];
   const spec = STATES[state];
-  const grid = (spec.melt ? BASE_MELT : BASE).map((row) => [...row]);
+  const grid = (spec.melt ? c.baseMelt : c.base).map((row) => [...row]);
   const eyes = EYES[frame.eyes ?? spec.eyes];
   const [gx, gy] = frame.gaze ?? spec.gaze ?? [0, 0];
-  stamp(grid, EYE_POS[0][0] + gx, EYE_POS[0][1] + gy, eyes);
-  stamp(grid, EYE_POS[1][0] + gx, EYE_POS[1][1] + gy, eyes, (frame.eyes ?? spec.eyes) !== "side");
-  stamp(grid, MOUTH_POS[0], MOUTH_POS[1], MOUTHS[frame.mouth ?? spec.mouth]);
-  if (spec.cheeks) CHEEKS.forEach(([x, y]) => stamp(grid, x, y, ["pp"]));
+  const [[lx, ly], [rx, ry]] = c.eyes;
+  stamp(grid, lx + gx, ly + gy, eyes);
+  stamp(grid, rx + gx, ry + gy, eyes, true);
+  stamp(grid, c.mouth[0], c.mouth[1], MOUTHS[frame.mouth ?? spec.mouth]);
+  if (spec.cheeks) c.cheeks.forEach(([x, y]) => stamp(grid, x, y, ["pp"]));
   return grid.map((r) => r.join(""));
 }
 
-export function composeAccessory(kind: AccessoryKind): string[] {
+export function composeAccessory(buddy: BuddyId, kind: AccessoryKind): string[] {
   const grid = Array.from({ length: SIZE }, () => Array<string>(SIZE).fill("."));
   const acc = ACCESSORIES[kind];
-  stamp(grid, acc.x, acc.y, acc.rows);
+  const [dx, dy] = CHARACTERS[buddy].acc;
+  stamp(grid, acc.x + dx, acc.y + dy, acc.rows);
   return grid.map((r) => r.join(""));
 }
 
 export type Run = { x: number; y: number; w: number; fill: string };
 
 /** Junta píxeles contiguos del mismo color en una fila: ~10× menos <rect> en el SVG. */
-export function toRuns(rows: readonly string[]): Run[] {
+export function toRuns(buddy: BuddyId, rows: readonly string[]): Run[] {
+  const palette: Record<string, string> = CHARACTERS[buddy].palette;
   const runs: Run[] = [];
   rows.forEach((row, y) => {
     let x = 0;
@@ -140,7 +147,7 @@ export function toRuns(rows: readonly string[]): Run[] {
       }
       let w = 1;
       while (row[x + w] === ch) w++;
-      runs.push({ x, y, w, fill: PALETTE[ch as keyof typeof PALETTE] ?? "#ff00ff" });
+      runs.push({ x, y, w, fill: palette[ch] ?? "#ff00ff" });
       x += w;
     }
   });

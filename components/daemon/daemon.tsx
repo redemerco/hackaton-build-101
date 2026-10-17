@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { composeAccessory, composeBody, STATES, toRuns, type DaemonState, type Frame } from "@/lib/daemon";
-import { SIZE } from "@/lib/daemon-art";
+import { SIZE } from "@/lib/buddy-art";
+import { buddyName, composeAccessory, composeBody, DEFAULT_BUDDY, STATES, toRuns, type BuddyId, type DaemonState, type Frame } from "@/lib/daemon";
 import { onDaemonReaction, reactDaemon, type DaemonReaction } from "@/lib/daemon-events";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,8 @@ const REACTION_FACE: Record<DaemonReaction["mood"], Frame> = {
 
 type DaemonProps = {
   state: DaemonState;
+  /** Qué compañero se dibuja (lo elige cada persona en Ajustes). */
+  buddy?: BuddyId;
   /** Escala entera del pixel art (3 → 120 px). Entera para que siempre quede nítido. */
   scale?: 2 | 3 | 4;
   /** Pulso en reposo: respira una vez cada 4 latidos. */
@@ -37,7 +39,7 @@ type DaemonProps = {
  * El daemon vivo: respira con tu pulso, parpadea según tu cansancio, mira de reojo,
  * mueve su accesorio y reacciona a lo que pasa en la app (lib/daemon-events).
  */
-export function Daemon({ state, scale = 3, bpm = 60, isInteractive = false, className }: DaemonProps) {
+export function Daemon({ state, buddy = DEFAULT_BUDDY, scale = 3, bpm = 60, isInteractive = false, className }: DaemonProps) {
   const spec = STATES[state];
   const [frame, setFrame] = useState<Frame>({});
   const [reaction, setReaction] = useState<Frame | null>(null);
@@ -100,8 +102,8 @@ export function Daemon({ state, scale = 3, bpm = 60, isInteractive = false, clas
     };
   }, []);
 
-  const body = useMemo(() => toRuns(composeBody(state, { ...frame, ...reaction })), [state, frame, reaction]);
-  const accessory = useMemo(() => (spec.acc ? toRuns(composeAccessory(spec.acc)) : []), [spec.acc]);
+  const body = useMemo(() => toRuns(buddy, composeBody(buddy, state, { ...frame, ...reaction })), [buddy, state, frame, reaction]);
+  const accessory = useMemo(() => (spec.acc ? toRuns(buddy, composeAccessory(buddy, spec.acc)) : []), [buddy, spec.acc]);
   const breathS = ((60 / Math.max(30, bpm)) * BEATS_PER_BREATH).toFixed(2);
   const px = SIZE * scale;
 
@@ -125,10 +127,12 @@ export function Daemon({ state, scale = 3, bpm = 60, isInteractive = false, clas
     </svg>
   );
 
-  const label = `daemon: ${spec.title.toLowerCase()}`;
+  const label = `${buddyName(buddy)}: ${spec.title.toLowerCase()}`;
+  // halo con el color del estado: integra al personaje a la tarjeta en vez de que flote
+  const halo = { backgroundImage: `radial-gradient(closest-side, color-mix(in srgb, var(--${spec.tone}) 22%, transparent), transparent)` };
   if (!isInteractive) {
     return (
-      <span role="img" aria-label={label} key={bounceId} className={cn("daemon-bounce inline-block", className)}>
+      <span role="img" aria-label={label} key={bounceId} style={halo} className={cn("daemon-bounce inline-block rounded-full", className)}>
         {svg}
       </span>
     );
@@ -139,7 +143,8 @@ export function Daemon({ state, scale = 3, bpm = 60, isInteractive = false, clas
       aria-label={`${label}. Tocalo para que hable`}
       onClick={() => reactDaemon({ mood: "surprised" })}
       key={bounceId}
-      className={cn("daemon-bounce press inline-block rounded-2xl", className)}
+      style={halo}
+      className={cn("daemon-bounce press inline-block rounded-full", className)}
     >
       {svg}
     </button>

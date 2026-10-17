@@ -4,6 +4,7 @@ import { Daemon } from "@/components/daemon/daemon";
 import { Screen } from "@/components/screen";
 import { ShareButton } from "@/components/share-button";
 import { WrappedSlides } from "@/components/wrapped-slides";
+import { getBuddy } from "@/lib/buddy";
 import { EXAMPLE_WRAPPED as W, type WrappedHighlight } from "@/lib/week";
 
 const LABEL_WIDTH = 13;
@@ -26,7 +27,8 @@ function Highlight({ h }: { h: WrappedHighlight }) {
 }
 
 // ponytail: Wrapped de ejemplo; Joaco lo arma con datos reales. La imagen compartible (next/og) queda para después.
-export default function WrappedPage() {
+export default async function WrappedPage() {
+  const buddy = await getBuddy();
   const shareText = [
     `build101 · semana ${W.week}: ${W.archetype.name}`,
     ...W.rows.map((r) => `${r.label.padEnd(LABEL_WIDTH)}${r.value.padStart(VALUE_WIDTH)}  ${r.spark ?? r.note ?? ""}`),
@@ -40,7 +42,7 @@ export default function WrappedPage() {
         <article className={SLIDE}>
           <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {W.week} · esta semana fuiste</p>
           <div className="grid justify-items-start gap-4">
-            <Daemon state="racha" scale={3} />
+            <Daemon state="racha" buddy={buddy} scale={3} />
             <h1 className="font-pixel text-[33px] leading-none text-mood">{W.archetype.name}</h1>
           </div>
           <p className="text-[15px] leading-relaxed text-foreground/90">{W.archetype.why}.</p>

@@ -2,10 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { setBuddy } from "@/app/actions/buddy";
 import { deleteMyData } from "@/app/actions/data";
+import { Daemon } from "@/components/daemon/daemon";
 import { setCurrentUser } from "@/app/actions/user";
 import { Sheet } from "@/components/glass/sheet";
 import { PushToggle } from "@/components/push-toggle";
+import { BUDDIES, buddyName, type BuddyId } from "@/lib/daemon";
+import { reactDaemon } from "@/lib/daemon-events";
 import { USERS, type UserId } from "@/lib/user-list";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +30,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /** Chip de usuario del header: abre Ajustes (usuario, notificaciones, conexiones, tus datos). */
-export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
+export function SettingsSheet({ currentUserId, currentBuddy }: { currentUserId: UserId; currentBuddy: BuddyId }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -39,6 +43,16 @@ export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
         setIsOpen(false);
       } catch {
         toast.error("No se pudo cambiar de usuario");
+      }
+    });
+
+  const pickBuddy = (id: BuddyId) =>
+    startTransition(async () => {
+      try {
+        await setBuddy(id);
+        reactDaemon({ mood: "happy", text: `hola, soy ${buddyName(id).toLowerCase()}. te acompaño.` });
+      } catch {
+        toast.error("No se pudo cambiar de compañero");
       }
     });
 
@@ -71,6 +85,27 @@ export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
                 className={cn("glass press h-11 rounded-xl text-[15px] font-medium transition-[background-color] duration-200 disabled:opacity-60", u.id === current.id && "bg-mood/25")}
               >
                 {u.name}
+              </button>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="tu compañero">
+          <div className="grid grid-cols-4 gap-2" role="group" aria-label="Elegí tu compañero">
+            {BUDDIES.map((id) => (
+              <button
+                key={id}
+                type="button"
+                disabled={isPending}
+                aria-pressed={id === currentBuddy}
+                onClick={() => pickBuddy(id)}
+                className={cn(
+                  "glass press grid justify-items-center gap-1 rounded-xl pb-2 pt-1 text-xs font-medium transition-[background-color,box-shadow] duration-200 disabled:opacity-60",
+                  id === currentBuddy && "bg-mood/20 shadow-[inset_0_0_0_1px_var(--mood)]",
+                )}
+              >
+                <Daemon state={id === currentBuddy ? "racha" : "bien"} buddy={id} scale={2} />
+                {buddyName(id)}
               </button>
             ))}
           </div>
