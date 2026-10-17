@@ -15,6 +15,7 @@ export type Night = {
   stepsByHour: number[]; // 08..19
   stageMinutes?: Record<SleepStage, number>; // minutos reales por etapa (del summary de Fitbit); si falta, se derivan de stages
   isExample: boolean;
+  isSimulated?: boolean; // noche de scripts/seed-demo.mts (_mock): no es real, pero tampoco el ejemplo fijo
 };
 
 // Ciclos de ~90 min: más profundo al principio de la noche, más REM al final.
@@ -104,6 +105,7 @@ function parseNight(data: Record<string, unknown>): Night | null {
       stages,
       stageMinutes,
       isExample: data._mock === true, // scripts/seed-demo.mts: se rotula como ejemplo
+      isSimulated: data._mock === true,
     };
   } catch {
     return null;
