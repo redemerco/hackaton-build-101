@@ -1,12 +1,12 @@
 import { cookies } from "next/headers";
-import { connect, isProvider, publicOrigin } from "@/lib/oauth";
+import { connect, isProvider, publicOrigin, connectGoogleLogin } from "@/lib/oauth";
 import { syncGithubUser } from "@/lib/sources/github";
 import { syncLinearUser } from "@/lib/sources/linear";
 import { syncSlackUser } from "@/lib/sources/slack";
 import { syncGoogleUser } from "@/lib/sources/google";
 import { syncCalendarUser } from "@/lib/sources/calendar";
-import { getCurrentUser } from "@/lib/users";
-import { USER_COOKIE, USERS, type UserId } from "@/lib/user-list";
+import { getCurrentUser, upsertUser } from "@/lib/users";
+import { USER_COOKIE } from "@/lib/user-list";
 
 const STATE_COOKIE = "pulso_oauth_state";
 const FIRST_SYNC: Partial<Record<string, (userId: string) => Promise<unknown>>> = {
@@ -15,13 +15,6 @@ const FIRST_SYNC: Partial<Record<string, (userId: string) => Promise<unknown>>> 
   slack: syncSlackUser,
   google: syncGoogleUser,
   calendar: syncCalendarUser,
-};
-
-// Google es el login de entrada: mapea el email de la cuenta al usuario de Pulso.
-// Lo que no matchea cae en "santi" (el que tiene wearable) para que la demo muestre datos.
-const GOOGLE_EMAIL_TO_USER: Record<string, UserId> = {
-  "santiagososatraibel@gmail.com": "santi",
-  "rdemarcob@gmail.com": "renzo",
 };
 
 // GET /api/connect/<p>/callback?code&state → guarda el token del usuario, trae sus datos y vuelve a la app.
@@ -41,27 +34,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     return Response.redirect(back, 302);
   }
 
-  // Para github/linear/slack la conexión es del usuario actual. Para google (login) el usuario
-  // se decide por el email que devuelve el OAuth, así que primero necesitamos saber quién es.
-  const current = await getCurrentUser();
-  let userId: string = current.id;
+  let userId: string;
   try {
-    const account = await connect(req, provider, code, userId);
     if (provider === "google") {
-      const mapped = GOOGLE_EMAIL_TO_USER[account.toLowerCase()] ?? "santi";
-      // Mover la conexión al usuario mapeado si difiere, y setear la sesión (login).
-      if (mapped !== userId) {
-        await connect(req, provider, code, mapped).catch(() => {});
-        userId = mapped;
-      }
-      jar.set(USER_COOKIE, mapped, { sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/" });
+      // Login de entrada: canjeamos el code UNA vez, sacamos identidad real (sub+email), guardamos
+      // la conexión google y abrimos sesión con SU id (el sub). Sin usuarios hardcodeados.
+      const identity = await connectGoogleLogin(req, code);
+      userId = upsertUser({ id: identity.sub, email: identity.email, name: identity.name ?? identity.email, hasWearable: true });
+      jar.set(USER_COOKIE, userId, { sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/" });
+    } else {
+      // Resto de providers: conexión del usuario ya logueado.
+      userId = (await getCurrentUser()).id;
+      await connect(req, provider, code, userId);
     }
   } catch (error) {
     console.error(`[connect/${provider}]`, error);
     back.searchParams.set("conexion", `${provider}-error`);
     return Response.redirect(back, 302);
   }
-  // Primer sync en el momento (google todavía no tiene sync: se omite sin romper).
+
   await FIRST_SYNC[provider]?.(userId).catch((error) =>
     console.error(`[connect/${provider}] primer sync`, error),
   );

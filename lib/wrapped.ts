@@ -2,10 +2,10 @@ import "server-only";
 import { and, eq, gte, ne } from "drizzle-orm";
 import { moodFace, sparkline } from "@/lib/ascii";
 import { db, rawEvents } from "@/lib/db";
-import { EXAMPLE_WRAPPED, type WrappedHighlight, type WrappedRow } from "@/lib/week";
+import { type WrappedHighlight, type WrappedRow } from "@/lib/week";
 
-// Semana Wrapped con datos reales de raw_events, con la misma forma que EXAMPLE_WRAPPED.
-// Solo entra lo que tiene datos: no se mezclan números de ejemplo con reales (la consigna de rotular ejemplos).
+// Semana Wrapped con datos reales de raw_events. Solo entra lo que tiene datos: nunca se inventan números.
+// Sin ningún evento la semana devuelve null → la página muestra estado vacío.
 // ponytail: sueño entra cuando se lea google_health (Renzo ya lo ingesta).
 
 export type Wrapped = {
@@ -14,7 +14,6 @@ export type Wrapped = {
   rows: WrappedRow[];
   bestDay: { name: string; lines: string[] };
   highlights: WrappedHighlight[];
-  isExample: boolean;
 };
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -31,14 +30,14 @@ function isoWeek(d: Date): number {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-export function getWrapped(userId: string, now = new Date()): Wrapped {
+export function getWrapped(userId: string, now = new Date()): Wrapped | null {
   const rows = db
     .select({ source: rawEvents.source, kind: rawEvents.kind, ts: rawEvents.ts, json: rawEvents.json })
     .from(rawEvents)
     .where(and(eq(rawEvents.userId, userId), gte(rawEvents.ts, new Date(now.getTime() - 7 * DAY).toISOString()), ne(rawEvents.source, "digest")))
     .all()
     .map((r) => ({ ...r, t: Date.parse(r.ts), day: dayKey.format(Date.parse(r.ts)) }));
-  if (rows.length === 0) return EXAMPLE_WRAPPED;
+  if (rows.length === 0) return null;
 
   const days = Array.from({ length: 7 }, (_, i) => dayKey.format(now.getTime() - (6 - i) * DAY));
   const perDay = (pick: (r: (typeof rows)[number]) => boolean) => days.map((d) => rows.filter((r) => r.day === d && pick(r)).length);
@@ -136,6 +135,5 @@ export function getWrapped(userId: string, now = new Date()): Wrapped {
       ].filter(Boolean),
     },
     highlights,
-    isExample: false,
   };
 }

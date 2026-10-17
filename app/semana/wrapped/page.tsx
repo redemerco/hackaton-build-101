@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Pulse } from "@/components/ascii/ascii-field";
 import { Daemon } from "@/components/daemon/daemon";
+import { EmptyState } from "@/components/empty-state";
 import { Screen } from "@/components/screen";
 import { ShareButton } from "@/components/share-button";
 import { WrappedSlides } from "@/components/wrapped-slides";
@@ -41,6 +42,23 @@ function Highlight({ h, week }: { h: WrappedHighlight; week: number }) {
 export default async function WrappedPage() {
   const [buddy, user] = await Promise.all([getBuddy(), getCurrentUser()]);
   const W = getWrapped(user.id);
+
+  if (!W) {
+    return (
+      <Screen>
+        <Pulse bpm={64} stress={0.3} />
+        <Link href="/semana" transitionTypes={["nav-back"]} className="press -my-2 flex h-11 w-fit items-center font-mono text-[13px] text-dim">
+          ← semana
+        </Link>
+        <EmptyState
+          art="(._.)"
+          title="Todavía no hay Wrapped"
+          description="Conectá tus fuentes en Ajustes y registrá tu semana. Cuando haya datos reales armamos tu resumen."
+        />
+      </Screen>
+    );
+  }
+
   const shareText = [
     `build101 · semana ${W.week}: ${W.archetype.name}`,
     ...W.rows.map((r) => `${r.label.padEnd(LABEL_WIDTH)}${r.value.padStart(VALUE_WIDTH)}  ${r.spark ?? r.note ?? ""}`),
@@ -78,7 +96,6 @@ export default async function WrappedPage() {
             {"mejor día".padEnd(LABEL_WIDTH + 1)}<span className="text-mood">{W.bestDay.name}</span>{"\n"}
             {W.bestDay.lines.map((l) => `  ${l}\n`)}
           </pre>
-          <span className="font-mono text-xs text-faint">{W.isExample ? "[ejemplo]" : ""}</span>
         </article>
       ),
     },

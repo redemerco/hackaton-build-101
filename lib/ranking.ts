@@ -4,7 +4,8 @@ import { getConnection } from "@/lib/connections";
 import { db, rawEvents } from "@/lib/db";
 import { getLook, type Look } from "@/lib/profiles";
 import { mean, scoreDay, type DayInput, type DayScore } from "@/lib/score";
-import { USERS, type UserId } from "@/lib/user-list";
+import { allUsers } from "@/lib/users";
+import { type UserId } from "@/lib/user-list";
 
 // Ranking de la organización: los usuarios de build101 conectados al mismo workspace de Slack,
 // ordenados por el puntaje build101 (lib/score.ts) del día y de la semana. Solo se comparte el puntaje.
@@ -134,28 +135,20 @@ const teamOf = (userId: string) => getConnection(userId, "slack")?.account.split
 
 const byScore = (pick: (r: RankRow) => number | undefined) => (a: RankRow, b: RankRow) => (pick(b) ?? -1) - (pick(a) ?? -1);
 
-// Rotulado como ejemplo en la UI: se ve hasta que haya al menos un puntaje real en el workspace.
-function exampleRanking(me: UserId, team: string | null): Ranking {
-  const fake: Record<string, [number, number]> = { santi: [82, 77], renzo: [74, 79], joaco: [61, 66] };
-  const rows = USERS.map((u) => {
-    const [today, week] = fake[u.id];
-    return { userId: u.id, name: u.name, isMe: u.id === me, look: getLook(u.id), isSimulated: false, today: { score: today, parts: {}, isPartial: false }, week: { score: week, days: 7 } };
-  });
-  return { team, rows, isExample: true };
-}
-
 /** Ranking del workspace de Slack del usuario actual. */
 export function getRanking(me: UserId, now = Date.now()): Ranking {
   const team = teamOf(me);
   if (!team) return { team: null, rows: [], isExample: false };
-  const rows: RankRow[] = USERS.filter((u) => teamOf(u.id) === team).map((u) => ({
+  const members = allUsers().filter((u) => teamOf(u.id) === team);
+  const rows: RankRow[] = members.map((u) => ({
     userId: u.id,
     name: u.name,
     isMe: u.id === me,
     look: getLook(u.id),
     ...scoresFor(u.id, now),
   }));
-  if (!rows.some((r) => r.today || r.week)) return exampleRanking(me, team);
+  // Sin ningún puntaje real: ranking vacío honesto (nunca puntajes inventados).
+  if (!rows.some((r) => r.today || r.week)) return { team, rows: [], isExample: false };
   return { team, rows, isExample: false };
 }
 

@@ -16,7 +16,11 @@ const MAX_BYTES = 10 * 1024 * 1024;
 /**
  * Burbuja de cámara → foto → hoja con el escaneo ASCII → ítems en gramos y rangos de kcal.
  * Usa <input capture> (no getUserMedia: tiene bugs en PWAs standalone de iOS).
+<<<<<<< Updated upstream
  * Analiza con /api/comer/analizar (Gemini) y "Guardar" escribe la comida en raw_events (app/actions/meal.ts).
+=======
+ * El análisis viene del endpoint real de Gemini (/api/comer/analizar); sin respuesta válida se muestra el error, nunca datos de ejemplo.
+>>>>>>> Stashed changes
  */
 export function MealCamera() {
   const inputId = useId();

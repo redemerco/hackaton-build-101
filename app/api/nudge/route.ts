@@ -17,6 +17,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const userId = await target(req);
   const nudge = getNudge(userId);
+  if (!nudge) return Response.json({ nudge: null, sent: 0, error: "sin datos para un nudge" });
   try {
     const result = await sendPush(userId, { title: nudge.title, body: nudge.body, url: "/" });
     return Response.json({ nudge, ...result });

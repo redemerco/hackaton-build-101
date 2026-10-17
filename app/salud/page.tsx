@@ -64,18 +64,37 @@ export default async function SaludPage() {
   }
 
   const night = getLastNight(user.id);
+  if (!night) {
+    return (
+      <Screen>
+        <PageHeader title="Cuerpo" subtitle="Conectá tu wearable para ver tu sueño." />
+        <EmptyState
+          art="(-_-) zzz"
+          title="Todavía no hay noches registradas"
+          description="Conectá Google Health en Ajustes para ver tu sueño, tu pulso y tu HRV de anoche."
+        />
+      </Screen>
+    );
+  }
+
   const byStage = night.stageMinutes ?? minutesByStage(night.stages);
   const asleep = byStage.light + byStage.deep + byStage.rem;
   const steps = night.stepsByHour.reduce((a, b) => a + b, 0);
-  const minBpm = Math.min(...night.hrNight);
+  const hasHr = night.hrNight.length > 0;
+  const minBpm = hasHr ? Math.min(...night.hrNight) : null;
   const [h0, m0] = night.start.split(":").map(Number);
-  const minAt = h0 * 60 + m0 + Math.round((night.hrNight.indexOf(minBpm) / (night.hrNight.length - 1)) * asleep);
-  const minAtText = `${String(Math.floor(minAt / 60) % 24).padStart(2, "0")}:${String(minAt % 60).padStart(2, "0")}`;
+  const minAt = hasHr && minBpm !== null ? h0 * 60 + m0 + Math.round((night.hrNight.indexOf(minBpm) / (night.hrNight.length - 1)) * asleep) : null;
+  const minAtText = minAt !== null ? `${String(Math.floor(minAt / 60) % 24).padStart(2, "0")}:${String(minAt % 60).padStart(2, "0")}` : "";
 
   return (
     <Screen>
+<<<<<<< Updated upstream:app/salud/page.tsx
       <Pulse bpm={night.restingBpm} stress={0.2} />
       <PageHeader title="Salud" subtitle={night.isExample ? "[ejemplo] hasta conectar Google Health" : "Google Health"} />
+=======
+      <Pulse bpm={night.restingBpm ?? 60} stress={0.2} />
+      <PageHeader title="Cuerpo" subtitle="Google Health" />
+>>>>>>> Stashed changes:app/cuerpo/page.tsx
 
       <Panel label="sueño · anoche" meta={`${night.start} → ${night.end}`}>
         <p className="font-mono text-[28px] font-semibold leading-none tracking-tight">
@@ -91,6 +110,7 @@ export default async function SaludPage() {
         </p>
       </Panel>
 
+<<<<<<< Updated upstream:app/salud/page.tsx
       <FoodPanels userId={user.id} />
 
       <Panel
@@ -111,20 +131,56 @@ export default async function SaludPage() {
           <dd className="text-right text-xs text-dim">a las {minAtText}</dd>
         </dl>
       </Panel>
+=======
+      {hasHr && night.restingBpm !== null ? (
+        <Panel
+          label="pulso · noche"
+          meta={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> {night.restingBpm} reposo</span>}
+        >
+          <div className="@container">
+            <pre aria-hidden className="m-0 font-mono leading-none text-heart" style={{ fontSize: fitMonoFontSize(night.hrNight.length, 20) }}>
+              {asciiLine(night.hrNight, 5)}
+            </pre>
+          </div>
+          <dl className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 font-mono text-[13px] tabular-nums">
+            <dt className="text-dim">reposo</dt><dd className="font-semibold"><Count value={night.restingBpm} /> bpm</dd>
+            <dd className="text-right text-xs text-dim">{night.restingTypical ? `típico ${night.restingTypical[0]}–${night.restingTypical[1]}` : ""}</dd>
+            {night.hrvMs !== null && (
+              <>
+                <dt className="text-dim">hrv</dt><dd className="font-semibold"><Count value={night.hrvMs} /> ms</dd>
+                <dd className="text-right text-xs text-dim">{night.hrvTypical ? `típico ${night.hrvTypical[0]}–${night.hrvTypical[1]}` : ""}</dd>
+              </>
+            )}
+            {minBpm !== null && (
+              <>
+                <dt className="text-dim">mínimo</dt><dd className="font-semibold"><Count value={Math.round(minBpm)} /> bpm</dd>
+                <dd className="text-right text-xs text-dim">a las {minAtText}</dd>
+              </>
+            )}
+          </dl>
+        </Panel>
+      ) : (
+        <Panel label="pulso · noche" meta="sin dato">
+          <p className="text-[15px] text-dim">Google Health no mandó pulso ni HRV para esta noche todavía.</p>
+        </Panel>
+      )}
+>>>>>>> Stashed changes:app/cuerpo/page.tsx
 
-      <Panel label="pasos · 08 → 19 h" meta={<Count value={steps} />}>
-        <div aria-hidden className="@container">
-          <p
-            className="font-mono leading-none text-work"
-            style={{ fontSize: fitMonoFontSize(night.stepsByHour.length, 32, STEPS_TRACKING_EM), letterSpacing: `${STEPS_TRACKING_EM}em` }}
-          >
-            {sparkline(night.stepsByHour)}
-          </p>
-          <p className="mt-1.5 flex justify-between font-mono text-[11px] tabular-nums text-faint">
-            <span>08</span><span>19</span>
-          </p>
-        </div>
-      </Panel>
+      {steps > 0 && (
+        <Panel label="pasos · 08 → 19 h" meta={<Count value={steps} />}>
+          <div aria-hidden className="@container">
+            <p
+              className="font-mono leading-none text-work"
+              style={{ fontSize: fitMonoFontSize(night.stepsByHour.length, 32, STEPS_TRACKING_EM), letterSpacing: `${STEPS_TRACKING_EM}em` }}
+            >
+              {sparkline(night.stepsByHour)}
+            </p>
+            <p className="mt-1.5 flex justify-between font-mono text-[11px] tabular-nums text-faint">
+              <span>08</span><span>19</span>
+            </p>
+          </div>
+        </Panel>
+      )}
     </Screen>
   );
 }

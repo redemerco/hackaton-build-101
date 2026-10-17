@@ -11,7 +11,7 @@ import { PushToggle } from "@/components/push-toggle";
 import type { SourceOverview } from "@/lib/connection-overview";
 import { BUDDIES, buddyName, type BuddyId } from "@/lib/daemon";
 import { TINTS, type TintId } from "@/lib/tints";
-import { USERS, type UserId } from "@/lib/user-list";
+import { type UserId } from "@/lib/user-list";
 import { cn } from "@/lib/utils";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -30,10 +30,9 @@ export function SettingsSheet({ currentUserId, currentBuddy, currentTint, source
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const current = USERS.find((u) => u.id === currentUserId) ?? USERS[0];
   // El usuario es quien se logueó con Google: mostramos su cuenta, no un selector.
   const account = sources.find((s) => s.id === "health")?.account ?? null;
-  const label = account ?? current.name;
+  const label = account ?? "Mi cuenta";
 
   const pickBuddy = (id: BuddyId) =>
     startTransition(async () => {
@@ -58,7 +57,7 @@ export function SettingsSheet({ currentUserId, currentBuddy, currentTint, source
     startTransition(async () => {
       try {
         const n = await deleteMyData();
-        toast(`Borrados ${n} eventos de ${current.name}`);
+        toast(`Borrados ${n} eventos`);
         setIsConfirmingDelete(false);
       } catch {
         toast.error("No se pudieron borrar los datos");

@@ -17,18 +17,3 @@ export const scaleItem = (it: MealItem, factor: number): MealItem => ({
 });
 
 export const formatRange = ([lo, hi]: readonly [number, number]): string => `${lo}–${hi}`;
-
-// ponytail: análisis de ejemplo hasta que Renzo conecte Gemini vision; misma forma que debería devolver el endpoint.
-export const EXAMPLE_ANALYSIS: MealAnalysis = {
-  items: [
-    { name: "Milanesa de carne", grams: [160, 200], kcal: [380, 470] },
-    { name: "Papas fritas", grams: [120, 150], kcal: [360, 450] },
-    { name: "Ensalada con tomate", grams: [80, 120], kcal: [20, 40] },
-  ],
-  comment: ["Tercera milanesa de la semana de deploy. Sin juicio, pero sumale agua."],
-};
-
-export const EXAMPLE_MEALS_TODAY: MealEntry[] = [
-  { time: "09:12", title: "Café con leche y medialunas", kcal: [320, 420] },
-  { time: "13:40", title: "Milanesa con papas", kcal: [760, 960] },
-];

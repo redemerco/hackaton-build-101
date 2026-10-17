@@ -7,7 +7,7 @@ import { db, rawEvents } from "@/lib/db";
 // (sin cron). Texto determinístico a propósito: en vivo no depende de la IA ni del wifi.
 // ponytail: cuando Renzo ingeste pasos de google_health, "sin cortar" pasa a ser "sin moverte" con los pasos reales.
 
-export type Nudge = { title: string; body: string; isExample: boolean };
+export type Nudge = { title: string; body: string };
 
 const TZ = "America/Argentina/Buenos_Aires";
 const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -18,18 +18,12 @@ const BREAK_MIN = 45; // un hueco más largo que esto corta la racha
 const LONG_STREAK_MIN = 90;
 const MIN = 60_000;
 
-export const EXAMPLE_NUDGE: Nudge = {
-  title: "Pulso",
-  body: "Llevás 3h sin moverte y tenés 40 min libres antes de la daily. Caminá un rato.",
-  isExample: true,
-};
-
 // Calendar guarda solo horarios (sin título ni invitados): ver lib/sources/calendar.ts.
 type Meeting = { start: string; allDay?: boolean };
 
 const freeTime = (min: number) => (min < 60 ? `${min} min` : formatDuration(min));
 
-export function getNudge(userId: string, now = new Date()): Nudge {
+export function getNudge(userId: string, now = new Date()): Nudge | null {
   const since = new Date(now.getTime() - 12 * 60 * MIN).toISOString();
   const events = db
     .select({ source: rawEvents.source, kind: rawEvents.kind, ts: rawEvents.ts, json: rawEvents.json })
@@ -39,7 +33,7 @@ export function getNudge(userId: string, now = new Date()): Nudge {
     .all();
 
   const work = events.filter((e) => WORK_SOURCES.includes(e.source)).map((e) => ({ ...e, t: Date.parse(e.ts) }));
-  if (work.length === 0) return EXAMPLE_NUDGE;
+  if (work.length === 0) return null;
 
   // Racha actual: desde el último evento hacia atrás, mientras no haya un hueco de más de BREAK_MIN.
   const last = work[work.length - 1];
@@ -67,20 +61,17 @@ export function getNudge(userId: string, now = new Date()): Nudge {
     return {
       title: "Pulso · son las " + hhmm.format(now),
       body: `Llevás ${formatDuration(streakMin)} sin cortar${what ? ` (${what})` : ""}. El código va a seguir ahí mañana; tu sueño de hoy no. Cortá acá.`,
-      isExample: false,
     };
   }
   if (isWorkingNow && streakMin >= LONG_STREAK_MIN) {
     return {
       title: "Pulso",
       body: `Llevás ${formatDuration(streakMin)} sin cortar${what ? ` (${what})` : ""}${gap}. Caminá 10 minutos.`,
-      isExample: false,
     };
   }
   const todayCommits = work.filter((e) => e.kind === "commit").length;
   return {
     title: "Pulso",
     body: `Arrancaste a las ${hhmm.format(new Date(work[0].t))} y llevás ${todayCommits} commit${todayCommits === 1 ? "" : "s"}${gap}. Buen momento para estirar y tomar agua.`,
-    isExample: false,
   };
 }

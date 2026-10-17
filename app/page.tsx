@@ -1,7 +1,9 @@
 import { Pulse } from "@/components/ascii/ascii-field";
 import { Count, DurationCount } from "@/components/ascii/count";
 import { StreamText } from "@/components/ascii/stream-text";
+import { EmptyState } from "@/components/empty-state";
 import { Panel } from "@/components/glass/panel";
+import { PageHeader } from "@/components/page-header";
 import { Daemon } from "@/components/daemon/daemon";
 import { DaemonSpeech } from "@/components/daemon/daemon-speech";
 import { MoodCheckin } from "@/components/mood-checkin";
@@ -34,18 +36,44 @@ function ContributorRow({ c }: { c: Contributor }) {
 export default async function Hoy() {
   const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
   const today = getToday(user.id);
+
+  // Sin ningún dato real: estado vacío honesto, pero el check-in de ánimo sigue disponible (es un dato que se crea acá).
+  if (today.isEmpty) {
+    return (
+      <Screen>
+        <Pulse bpm={60} stress={0.2} />
+        <PageHeader title={`Hola, ${user.name}`} subtitle="Pulso cruza tu cuerpo con tu trabajo." />
+        <EmptyState
+          art="(._.)"
+          title="Todavía no hay datos tuyos"
+          description="Conectá Google Health, GitHub, Slack o Calendar en Ajustes para ver tu día. Mientras tanto, podés registrar tu ánimo."
+        />
+        <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-2" />
+          <MoodCheckin mood={today.mood} />
+        </div>
+      </Screen>
+    );
+  }
+
   const input = daemonInput(today, user.id);
   const state = deriveState(input);
   const spec = STATES[state];
+  const nudge = getNudge(user.id);
 
   return (
     <Screen>
+<<<<<<< Updated upstream
       <Pulse bpm={today.restingBpm} stress={stressOf(today)} />
       <h1 className="sr-only">Yo, {user.name}</h1>
+=======
+      <Pulse bpm={today.restingBpm ?? 60} stress={stressOf(today)} />
+      <h1 className="sr-only">Hoy, {user.name}</h1>
+>>>>>>> Stashed changes
 
       <Panel className="gap-4">
         <div className="grid grid-cols-[auto_1fr] items-center gap-3">
-          <Daemon state={state} buddy={buddy} bpm={today.restingBpm} isInteractive className="-my-2 -ml-2" />
+          <Daemon state={state} buddy={buddy} bpm={today.restingBpm ?? 60} isInteractive className="-my-2 -ml-2" />
           <div className="grid min-w-0 gap-2">
             <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="font-pixel text-[22px] leading-none" style={{ color: `var(--${spec.tone})` }}>{spec.title}</span>
@@ -60,20 +88,30 @@ export default async function Hoy() {
       </Panel>
 
       <div className="grid grid-cols-3 gap-2">
-        <StatCard label="sueño" value={<DurationCount minutes={today.sleepMin} />} hint={<span role="img" aria-label={`sueño de la semana: ${today.sleepWeek.map(formatDuration).join(", ")}`} className="text-sleep">{sparkline(today.sleepWeek)}</span>} />
-        <StatCard
-          label="pulso"
-          value={<Count value={today.restingBpm} />}
-          hint={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> bpm</span>}
-        />
+        {today.sleepMin !== null ? (
+          <StatCard label="sueño" value={<DurationCount minutes={today.sleepMin} />} hint={<span role="img" aria-label={`sueño de la semana: ${today.sleepWeek.map(formatDuration).join(", ")}`} className="text-sleep">{sparkline(today.sleepWeek)}</span>} />
+        ) : (
+          <StatCard label="sueño" value={<span className="text-dim">—</span>} hint={<span className="text-dim">sin wearable</span>} />
+        )}
+        {today.restingBpm !== null ? (
+          <StatCard
+            label="pulso"
+            value={<Count value={today.restingBpm} />}
+            hint={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> bpm</span>}
+          />
+        ) : (
+          <StatCard label="pulso" value={<span className="text-dim">—</span>} hint={<span className="text-dim">sin wearable</span>} />
+        )}
         <MoodCheckin mood={today.mood} />
       </div>
 
-      <NudgeBanner text={getNudge(user.id).body} />
+      {nudge && <NudgeBanner text={nudge.body} />}
 
-      <Panel label="observación" meta={today.isExample ? "[ejemplo]" : "gemini"}>
-        <StreamText fallback={[today.insight]} tokenMs={45} className="text-[15px] leading-relaxed" />
-      </Panel>
+      {today.insight && (
+        <Panel label="observación" meta="gemini">
+          <StreamText fallback={[today.insight]} tokenMs={45} className="text-[15px] leading-relaxed" />
+        </Panel>
+      )}
     </Screen>
   );
 }

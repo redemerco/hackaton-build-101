@@ -149,6 +149,25 @@ export async function connect(req: Request, p: Provider, code: string, userId: s
   return account;
 }
 
+export type GoogleIdentity = { sub: string; email: string; name?: string };
+
+/**
+ * Login con Google: canjea el `code` UNA sola vez (el code es de un solo uso),
+ * lee la identidad real (sub + email) del userinfo, y guarda la conexión google
+ * del usuario recién identificado. Devuelve la identidad para crear/abrir sesión.
+ */
+export async function connectGoogleLogin(req: Request, code: string): Promise<GoogleIdentity> {
+  const t = await requestToken("google", { code, grant_type: "authorization_code", redirect_uri: callbackUrl(req, "google") });
+  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${t.access_token}` },
+  });
+  const info = (await res.json()) as { sub?: string; email?: string; name?: string };
+  if (!info.sub || !info.email) throw new Error("google userinfo sin sub/email");
+  const identity: GoogleIdentity = { sub: info.sub, email: info.email, name: info.name };
+  saveConnection({ userId: identity.sub, provider: "google", account: identity.email, token: t.access_token!, refreshToken: t.refresh_token ?? null, expiresAt: expiry(t) });
+  return identity;
+}
+
 /** Token vigente: si vence en menos de un minuto y hay refresh token (Linear), lo renueva. GitHub no vence. */
 export async function freshToken(c: Connection): Promise<string> {
   if (!c.expiresAt || !c.refreshToken || Date.parse(c.expiresAt) - Date.now() > 60_000) return c.token;

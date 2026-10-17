@@ -6,19 +6,24 @@ import type { UserId } from "@/lib/users";
 import { getLastNight } from "@/lib/body";
 
 export type Today = {
-  sleepMin: number;
-  sleepWeek: number[]; // minutos, últimos 7 días (el último es anoche)
-  restingBpm: number;
-  restingTypical: [number, number]; // tu rango típico (línea base personal, no la población)
-  hrvMs: number;
-  hrvTypical: [number, number];
+  sleepMin: number | null;
+  sleepWeek: number[]; // minutos, últimos 7 días (0 = sin dato ese día). Vacío si no hay nada real.
+  restingBpm: number | null;
+  restingTypical: [number, number] | null; // tu rango típico (línea base personal, no la población)
+  hrvMs: number | null;
+  hrvTypical: [number, number] | null;
   mood: number | null; // 1..5, null = sin check-in hoy
   meetings: number;
-  insight: string;
-  isExample: boolean;
+  insight: string | null;
+  /** true si no hay ningún dato real de cuerpo/trabajo: la UI muestra estado vacío. */
+  isEmpty: boolean;
 };
 
 export { moodFace } from "@/lib/ascii";
+
+const TZ = "America/Argentina/Buenos_Aires";
+const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
+const DAY = 24 * 60 * 60 * 1000;
 
 /** Último check-in de ánimo de hoy (día local del server), o null. */
 function todaysMood(userId: UserId): number | null {
@@ -33,53 +38,101 @@ function todaysMood(userId: UserId): number | null {
   return typeof mood === "number" ? mood : null;
 }
 
-// El sueño sale del ingest real de google_health (lib/body) cuando existe; si no, ejemplo.
-export function getToday(userId: UserId): Today {
+/** Reuniones de hoy (source "calendar", solo horarios). Sin Calendar conectado: 0. */
+function meetingsToday(userId: UserId, now: Date): number {
+  const today = dayKey.format(now);
+  return db
+    .select({ json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "calendar"), gte(rawEvents.ts, new Date(now.getTime() - DAY).toISOString())))
+    .all()
+    .map((r) => JSON.parse(r.json) as { start: string; end: string | null; allDay?: boolean })
+    .filter((e) => !e.allDay && e.end && dayKey.format(Date.parse(e.start)) === today).length;
+}
+
+// El sueño sale del ingest real de google_health (lib/body) cuando existe; si no, null/0 (nunca ejemplo).
+export function getToday(userId: UserId, now = new Date()): Today {
   const night = getLastNight(userId);
   const nightMin = (sm?: Record<string, number>) => (sm ? sm.light + sm.deep + sm.rem : undefined);
-  const realSleep = night.isExample ? undefined : nightMin(night.stageMinutes);
+  const sleepMin = night ? nightMin(night.stageMinutes) ?? null : null;
 
-  const exampleWeek = [402, 431, 352, 470, 410, 440, 420]; // el último = la noche de ejemplo de lib/body (7h00)
-  const sleepWeek = realSleep ? [...exampleWeek.slice(0, 6), realSleep] : exampleWeek;
+  // Semana de sueño real, de hace 6 días a hoy; sin dato ese día queda en 0.
+  const sleepWeek = sleepWeekFor(userId, now);
+  const mood = todaysMood(userId);
+  const meetings = meetingsToday(userId, now);
 
   return {
-    sleepMin: realSleep ?? 420,
+    sleepMin,
     sleepWeek,
-    restingBpm: 58,
-    restingTypical: [55, 62],
-    hrvMs: 48,
-    hrvTypical: [41, 52],
-    mood: todaysMood(userId),
-    meetings: 2,
-    insight: "Los días con una sola reunión hiciste el doble de commits. Hoy tenés dos: buen día para cerrar un PR.",
-    isExample: night.isExample,
+    restingBpm: night?.restingBpm ?? null,
+    restingTypical: night?.restingTypical ?? null,
+    hrvMs: night?.hrvMs ?? null,
+    hrvTypical: night?.hrvTypical ?? null,
+    mood,
+    meetings,
+    insight: null, // la observación real la escribe la IA (StreamText con src); sin IA no inventamos texto.
+    isEmpty: sleepMin === null && mood === null && meetings === 0 && sleepWeek.every((m) => m === 0),
   };
 }
 
-/** 0..1: cuánto "tiembla" el fondo. */
+/** Minutos de sueño por día (lu..hoy) desde raw_events; 0 donde no hay dato. */
+function sleepWeekFor(userId: UserId, now: Date): number[] {
+  const days = Array.from({ length: 7 }, (_, i) => dayKey.format(now.getTime() - (6 - i) * DAY));
+  const rows = db
+    .select({ ts: rawEvents.ts, json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), gte(rawEvents.ts, new Date(now.getTime() - 8 * DAY).toISOString())))
+    .all();
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    try {
+      const sleep = (JSON.parse(r.json).sleep ?? {}) as Record<string, unknown>;
+      const interval = (sleep.interval ?? {}) as Record<string, string>;
+      const ss = ((sleep.summary ?? {}) as Record<string, unknown>).stagesSummary as Array<Record<string, string>> | undefined;
+      if (!interval.endTime || !ss?.length) continue;
+      const min = ss.reduce((sum, row) => {
+        const t = String(row.type).toUpperCase();
+        return t === "AWAKE" || t === "WAKE" ? sum : sum + (parseInt(row.minutes ?? "0", 10) || 0);
+      }, 0);
+      const key = dayKey.format(Date.parse(interval.endTime));
+      byDay.set(key, (byDay.get(key) ?? 0) + min);
+    } catch {
+      continue;
+    }
+  }
+  return days.map((d) => byDay.get(d) ?? 0);
+}
+
+/** 0..1: cuánto "tiembla" el fondo. Sin datos de sueño asume neutro. */
 export function stressOf({ sleepMin, meetings }: Pick<Today, "sleepMin" | "meetings">): number {
-  const sleepDebt = Math.max(0, Math.min(1, (450 - sleepMin) / 240));
+  const sleepDebt = sleepMin === null ? 0 : Math.max(0, Math.min(1, (450 - sleepMin) / 240));
   return Math.min(1, 0.15 + sleepDebt * 0.6 + Math.min(meetings, 8) * 0.04);
 }
 
 export type Contributor = { label: string; value: string; vs: string; trend: "up" | "down" | "flat"; isGood: boolean };
 
-/** Los 3 "por qué" del estado, siempre contra tu propia media. */
+/** Los "por qué" del estado, siempre contra tu propia media. Solo entran los que tienen dato real. */
 export function contributors(today: Today): Contributor[] {
-  const avgSleep = Math.round(today.sleepWeek.reduce((a, b) => a + b, 0) / today.sleepWeek.length);
+  const out: Contributor[] = [];
   const fmt = (m: number) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
-  const trendOf = (v: number, [lo, hi]: [number, number]) => (v > hi ? "up" : v < lo ? "down" : "flat");
-  const sleepTrend = today.sleepMin > avgSleep + 15 ? "up" : today.sleepMin < avgSleep - 15 ? "down" : "flat";
-  return [
-    { label: "sueño", value: fmt(today.sleepMin), vs: `tu media ${fmt(avgSleep)}`, trend: sleepTrend, isGood: sleepTrend !== "down" },
-    { label: "hrv", value: `${today.hrvMs} ms`, vs: `típico ${today.hrvTypical[0]}–${today.hrvTypical[1]}`, trend: trendOf(today.hrvMs, today.hrvTypical), isGood: today.hrvMs >= today.hrvTypical[0] },
-    { label: "reuniones", value: String(today.meetings), vs: today.meetings <= 2 ? "hay hueco para foco" : "día partido", trend: "flat", isGood: today.meetings <= 2 },
-  ];
+  const realWeek = today.sleepWeek.filter((m) => m > 0);
+
+  if (today.sleepMin !== null && realWeek.length) {
+    const avgSleep = Math.round(realWeek.reduce((a, b) => a + b, 0) / realWeek.length);
+    const sleepTrend = today.sleepMin > avgSleep + 15 ? "up" : today.sleepMin < avgSleep - 15 ? "down" : "flat";
+    out.push({ label: "sueño", value: fmt(today.sleepMin), vs: `tu media ${fmt(avgSleep)}`, trend: sleepTrend, isGood: sleepTrend !== "down" });
+  }
+  if (today.hrvMs !== null && today.hrvTypical) {
+    const [lo, hi] = today.hrvTypical;
+    const trend = today.hrvMs > hi ? "up" : today.hrvMs < lo ? "down" : "flat";
+    out.push({ label: "hrv", value: `${today.hrvMs} ms`, vs: `típico ${lo}–${hi}`, trend, isGood: today.hrvMs >= lo });
+  }
+  out.push({ label: "reuniones", value: String(today.meetings), vs: today.meetings <= 2 ? "hay hueco para foco" : "día partido", trend: "flat", isGood: today.meetings <= 2 });
+  return out;
 }
 
-const TZ = "America/Montevideo";
-const hourIn = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" });
-const hhmmIn = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const hourIn = new Intl.DateTimeFormat("es-UY", { timeZone: "America/Montevideo", hour: "2-digit", hourCycle: "h23" });
+const hhmmIn = new Intl.DateTimeFormat("es-UY", { timeZone: "America/Montevideo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const LATE_FROM_HOUR = 1;
 const LATE_TO_HOUR = 5;
 const LOOKBACK_MS = 20 * 60 * 60 * 1000;
@@ -113,11 +166,12 @@ function mealMinutesAgo(userId: UserId, now: Date): number | null {
 
 /** Todo lo que el daemon necesita para elegir su estado. */
 export function daemonInput(today: Today, userId: UserId, now = new Date()): DaemonInput {
-  const avgSleepMin = Math.round(today.sleepWeek.reduce((a, b) => a + b, 0) / today.sleepWeek.length);
+  const realWeek = today.sleepWeek.filter((m) => m > 0);
+  const avgSleepMin = realWeek.length ? Math.round(realWeek.reduce((a, b) => a + b, 0) / realWeek.length) : 0;
   let goodNightsStreak = 0;
-  for (let i = today.sleepWeek.length - 1; i >= 0 && today.sleepWeek[i] >= avgSleepMin; i--) goodNightsStreak++;
+  for (let i = today.sleepWeek.length - 1; i >= 0 && today.sleepWeek[i] > 0 && today.sleepWeek[i] >= avgSleepMin; i--) goodNightsStreak++;
   return {
-    sleepMin: today.sleepMin,
+    sleepMin: today.sleepMin ?? 0,
     avgSleepMin,
     meetings: today.meetings,
     mood: today.mood,

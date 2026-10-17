@@ -1,4 +1,5 @@
 import { Pulse } from "@/components/ascii/ascii-field";
+import { EmptyState } from "@/components/empty-state";
 import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
 import { Screen } from "@/components/screen";
@@ -103,20 +104,41 @@ export default async function TrabajoPage() {
   const day = getWorkDay(userId);
   const linear = getLinearWeek(userId);
   const slack = getSlackToday(userId);
-  const sources = [!day.isExample && "GitHub", linear.hasData && "Linear", slack.hasData && "Slack"].filter(Boolean).join(" · ");
   const oauthSources = getSourcesOverview(userId).filter((s) => s.connect === "oauth");
   const hasAnyConnected = oauthSources.some((s) => s.account);
-  const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => day.meetingSlots.some(([a, b]) => i >= a && i < b));
-  const series = [
-    { label: "sueño", values: day.week.sleepMin, className: "text-sleep" },
-    { label: "commits", values: day.week.commits, className: "text-work" },
-    { label: "ánimo", values: day.week.mood, className: "text-mood" },
-  ];
+
+  // Sin GitHub, Linear ni Slack: estado vacío honesto, con el panel de fuentes para conectar.
+  if (!day && !linear.hasData && !slack.hasData) {
+    return (
+      <Screen>
+        <Pulse bpm={60} stress={0.2} />
+        <PageHeader title="Trabajo" subtitle="Conectá tus fuentes para ver tu semana." />
+        <EmptyState
+          art="(·_·)"
+          title="Todavía no hay actividad de trabajo"
+          description="Conectá GitHub, Linear, Slack o Calendar en Ajustes. Leemos horarios y cantidades, nunca el contenido."
+        />
+        <Panel label="conectá tus fuentes" meta="privado, solo vos">
+          <SourcesList sources={oauthSources} />
+        </Panel>
+      </Screen>
+    );
+  }
+
+  const connected = [day && "GitHub", linear.hasData && "Linear", slack.hasData && "Slack"].filter(Boolean).join(" · ");
+  const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => (day?.meetingSlots ?? []).some(([a, b]) => i >= a && i < b));
+  const series = day
+    ? [
+        { label: "sueño", values: day.week.sleepMin, className: "text-sleep" },
+        { label: "commits", values: day.week.commits, className: "text-work" },
+        { label: "ánimo", values: day.week.mood, className: "text-mood" },
+      ]
+    : [];
 
   return (
     <Screen>
       <Pulse bpm={60} stress={0.35} />
-      <PageHeader title="Trabajo" subtitle={sources ? `${sources} · Calendar pendiente` : "[ejemplo] hasta conectar fuentes en Ajustes"} />
+      <PageHeader title="Trabajo" subtitle={connected ? `${connected}${day?.meetingSlots.length ? " · Calendar" : ""}` : "Conectá fuentes en Ajustes"} />
 
       {!hasAnyConnected && (
         <Panel label="conectá tus fuentes" meta="privado, solo vos">
@@ -125,13 +147,15 @@ export default async function TrabajoPage() {
         </Panel>
       )}
 
-      <Panel label="git log · hoy" meta={`${day.commits} commits`}>
-        <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-xs leading-[1.7]">
-          {day.log.map((entry, i) => (
-            <span key={i}><LogLine entry={entry} />{"\n"}</span>
-          ))}
-        </pre>
-      </Panel>
+      {day && (
+        <Panel label="git log · hoy" meta={`${day.commits} commits`}>
+          <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-xs leading-[1.7]">
+            {day.log.map((entry, i) => (
+              <span key={i}><LogLine entry={entry} />{"\n"}</span>
+            ))}
+          </pre>
+        </Panel>
+      )}
 
       <Panel label="linear · 7 días" meta={linear.hasData ? `${linear.completed} completados` : "sin conectar"}>
         {linear.hasData ? (
@@ -159,24 +183,32 @@ export default async function TrabajoPage() {
 
       <SlackPanel s={slack} />
 
-      <Panel label="reuniones" meta={`[ejemplo · falta Calendar] ${day.meetingSlots.length} · ${formatDuration(meetingMinutes(day.meetingSlots))}`}>
-        <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] leading-tight">
-          {slots.map((busy, i) => <span key={i} className={busy ? "text-work" : "text-[#2d3345]"}>{busy ? "█" : "░"}</span>)}
-        </pre>
-        <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] text-faint">{"09       12       15       18"}</pre>
-      </Panel>
+      {day && day.meetingSlots.length > 0 ? (
+        <Panel label="reuniones · hoy" meta={`${day.meetingSlots.length} · ${formatDuration(meetingMinutes(day.meetingSlots))}`}>
+          <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] leading-tight">
+            {slots.map((busy, i) => <span key={i} className={busy ? "text-work" : "text-[#2d3345]"}>{busy ? "█" : "░"}</span>)}
+          </pre>
+          <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] text-faint">{"09       12       15       18"}</pre>
+        </Panel>
+      ) : (
+        <Panel label="reuniones · hoy" meta="sin conectar">
+          <p className="text-[15px] text-dim">Conectá Calendar en Ajustes: contamos tus franjas de reunión, nunca el título ni los invitados.</p>
+        </Panel>
+      )}
 
-      <Panel label="sueño × commits × ánimo · 7 días">
-        <div className="grid gap-1.5 font-mono">
-          {series.map((s) => (
-            <div key={s.label} className="grid grid-cols-[76px_1fr] items-center">
-              <span className="text-xs text-dim">{s.label}</span>
-              <span role="img" aria-label={`${s.label}: ${s.values.join(", ")}`} className={`text-lg tracking-[3px] ${s.className}`}>{sparkline(s.values)}</span>
-            </div>
-          ))}
-        </div>
-        <CorrelationNote days={day.daysOfData} />
-      </Panel>
+      {day && (
+        <Panel label="sueño × commits × ánimo · 7 días">
+          <div className="grid gap-1.5 font-mono">
+            {series.map((s) => (
+              <div key={s.label} className="grid grid-cols-[76px_1fr] items-center">
+                <span className="text-xs text-dim">{s.label}</span>
+                <span role="img" aria-label={`${s.label}: ${s.values.join(", ")}`} className={`text-lg tracking-[3px] ${s.className}`}>{sparkline(s.values)}</span>
+              </div>
+            ))}
+          </div>
+          <CorrelationNote days={day.daysOfData} />
+        </Panel>
+      )}
     </Screen>
   );
 }

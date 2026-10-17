@@ -10,10 +10,9 @@ export type WorkDay = {
   commits: number;
   /** Reuniones en franjas de 20 min entre 09 y 18 h: [desde, hasta) en índices de franja. */
   meetingSlots: [number, number][];
-  week: { sleepMin: number[]; commits: number[]; mood: number[] }; // lu..hoy
+  week: { sleepMin: number[]; commits: number[]; mood: number[] }; // lu..hoy (0 donde no hay dato)
   /** Días con los tres datos (sueño, commits, ánimo). Por debajo de MIN_DAYS_FOR_CORRELATION no se afirma nada. */
   daysOfData: number;
-  isExample: boolean;
 };
 
 export const MEETING_SLOTS_PER_DAY = 27; // 09 → 18 en franjas de 20 min
@@ -23,9 +22,8 @@ const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }); // YYYY-MM-DD
 const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const LOG_MAX = 8;
 
-// Commits y PRs reales de raw_events. Sin datos de GitHub, cae al día de ejemplo.
-// ponytail: sueño y ánimo de la semana siguen de ejemplo hasta que se conecten a google_health y mood.
-export function getWorkDay(userId: string): WorkDay {
+// Commits y PRs reales de raw_events. Sin datos de GitHub devuelve null → la página muestra estado vacío.
+export function getWorkDay(userId: string): WorkDay | null {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const rows = db
     .select()
@@ -33,7 +31,7 @@ export function getWorkDay(userId: string): WorkDay {
     .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "github"), gte(rawEvents.ts, since)))
     .orderBy(desc(rawEvents.ts))
     .all();
-  if (rows.length === 0) return EXAMPLE_DAY;
+  if (rows.length === 0) return null;
 
   const log: WorkLogEntry[] = [];
   for (const r of rows) {
@@ -50,15 +48,62 @@ export function getWorkDay(userId: string): WorkDay {
   // Últimos 7 días, de hace 6 días a hoy, en hora local.
   const days = Array.from({ length: 7 }, (_, i) => dayKey.format(new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000)));
   const commitsPerDay = days.map((day) => rows.filter((r) => r.kind === "commit" && dayKey.format(new Date(r.ts)) === day).length);
+  const sleepPerDay = sleepWeek(userId, days);
+  const moodPerDay = moodWeek(userId, days);
+
+  // Un día "completo" tiene sueño, commits y ánimo: la correlación solo se afirma con suficientes.
+  const daysOfData = days.filter((_, i) => sleepPerDay[i] > 0 && commitsPerDay[i] > 0 && moodPerDay[i] > 0).length;
 
   return {
-    ...EXAMPLE_DAY,
     log,
     commits: commitsPerDay[6],
     meetingSlots: meetingSlotsToday(userId),
-    week: { ...EXAMPLE_DAY.week, commits: commitsPerDay },
-    isExample: false,
+    week: { sleepMin: sleepPerDay, commits: commitsPerDay, mood: moodPerDay },
+    daysOfData,
   };
+}
+
+/** Minutos de sueño reales por día (0 sin dato), desde google_health. */
+function sleepWeek(userId: string, days: string[]): number[] {
+  const rows = db
+    .select({ json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), gte(rawEvents.ts, new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString())))
+    .all();
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    try {
+      const sleep = (JSON.parse(r.json).sleep ?? {}) as Record<string, unknown>;
+      const interval = (sleep.interval ?? {}) as Record<string, string>;
+      const ss = ((sleep.summary ?? {}) as Record<string, unknown>).stagesSummary as Array<Record<string, string>> | undefined;
+      if (!interval.endTime || !ss?.length) continue;
+      const min = ss.reduce((sum, row) => {
+        const t = String(row.type).toUpperCase();
+        return t === "AWAKE" || t === "WAKE" ? sum : sum + (parseInt(row.minutes ?? "0", 10) || 0);
+      }, 0);
+      const key = dayKey.format(Date.parse(interval.endTime));
+      byDay.set(key, (byDay.get(key) ?? 0) + min);
+    } catch {
+      continue;
+    }
+  }
+  return days.map((d) => byDay.get(d) ?? 0);
+}
+
+/** Último ánimo real por día (0 sin check-in). */
+function moodWeek(userId: string, days: string[]): number[] {
+  const rows = db
+    .select({ ts: rawEvents.ts, json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "mood"), gte(rawEvents.ts, new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString())))
+    .orderBy(rawEvents.ts)
+    .all();
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    const mood = Number((JSON.parse(r.json) as { mood?: unknown }).mood);
+    if (mood > 0) byDay.set(dayKey.format(new Date(r.ts)), mood);
+  }
+  return days.map((d) => byDay.get(d) ?? 0);
 }
 
 const minutesOfDay = (t: number) => {
@@ -81,25 +126,6 @@ function meetingSlotsToday(userId: string): [number, number][] {
     .map((e): [number, number] => [slot(minutesOfDay(Date.parse(e.start))), slot(minutesOfDay(Date.parse(e.end!)) + 19)])
     .filter(([a, b]) => b > a);
 }
-
-const EXAMPLE_DAY: WorkDay = {
-    log: [
-      { type: "commit", time: "14:02", message: "feat: scaffold base", additions: 412, deletions: 0 },
-      { type: "commit", time: "12:30", message: "docs: CLAUDE.md", additions: 88, deletions: 0 },
-      { type: "pr", title: "PR #3 mergeado · 1 review" },
-      { type: "commit", time: "11:15", message: "fix: cookie usuario", additions: 6, deletions: 2 },
-      { type: "commit", time: "10:40", message: "chore: shadcn init", additions: 903, deletions: 0 },
-    ],
-    commits: 9,
-    meetingSlots: [[3, 6], [18, 20]],
-    week: {
-      sleepMin: [402, 431, 352, 470, 410, 440, 432],
-      commits: [6, 5, 3, 11, 4, 7, 9],
-      mood: [3, 3, 2, 5, 3, 4, 4],
-    },
-    daysOfData: 34,
-    isExample: true,
-};
 
 // Exist.io pide 21 días antes de mostrar una correlación; usamos el mismo umbral.
 export const MIN_DAYS_FOR_CORRELATION = 21;
