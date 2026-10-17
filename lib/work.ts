@@ -111,19 +111,32 @@ const minutesOfDay = (t: number) => {
   return h * 60 + m;
 };
 
-// Reuniones de hoy (source "calendar", solo horarios) en franjas de 20 min entre 09 y 18. Sin Calendar conectado: ninguna.
-function meetingSlotsToday(userId: string): [number, number][] {
+export type Meeting = { start: string; end: string; durationMin: number };
+
+// Reuniones de hoy (source "calendar", solo horarios, sin las de todo el día). Sin Calendar conectado: ninguna.
+export function meetingsToday(userId: string): Meeting[] {
   const today = dayKey.format(Date.now());
-  const events = db
+  return db
     .select({ json: rawEvents.json })
     .from(rawEvents)
     .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "calendar"), gte(rawEvents.ts, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())))
+    .orderBy(rawEvents.ts)
     .all()
     .map((r) => JSON.parse(r.json) as { start: string; end: string | null; allDay?: boolean })
-    .filter((e) => !e.allDay && e.end && dayKey.format(Date.parse(e.start)) === today);
+    .filter((e): e is { start: string; end: string; allDay?: boolean } => !e.allDay && !!e.end && dayKey.format(Date.parse(e.start)) === today)
+    .map((e) => ({ start: hhmm.format(Date.parse(e.start)), end: hhmm.format(Date.parse(e.end)), durationMin: Math.round((Date.parse(e.end) - Date.parse(e.start)) / 60000) }));
+}
+
+const toMin = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+
+// Las reuniones de hoy en franjas de 20 min entre 09 y 18.
+export function meetingSlotsToday(userId: string): [number, number][] {
   const slot = (min: number) => Math.min(MEETING_SLOTS_PER_DAY, Math.max(0, Math.floor((min - 9 * 60) / 20)));
-  return events
-    .map((e): [number, number] => [slot(minutesOfDay(Date.parse(e.start))), slot(minutesOfDay(Date.parse(e.end!)) + 19)])
+  return meetingsToday(userId)
+    .map((e): [number, number] => [slot(toMin(e.start)), slot(toMin(e.end) + 19)])
     .filter(([a, b]) => b > a);
 }
 
