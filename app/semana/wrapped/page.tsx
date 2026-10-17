@@ -5,17 +5,19 @@ import { Screen } from "@/components/screen";
 import { ShareButton } from "@/components/share-button";
 import { WrappedSlides } from "@/components/wrapped-slides";
 import { getBuddy } from "@/lib/buddy";
-import { EXAMPLE_WRAPPED as W, type WrappedHighlight } from "@/lib/week";
+import { getCurrentUser } from "@/lib/users";
+import type { WrappedHighlight } from "@/lib/week";
+import { getWrapped } from "@/lib/wrapped";
 
 const LABEL_WIDTH = 13;
 const VALUE_WIDTH = 5;
 const RULE = "─".repeat(29);
 const SLIDE = "glass glass-panel grid min-h-[56dvh] content-between gap-4 rounded-2xl px-5 py-6";
 
-function Highlight({ h }: { h: WrappedHighlight }) {
+function Highlight({ h, week }: { h: WrappedHighlight; week: number }) {
   return (
     <article className={SLIDE}>
-      <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {W.week}</p>
+      <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {week}</p>
       <div className="grid gap-2">
         <p className="font-pixel text-[66px] leading-none tabular-nums" style={{ color: `var(--${h.kind})` }}>{h.big}</p>
         <p className="text-base text-foreground/90">{h.label}</p>
@@ -26,9 +28,10 @@ function Highlight({ h }: { h: WrappedHighlight }) {
   );
 }
 
-// ponytail: Wrapped de ejemplo; Joaco lo arma con datos reales. La imagen compartible (next/og) queda para después.
+// ponytail: la imagen compartible (next/og) queda para después.
 export default async function WrappedPage() {
-  const buddy = await getBuddy();
+  const [buddy, user] = await Promise.all([getBuddy(), getCurrentUser()]);
+  const W = getWrapped(user.id);
   const shareText = [
     `build101 · semana ${W.week}: ${W.archetype.name}`,
     ...W.rows.map((r) => `${r.label.padEnd(LABEL_WIDTH)}${r.value.padStart(VALUE_WIDTH)}  ${r.spark ?? r.note ?? ""}`),
@@ -49,7 +52,7 @@ export default async function WrappedPage() {
         </article>
       ),
     },
-    ...W.highlights.map((h) => ({ id: h.id, content: <Highlight h={h} /> })),
+    ...W.highlights.map((h) => ({ id: h.id, content: <Highlight h={h} week={W.week} /> })),
     {
       id: "resumen",
       content: (
