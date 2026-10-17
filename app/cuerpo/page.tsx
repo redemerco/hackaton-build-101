@@ -6,6 +6,15 @@ import { Panel } from "@/components/glass/panel";
 import { asciiLine, formatDuration, sparkline } from "@/lib/ascii";
 import { getLastNight, minutesByStage } from "@/lib/body";
 import { getCurrentUser } from "@/lib/users";
+import { buttonVariants } from "@/components/ui/button";
+
+function ConnectHealthButton() {
+  return (
+    <a href="/api/health/connect" className={buttonVariants({ variant: "default", size: "lg", className: "w-full" })}>
+      Conectar Google Health
+    </a>
+  );
+}
 
 export default async function CuerpoPage() {
   const user = await getCurrentUser();
@@ -13,6 +22,7 @@ export default async function CuerpoPage() {
     return (
       <>
         <PageHeader title="Cuerpo" subtitle="Funciona sin wearable." />
+        <ConnectHealthButton />
         <EmptyState
           art="(•_•)"
           title="Sin wearable, igual te leemos"
@@ -31,6 +41,7 @@ export default async function CuerpoPage() {
     <>
       <Pulse bpm={night.restingBpm} stress={0.2} />
       <PageHeader title="Cuerpo" subtitle={night.isExample ? "[ejemplo] hasta conectar Google Health" : "Google Health"} />
+      <ConnectHealthButton />
 
       <Panel label="sueño · anoche" meta={`${night.start} → ${night.end}`}>
         <p className="font-mono text-[22px] font-semibold tabular-nums tracking-tight">
