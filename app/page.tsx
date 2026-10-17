@@ -17,7 +17,7 @@ import { contributors, daemonInput, getToday, stressOf, type Contributor } from 
 import { getBuddy } from "@/lib/buddy";
 import { getCross } from "@/lib/cross";
 import type { Detail, Insight, Pending } from "@/lib/insights";
-import { buildMePrompt, ME_FALLBACK } from "@/lib/summary-me";
+import { buildMePrompt, meFallback } from "@/lib/summary-me";
 import { getCurrentUser } from "@/lib/users";
 
 
@@ -161,7 +161,7 @@ export default async function Yo() {
         <CrossChart day={cross.today} nowHour={cross.nowHour} />
       </Panel>
 
-      <Summary label="hoy, en una" src="/api/summary/me" counts={buildMePrompt(user.id, today, cross).counts} fallback={ME_FALLBACK} />
+      <Summary label="hoy, en una" src="/api/summary/me" counts={buildMePrompt(user.id, today, cross).counts} fallback={meFallback(today, cross)} />
 
       <Panel label="cruces con tus datos" meta={`${cross.insights.length} con respaldo`}>
         {cross.insights.length > 0 ? (

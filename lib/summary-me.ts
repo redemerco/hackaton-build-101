@@ -14,7 +14,18 @@ Escribí en español rioplatense, cálido y directo, como un compañero que mira
 - Si un cruce está marcado como hipótesis, decilo ("en tus datos, aunque no hay estudios").
 - Nunca diagnostiques ni nombres enfermedades. Si faltan datos, decilo en media oración.`;
 
-export const ME_FALLBACK = "Sin IA ahora: abajo están tus cruces calculados con tus datos, y el resumen vuelve cuando se reconecte.";
+/** Respaldo sin IA (se rotula "[sin IA]"): los mismos hechos y el cruce más fuerte, armados con plantilla. */
+export function meFallback(today: Today, cross: Cross): string {
+  const commits = cross.today.hours.reduce((n, h) => n + h.commits, 0);
+  const meetingMin = cross.today.hours.reduce((n, h) => n + h.meetingMin, 0);
+  const day = [
+    today.sleepMin !== null ? `Dormiste ${fmtMin(today.sleepMin)}` : null,
+    `llevás ${commits} commit${commits === 1 ? "" : "s"}`,
+    meetingMin ? `${fmtMin(meetingMin)} de reuniones` : null,
+  ].filter(Boolean);
+  const top = cross.insights[0];
+  return `${day.join(", ")}. ${top ? `${top.text} ${top.tryThis}` : "Todavía no hay cruces con datos suficientes."}`;
+}
 
 export function buildMePrompt(userId: string, today: Today, cross: Cross): { system: string; prompt: string; counts: SummaryCount[] } {
   const health = getCachedSummary(userId, "health");
