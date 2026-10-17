@@ -74,7 +74,7 @@ for (const p of PEOPLE) {
     const date = { year: y, month: m, day: d };
 
     // noche que termina ese día a las ~07:15 local; un par de noches malas para que haya movimiento
-    const isBadNight = i % 6 === 2;
+    const isBadNight = i % 4 === 2;
     const asleep = Math.round(jitter(isBadNight ? p.sleepMin - 90 : p.sleepMin, 25));
     const deepRem = Math.round(asleep * jitter(p.deepRem, 0.04));
     const awake = Math.round(jitter(isBadNight ? p.awake + 25 : p.awake, 6));
@@ -117,7 +117,8 @@ for (const p of PEOPLE) {
     // trabajo del día: commits, Slack y reuniones (horarios), más un check-in de ánimo que acompaña a la noche
     const at = (h: number) => midnightUtc + h * 3600_000;
     const isHeavy = i % 4 === 1; // días de muchas reuniones
-    const late = isBadNight ? [23.3, 23.8, 0.6 + 24] : []; // las noches malas vienen de trabajar tarde
+    // las noches malas vienen de trabajar tarde: si la noche que termina mañana (i-1) es mala, hoy se trabaja hasta tarde
+    const late = (i - 1) % 4 === 2 ? [23.3, 23.8, 0.6 + 24] : [];
     const commitHours = [10.2, 11.1, 15.4, 16.2, 17.5, ...late].map((h) => jitter(h, 0.3));
     for (const h of commitHours) {
       const t = at(h);

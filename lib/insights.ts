@@ -25,6 +25,13 @@ const LATE_WORK_MINUTE = 23 * 60;
 const FOCUS_BLOCK_MIN = 120;
 const HEAVY_MEETINGS_MIN = 240;
 
+// cuando el cruce se pudo calcular y no hay nada que avisar, lo decimos así (es una buena noticia, no un hueco)
+const CALM: Record<string, string> = {
+  deuda: "sin deuda de sueño esta semana",
+  regularidad: "horario regular: varía menos de ±45 min",
+  recuperacion: "HRV dentro de tu rango habitual",
+};
+
 const nums = (xs: (number | null)[]) => xs.filter((x): x is number => x !== null && Number.isFinite(x));
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const sd = (xs: number[]) => {
@@ -53,6 +60,7 @@ function compare(pairs: { inA: boolean; value: number }[]): { a: number; b: numb
 export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending: Pending[] } {
   const ready: Insight[] = [];
   const pending: Pending[] = [];
+  const asked: Omit<Pending, "need">[] = [];
   const last = (n: number) => series.slice(-n);
   const nights = nums(series.map((d) => d.sleepMin));
   const baseSleep = nights.length ? mean(nights) : 0;
@@ -60,6 +68,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 1. Deuda de sueño de la semana contra tu media (Van Dongen 2003: la restricción crónica degrada aunque no se sienta).
   {
     const question = "¿Cuánto sueño vengo debiendo esta semana?";
+    asked.push({ id: "deuda", question });
     if (nights.length < MIN_BASE_NIGHTS) pending.push({ id: "deuda", question, need: `faltan ${MIN_BASE_NIGHTS - nights.length} noches` });
     else {
       const week = nums(last(7).map((d) => d.sleepMin));
@@ -80,6 +89,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 2. Noche corta → ánimo de ese día (Triantafillou 2019: sueño → ánimo del día siguiente, normalizado por persona).
   {
     const question = "¿Dormir poco me baja el ánimo?";
+    asked.push({ id: "sueno-animo", question });
     const pairs = series.filter((d) => d.sleepMin !== null && d.mood !== null).map((d) => ({ inA: d.sleepMin! < baseSleep - SHORT_SLEEP_MARGIN, value: d.mood! }));
     const c = pairs.length >= MIN_PAIRS ? compare(pairs) : null;
     if (!c)
@@ -103,6 +113,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 3. Regularidad del horario (Windred 2024 / Phillips 2017: la regularidad pesa tanto o más que la duración).
   {
     const question = "¿Me acuesto en horarios regulares?";
+    asked.push({ id: "regularidad", question });
     const beds = nums(last(14).map((d) => d.bedMinute));
     if (beds.length < 7) pending.push({ id: "regularidad", question, need: `faltan ${7 - beds.length} noches` });
     else {
@@ -123,6 +134,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 4. Trabajar tarde → dormir menos esa noche (Lanaj 2014, indirecto: trabajo nocturno con el celular → menos sueño).
   {
     const question = "¿Los días que trabajo tarde duermo menos?";
+    asked.push({ id: "tarde-sueno", question });
     const pairs = series.slice(0, -1).flatMap((d, i) => {
       const next = series[i + 1];
       return d.lastWorkMinute !== null && next.sleepMin !== null ? [{ inA: d.lastWorkMinute >= LATE_WORK_MINUTE, value: next.sleepMin }] : [];
@@ -150,7 +162,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
         id: "madrugada",
         question: "¿Mis commits de madrugada necesitan otra mirada?",
         text: `Hiciste ${recent} commit${recent > 1 ? "s" : ""} entre las 0 y las 4 h. En proyectos open source los commits de ese horario tuvieron más bugs: quizás valga una revisión con la cabeza fresca.`,
-        basis: `${recent} commits · te pasa ${Math.round(usual * 100)}% de los días`,
+        basis: `${recent} commit${recent > 1 ? "s" : ""} · te pasa ${Math.round(usual * 100)}% de los días`,
         evidence: "Eyolfson, Tan & Lam 2011, MSR (open source)",
         isHypothesis: false,
         weight: 1 + recent / 3,
@@ -160,6 +172,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 6. Foco: bloque libre más largo y ánimo (Meyer et al. 2017/2019: reuniones e interrupciones → peor día percibido).
   {
     const question = "¿Las reuniones me están comiendo el foco?";
+    asked.push({ id: "foco", question });
     const today = series.at(-1);
     const pairs = series.filter((d) => d.longestFreeMin !== null && d.mood !== null).map((d) => ({ inA: d.longestFreeMin! >= FOCUS_BLOCK_MIN, value: d.mood! }));
     const c = compare(pairs);
@@ -179,6 +192,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 7. Reuniones largas → hora de acostarse (hipótesis: no hay paper directo; es un experimento con tus datos).
   {
     const question = "¿Los días de muchas reuniones me acuesto más tarde?";
+    asked.push({ id: "reuniones-sueno", question });
     const pairs = series.slice(0, -1).flatMap((d, i) => {
       const next = series[i + 1];
       return d.longestFreeMin !== null && next.bedMinute !== null ? [{ inA: d.meetingMin >= HEAVY_MEETINGS_MIN, value: next.bedMinute }] : [];
@@ -200,6 +214,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 8. Recuperación: HRV (ln) de 7 días contra tu base (Järvelin-Pasanen 2018; Buchheit 2014: promediar, no un día suelto).
   {
     const question = "¿Mi cuerpo viene cargado?";
+    asked.push({ id: "recuperacion", question });
     const hrv = nums(series.map((d) => d.hrvMs)).map(Math.log);
     if (hrv.length < MIN_HRV_DAYS) pending.push({ id: "recuperacion", question, need: `faltan ${MIN_HRV_DAYS - hrv.length} días de HRV` });
     else {
@@ -221,6 +236,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
   // 9. Moverte y el ánimo (Liao et al. 2015: la actividad física es seguida de más afecto positivo).
   {
     const question = "¿Moverme me mejora el ánimo?";
+    asked.push({ id: "movimiento", question });
     const withBoth = series.filter((d) => d.azm !== null && d.mood !== null);
     const azms = withBoth.map((d) => d.azm!).sort((a, b) => a - b);
     const median = azms.length ? azms[Math.floor(azms.length / 2)] : 0;
@@ -237,6 +253,10 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
       });
     else if (!c) pending.push({ id: "movimiento", question, need: "faltan días con minutos activos y ánimo" });
   }
+
+  // con datos suficientes pero sin un efecto que valga la pena: se dice, en vez de esconderlo o inflarlo
+  const settled = new Set([...ready, ...pending].map((x) => x.id));
+  for (const q of asked) if (!settled.has(q.id)) pending.push({ ...q, need: CALM[q.id] ?? "sin diferencia clara en tus datos (por ahora)" });
 
   return { ready: ready.sort((a, b) => b.weight - a.weight), pending };
 }

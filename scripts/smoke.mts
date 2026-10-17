@@ -111,4 +111,8 @@ const { ready } = crossInsights(dailySeries(rows20, days, false));
 assert.ok(ready.some((r) => r.id === "sueno-animo"), "detecta noche corta → ánimo bajo");
 assert.ok(!ready.some((r) => r.id === "movimiento"), "sin minutos activos no inventa el cruce de movimiento");
 assert.deepEqual(crossInsights(dailySeries([], days, false)).ready, [], "sin datos no hay cruces");
+// un commit a las 00:30 cuenta como trabajo tarde del día ANTERIOR
+const late = dailySeries([ev("github", "commit", "2026-10-02T03:30:00Z")], ["2026-10-01", "2026-10-02"], false);
+assert.ok((late[0].lastWorkMinute ?? 0) >= 23 * 60, "la madrugada es la noche del día anterior");
+assert.equal(late[1].lateCommits, 1);
 console.log("smoke OK");

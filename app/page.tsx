@@ -59,7 +59,7 @@ function PendingRow({ p }: { p: Pending }) {
 }
 
 const MAX_INSIGHTS = 4;
-const MAX_PENDING = 3;
+const MAX_PENDING = 4;
 
 export default async function Yo() {
   const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
@@ -147,7 +147,8 @@ export default async function Yo() {
           <p className="text-[15px] leading-relaxed text-dim">Todavía no hay suficientes días para afirmar nada. Preferimos no inventar: cada cruce aparece recién cuando tus datos lo sostienen.</p>
         )}
         {cross.pending.length > 0 && (
-          <ul className="grid gap-1.5 border-t border-white/10 pt-3" aria-label="Cruces que todavía no tienen datos suficientes">
+          <ul className="grid gap-1.5 border-t border-white/10 pt-3" aria-label="Lo demás que miramos">
+            <li className="font-mono text-[11px] uppercase tracking-[0.08em] text-faint">lo demás que miramos</li>
             {cross.pending.slice(0, MAX_PENDING).map((p) => <PendingRow key={p.id} p={p} />)}
           </ul>
         )}

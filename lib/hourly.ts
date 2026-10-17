@@ -7,6 +7,7 @@ export const TZ_OFFSET_MIN = -180; // Montevideo (sin horario de verano)
 const MIN = 60_000;
 const WORK_START_H = 9;
 const WORK_END_H = 18;
+const LATE_NIGHT_END_MIN = 4 * 60;
 
 /** "YYYY-MM-DD" y minuto del día en hora local. */
 export function local(iso: string | number): { day: string; minute: number } {
@@ -88,7 +89,7 @@ export type DaySeries = {
   azm: number | null;
   commits: number;
   lateCommits: number; // 00:00–04:00
-  lastWorkMinute: number | null; // último commit/mensaje del día (minuto local)
+  lastWorkMinute: number | null; // último commit/mensaje del día (minuto local; 24:30 = 1470 si siguió de madrugada)
   meetingMin: number;
   longestFreeMin: number | null; // bloque más largo sin reuniones entre 9 y 18 (null si no hay Calendar)
   restingBpm: number | null;
@@ -122,13 +123,19 @@ export function dailySeries(rows: RawRow[], days: string[], hasCalendar: boolean
       if (bed >= 0 && bed < 18 * 60) night.bedMinute = night.bedMinute === null ? Math.round(bed) : Math.min(night.bedMinute, Math.round(bed));
       continue;
     }
+    // trabajo de madrugada (00–04) es la "noche" del día anterior: cuenta como 24:xx de ese día
+    const isWork = (r.source === "github" && r.kind === "commit") || r.source === "slack";
+    if (isWork) {
+      const workDay = t.minute < LATE_NIGHT_END_MIN ? at(local(Date.parse(r.ts) - 24 * 60 * MIN).day) : d;
+      const workMinute = t.minute < LATE_NIGHT_END_MIN ? 24 * 60 + t.minute : t.minute;
+      if (workDay) workDay.lastWorkMinute = Math.max(workDay.lastWorkMinute ?? 0, workMinute);
+    }
     if (!d) continue;
     if (r.source === "github" && r.kind === "commit") {
       d.commits++;
-      if (t.minute < 4 * 60) d.lateCommits++;
-      d.lastWorkMinute = Math.max(d.lastWorkMinute ?? 0, t.minute);
+      if (t.minute < LATE_NIGHT_END_MIN) d.lateCommits++;
     } else if (r.source === "slack") {
-      d.lastWorkMinute = Math.max(d.lastWorkMinute ?? 0, t.minute);
+      // solo cuenta para lastWorkMinute (arriba)
     } else if (r.source === "mood" && typeof data.mood === "number") d.mood = data.mood;
     else if (r.source === "google" && r.kind === "azm") d.azm = (d.azm ?? 0) + (Number(((data.activeZoneMinutes ?? {}) as Json).activeZoneMinutes) || 1);
     else if (r.source === "google" && r.kind === "resting_hr") {
