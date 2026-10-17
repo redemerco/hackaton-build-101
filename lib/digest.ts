@@ -31,6 +31,10 @@ function compact(source: string, kind: string, json: string): string {
     if (kind === "issue") return `${d.title} (${d.state})`;
     if (kind === "review") return d.state ?? "";
   }
+  if (source === "linear") {
+    const d = JSON.parse(json);
+    return `${d.identifier} ${d.title} (${d.state?.name})`;
+  }
   return json.length > 500 ? `${json.slice(0, 500)}…` : json;
 }
 
