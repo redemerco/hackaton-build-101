@@ -5,6 +5,21 @@
 **Tuyo**: `app/page.tsx`, `components/glass/tab-bar.tsx`, `lib/today.ts`, `lib/hourly.ts` (nuevo), `lib/summary.ts` (nuevo), `lib/summary-me.ts` (nuevo), `app/api/summary/me/route.ts` (nuevo), `components/summary.tsx` (nuevo), `components/cross-chart.tsx` (nuevo), `lib/ai.ts`, `lib/ranking.ts`, `components/ranking.tsx`, `components/pull-to-sync.tsx`, `components/settings-sheet.tsx`.
 **No tocás**: `app/salud/*` y `lib/body.ts` después del rename (Joaco), `app/trabajo/*` y `lib/agent.ts` (Renzo), `lib/sources/*`, `lib/digest.ts`, `lib/wrapped.ts`.
 
+## Estado (sáb 17-oct, noche)
+
+| # | Tarea | Estado |
+|---|---|---|
+| 1 | Nav Yo · Salud · Trabajo · Semana | ✅ `1547d08` (+ redirects `/cuerpo`, `/comer` → `/salud`) |
+| 2 | `lib/summary.ts` + `components/summary.tsx` + `generateJson` | ✅ `e9e3f5d`. Firma real: `streamSummary({ userId, kind, system, prompt }): Response`, `getCachedSummary(userId, kind)`. Caché verificada (re-tipea `[cache · IA no disponible]`). **Sin verificar con Gemini en vivo** (no hay `GEMINI_API_KEY` local) |
+| 3 | Exportar `dayInputs` / `scoresFor` | ✅ `660d273` |
+| 4 | Yo sin números fijos | ✅ pulso/HRV/sueño de `lib/cross.ts` (`recentVitals`) |
+| 5 | Datos por hora | ✅ `lib/hourly.ts` (`hourlyFor`, `dailySeries`, puro + smoke). La madrugada (00–04) cuenta como noche del día anterior |
+| 6 | Yo: gráfica + resumen + slot | ✅ `components/cross-chart.tsx`, `/api/summary/me`, `<section id="acciones">` (Renzo ya montó el agente) |
+| 7 | Rótulos + pull-to-sync | ✅ `d9e716b` (sync de las 5 fuentes) |
+| extra | Cruces con papers | ✅ `lib/insights.ts`: 9 cruces fijos con umbral de días, efecto mínimo, fuente y "→ probá…". Lo que no da se dice ("sin diferencia clara", "horario regular") |
+| extra | Cerrar sesión | ✅ `4e1ef40` (Ajustes → sesión) |
+| 8–10 | P2 | sin tocar: Salud/Trabajo son de sus dueños; `hasWearable` ya lo resolvió Renzo con la tabla `users` |
+
 ## Tareas
 
 ### P0 — esta noche, antes de las 21:00 (destraba a los otros)
