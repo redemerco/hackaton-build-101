@@ -68,7 +68,7 @@ export function SourceCard({ s }: { s: SourceOverview }) {
   };
 
   const status = isConnected
-    ? { dot: "bg-work", text: `conectado como ${s.account}` }
+    ? { dot: "bg-work", text: s.connect === "login" ? `con tu login de Google · ${s.account}` : `conectado como ${s.account}` }
     : s.connect === "pending"
       ? { dot: "bg-faint", text: `en construcción · ${s.owner}` }
       : !s.configured

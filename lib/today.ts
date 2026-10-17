@@ -3,6 +3,7 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { db, rawEvents } from "@/lib/db";
 import type { DaemonInput } from "@/lib/daemon";
 import type { UserId } from "@/lib/users";
+import { getLastNight } from "@/lib/body";
 
 export type Today = {
   sleepMin: number;
@@ -32,11 +33,18 @@ function todaysMood(userId: UserId): number | null {
   return typeof mood === "number" ? mood : null;
 }
 
-// ponytail: sueño y pulso de ejemplo hasta que Renzo ingeste google_health; el ánimo ya es real.
+// El sueño sale del ingest real de google_health (lib/body) cuando existe; si no, ejemplo.
 export function getToday(userId: UserId): Today {
+  const night = getLastNight(userId);
+  const nightMin = (sm?: Record<string, number>) => (sm ? sm.light + sm.deep + sm.rem : undefined);
+  const realSleep = night.isExample ? undefined : nightMin(night.stageMinutes);
+
+  const exampleWeek = [402, 431, 352, 470, 410, 440, 432];
+  const sleepWeek = realSleep ? [...exampleWeek.slice(0, 6), realSleep] : exampleWeek;
+
   return {
-    sleepMin: 432,
-    sleepWeek: [402, 431, 352, 470, 410, 440, 432],
+    sleepMin: realSleep ?? 432,
+    sleepWeek,
     restingBpm: 58,
     restingTypical: [55, 62],
     hrvMs: 48,
@@ -44,7 +52,7 @@ export function getToday(userId: UserId): Today {
     mood: todaysMood(userId),
     meetings: 2,
     insight: "Los días con una sola reunión hiciste el doble de commits. Hoy tenés dos: buen día para cerrar un PR.",
-    isExample: true,
+    isExample: night.isExample,
   };
 }
 

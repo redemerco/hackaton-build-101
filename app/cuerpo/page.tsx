@@ -24,8 +24,8 @@ export default async function CuerpoPage() {
     );
   }
 
-  const night = getLastNight();
-  const byStage = minutesByStage(night.stages);
+  const night = getLastNight(user.id);
+  const byStage = night.stageMinutes ?? minutesByStage(night.stages);
   const asleep = byStage.light + byStage.deep + byStage.rem;
   const steps = night.stepsByHour.reduce((a, b) => a + b, 0);
   const minBpm = Math.min(...night.hrNight);

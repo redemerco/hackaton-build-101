@@ -1,0 +1,84 @@
+import { getAI, MODEL } from "@/lib/ai";
+import type { MealAnalysis } from "@/lib/meals";
+
+export const maxDuration = 30;
+
+// POST /api/comer/analizar  (body: multipart con campo "photo")
+// Manda la foto a Gemini y devuelve el análisis real de la comida (ítems en gramos + rangos de kcal).
+const SYSTEM = `Sos un nutricionista que estima calorías a partir de una foto de comida.
+Devolvés SOLO un JSON válido, sin texto alrededor, con esta forma exacta:
+{"items":[{"name":"string en español","grams":[min,max],"kcal":[min,max]}],"comment":"una frase corta, útil y sin culpa"}
+Reglas:
+- Un ítem por alimento visible. Nombres en español rioplatense.
+- grams y kcal son rangos [min,max] con ~30% de incertidumbre (la foto no es exacta).
+- No inventes alimentos que no se ven. Si la foto no es comida, devolvé items:[] y un comment aclarándolo.`;
+
+export async function POST(req: Request): Promise<Response> {
+  let bytes: Buffer;
+  let mimeType = "image/jpeg";
+  try {
+    const form = await req.formData();
+    const file = form.get("photo");
+    if (!(file instanceof File)) return Response.json({ error: "Falta la foto" }, { status: 400 });
+    mimeType = file.type || mimeType;
+    bytes = Buffer.from(await file.arrayBuffer());
+  } catch {
+    return Response.json({ error: "Body inválido" }, { status: 400 });
+  }
+
+  try {
+    const res = await generateWithRetry(mimeType, bytes.toString("base64"));
+    const raw = (res.text ?? "").trim();
+    const parsed = JSON.parse(raw) as Partial<MealAnalysis>;
+
+    // Normalización defensiva: garantizamos la forma que la UI espera.
+    const items = Array.isArray(parsed.items)
+      ? parsed.items
+          .filter((it): it is NonNullable<typeof it> => !!it && typeof it.name === "string")
+          .map((it) => ({
+            name: String(it.name),
+            grams: toRange(it.grams),
+            kcal: toRange(it.kcal),
+          }))
+      : [];
+    const comment = typeof parsed.comment === "string" ? [parsed.comment] : parsed.comment ?? [];
+
+    return Response.json({ items, comment } satisfies MealAnalysis);
+  } catch (error) {
+    console.error("[comer/analizar]", error);
+    return Response.json({ error: "No se pudo analizar la foto" }, { status: 502 });
+  }
+}
+
+// Reintenta ante picos transitorios de Gemini (503 UNAVAILABLE / 429). Backoff corto.
+async function generateWithRetry(mimeType: string, dataB64: string, tries = 3) {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await getAI().models.generateContent({
+        model: MODEL,
+        config: { systemInstruction: SYSTEM, responseMimeType: "application/json" },
+        contents: [
+          { role: "user", parts: [
+            { text: "Analizá esta comida." },
+            { inlineData: { mimeType, data: dataB64 } },
+          ] },
+        ],
+      });
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e);
+      const transient = msg.includes("503") || msg.includes("UNAVAILABLE") || msg.includes("429");
+      if (!transient || i === tries - 1) throw e;
+      await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+// Acepta [a,b], número suelto o basura → siempre un rango [min,max] de enteros.
+function toRange(v: unknown): [number, number] {
+  if (Array.isArray(v) && v.length >= 2) return [Math.round(Number(v[0]) || 0), Math.round(Number(v[1]) || 0)];
+  if (typeof v === "number") return [Math.round(v * 0.85), Math.round(v * 1.15)];
+  return [0, 0];
+}

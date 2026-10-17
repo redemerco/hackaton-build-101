@@ -16,6 +16,8 @@ type Config = {
   account: (token: string) => Promise<string>;
   /** Saca el token de la respuesta si no viene arriba de todo (Slack lo anida en `authed_user`). */
   readToken?: (body: Record<string, unknown>) => TokenResponse;
+  /** Params extra para la URL de authorize (Google: offline + consent para traer refresh_token). */
+  extraAuthParams?: Record<string, string>;
 };
 
 export const PROVIDERS: Record<Provider, Config> = {
@@ -63,6 +65,32 @@ export const PROVIDERS: Record<Provider, Config> = {
       return `${me.user}@${me.team}`;
     },
     readToken: (body) => (body.ok ? (body.authed_user as TokenResponse) : { error: String(body.error) }),
+  },
+  google: {
+    authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    // Login de entrada: identifica al usuario (openid/email) y conecta Fitbit (Google Health).
+    // OJO: la Google Health API rechaza el token (403 DISALLOWED_OAUTH_SCOPES) si incluye scopes
+    // que no son de Health, como Calendar. Por eso Calendar NO va acá; iría en un OAuth aparte.
+    scope: [
+      "openid",
+      "email",
+      "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
+      "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
+      "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
+    ].join(" "),
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    // offline + consent: para recibir refresh_token y re-mostrar el consentimiento.
+    // SIN include_granted_scopes: ese parámetro acumulaba scopes viejos (Calendar) y la
+    // Health API rechaza el token si trae scopes que no son de Health (403 DISALLOWED_OAUTH_SCOPES).
+    extraAuthParams: { access_type: "offline", prompt: "consent" },
+    account: async (token) => {
+      const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return (await res.json()).email;
+    },
   },
 };
 
