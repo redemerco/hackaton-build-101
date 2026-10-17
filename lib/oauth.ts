@@ -6,10 +6,14 @@ type Config = {
   authorizeUrl: string;
   tokenUrl: string;
   scope: string;
+  /** Slack pide los permisos de usuario en `user_scope`; el resto en `scope`. */
+  scopeParam?: "scope" | "user_scope";
   clientId?: string;
   clientSecret?: string;
   /** Login o email de la cuenta, para mostrar "conectado como …". */
   account: (token: string) => Promise<string>;
+  /** Saca el token de la respuesta si no viene arriba de todo (Slack lo anida en `authed_user`). */
+  readToken?: (body: Record<string, unknown>) => TokenResponse;
 };
 
 export const PROVIDERS: Record<Provider, Config> = {
@@ -41,6 +45,21 @@ export const PROVIDERS: Record<Provider, Config> = {
       return (await res.json()).data.viewer.email;
     },
   },
+  slack: {
+    authorizeUrl: "https://slack.com/oauth/v2/authorize",
+    tokenUrl: "https://slack.com/api/oauth.v2.access",
+    // Token de usuario, solo búsqueda: contamos mensajes y horarios, jamás leemos el contenido.
+    scope: "search:read",
+    scopeParam: "user_scope",
+    clientId: process.env.SLACK_CLIENT_ID,
+    clientSecret: process.env.SLACK_CLIENT_SECRET,
+    account: async (token) => {
+      const res = await fetch("https://slack.com/api/auth.test", { headers: { Authorization: `Bearer ${token}` } });
+      const me = await res.json();
+      return `${me.user}@${me.team}`;
+    },
+    readToken: (body) => (body.ok ? (body.authed_user as TokenResponse) : { error: String(body.error) }),
+  },
 };
 
 export function isProvider(p: string): p is Provider {
@@ -66,7 +85,8 @@ async function requestToken(p: Provider, params: Record<string, string>): Promis
     headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: cfg.clientId ?? "", client_secret: cfg.clientSecret ?? "", ...params }),
   });
-  const body = (await res.json()) as TokenResponse;
+  const raw = await res.json();
+  const body: TokenResponse = cfg.readToken ? cfg.readToken(raw) : raw;
   if (!res.ok || !body.access_token) throw new Error(`${p} token: ${res.status} ${body.error ?? ""}`);
   return body;
 }

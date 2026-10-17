@@ -43,15 +43,39 @@ export function buildDigestPrompt(userId: string): string {
   const rows = db
     .select()
     .from(rawEvents)
-    .where(and(eq(rawEvents.userId, userId), gte(rawEvents.ts, since), ne(rawEvents.source, "digest")))
+    .where(
+      and(eq(rawEvents.userId, userId), gte(rawEvents.ts, since), ne(rawEvents.source, "digest"), ne(rawEvents.source, "slack")),
+    )
     .orderBy(desc(rawEvents.ts))
     .limit(MAX_EVENTS)
     .all()
     .reverse();
+  const slack = slackPerDay(userId, since);
 
-  if (rows.length === 0) return "No hay datos de esta semana todavía. Decilo en una línea y sugerí conectar fuentes.";
+  if (rows.length === 0 && !slack) return "No hay datos de esta semana todavía. Decilo en una línea y sugerí conectar fuentes.";
   const lines = rows.map((r) => `${fmt.format(new Date(r.ts))} ${r.source}/${r.kind} ${compact(r.source, r.kind, r.json)}`);
-  return `Eventos de los últimos ${DAYS} días (${rows.length}):\n${lines.join("\n")}`;
+  return `Eventos de los últimos ${DAYS} días (${rows.length}):\n${lines.join("\n")}${slack}`;
+}
+
+const day = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Argentina/Buenos_Aires", weekday: "short", day: "2-digit", month: "2-digit" });
+const hour = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" });
+
+// Slack puede ser cientos de mensajes: al prompt va un resumen por día (cuántos, primero, último), nunca contenido.
+function slackPerDay(userId: string, since: string): string {
+  const rows = db
+    .select({ ts: rawEvents.ts })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "slack"), gte(rawEvents.ts, since)))
+    .orderBy(rawEvents.ts)
+    .all();
+  if (rows.length === 0) return "";
+  const byDay = Map.groupBy(rows, (r) => day.format(new Date(r.ts)));
+  const lines = [...byDay].map(([d, msgs]) => {
+    const first = hour.format(new Date(msgs[0].ts));
+    const last = hour.format(new Date(msgs[msgs.length - 1].ts));
+    return `${d} slack: ${msgs.length} mensajes, primero ${first}, último ${last}`;
+  });
+  return `\n\nActividad en Slack por día (solo horarios):\n${lines.join("\n")}`;
 }
 
 // El último digest que salió bien queda guardado: si la IA o el wifi mueren en vivo, se re-reproduce.

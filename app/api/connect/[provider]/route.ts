@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/users";
 
 const STATE_COOKIE = "pulso_oauth_state";
 
-// GET /api/connect/github|linear → redirige al login del proveedor (lo usa el botón "Conectar" de Ajustes).
+// GET /api/connect/github|linear|slack → redirige al login del proveedor (lo usa el botón "Conectar" de Ajustes).
 export async function GET(req: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   if (!isProvider(provider)) return new Response("Proveedor desconocido", { status: 404 });
@@ -20,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   url.search = new URLSearchParams({
     client_id: cfg.clientId,
     redirect_uri: callbackUrl(req, provider),
-    scope: cfg.scope,
+    [cfg.scopeParam ?? "scope"]: cfg.scope,
     state,
     response_type: "code",
   }).toString();
