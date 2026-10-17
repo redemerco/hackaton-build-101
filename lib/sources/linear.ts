@@ -5,7 +5,7 @@ import { freshToken } from "@/lib/oauth";
 import type { UserId } from "@/lib/users";
 
 // Ingest de Linear: cada issue deja hasta 3 eventos (creado, empezado, terminado) → raw_events (source "linear").
-// - usuario conectado por OAuth: sus issues asignados.
+// - usuario conectado por OAuth: los issues que creó o tiene asignados.
 // - respaldo con LINEAR_API_KEY de .env.local: todo el workspace, repartido por email.
 const DAYS = 30;
 
@@ -41,7 +41,8 @@ type Page = { data: { issues: { nodes: Issue[]; pageInfo: { hasNextPage: boolean
 // `authorization`: la API key va SIN "Bearer"; el token OAuth va CON "Bearer".
 async function fetchIssues(authorization: string, onlyMine: boolean): Promise<Issue[]> {
   const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const filter = { updatedAt: { gt: since }, ...(onlyMine && { assignee: { isMe: { eq: true } } }) };
+  const mine = { or: [{ assignee: { isMe: { eq: true } } }, { creator: { isMe: { eq: true } } }] };
+  const filter = { updatedAt: { gt: since }, ...(onlyMine && mine) };
   const issues: Issue[] = [];
   let after: string | null = null;
   do {
@@ -70,7 +71,7 @@ function toRows(issue: Issue, userId: string): RawEventInput[] {
     .map(([kind, ts]) => ({ source: "linear", kind, userId, ts: new Date(ts!).toISOString(), data: issue }));
 }
 
-/** Issues asignados al usuario conectado. Sin conexión no hace nada. */
+/** Issues que creó o tiene asignados el usuario conectado. Sin conexión no hace nada. */
 export async function syncLinearUser(userId: string): Promise<number> {
   const conn = getConnection(userId, "linear");
   if (!conn) return 0;
