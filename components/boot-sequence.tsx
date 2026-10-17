@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mascot } from "@/components/ascii/mascot";
+import { Daemon } from "@/components/daemon/daemon";
 
 export const BOOT_KEY = "b101-booted";
 // Se ejecuta en <head> antes de pintar: si ya booteó en esta sesión, el overlay ni aparece (sin parpadeo).
@@ -36,7 +36,7 @@ export function BootSequence() {
       className="boot fixed inset-0 z-[60] grid place-items-center bg-ink px-6"
     >
       <div className="grid w-full max-w-sm gap-6">
-        <Mascot mood="ok" size="lg" className="boot-mascot justify-self-center" />
+        <Daemon state="enforma" scale={4} className="boot-mascot justify-self-center" />
         <div className="grid gap-1.5 font-mono text-[13px]">
           {LINES.map((line, i) => (
             <p key={line.text} className={`boot-line ${line.className}`} style={{ ["--n" as string]: line.text.length, ["--i" as string]: i }}>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { SPINNER } from "@/lib/ascii";
+import { reactDaemon } from "@/lib/daemon-events";
 
 // Endpoints que se llaman al soltar. Renzo suma acá el sync de Google Health cuando exista.
 const SYNC_ENDPOINTS = ["/api/sync/github"] as const;
@@ -47,6 +48,7 @@ export function PullToSync({ children }: { children: ReactNode }) {
         const isOk = results.some((r) => r.status === "fulfilled" && r.value.ok);
         router.refresh();
         setPhase(isOk ? "done" : "error");
+        reactDaemon(isOk ? { mood: "happy", text: "datos al día. gracias." } : { mood: "sad", text: "no pude sincronizar. probá de nuevo." });
       } catch (error) {
         console.error("[pull-to-sync]", error);
         setPhase("error");

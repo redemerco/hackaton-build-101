@@ -1,7 +1,7 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
-import type { MascotMood } from "@/components/ascii/mascot";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { db, rawEvents } from "@/lib/db";
+import type { DaemonInput } from "@/lib/daemon";
 import type { UserId } from "@/lib/users";
 
 export type Today = {
@@ -48,29 +48,10 @@ export function getToday(userId: UserId): Today {
   };
 }
 
-/** La cara de la mascota sale del sueño y de la carga de reuniones. */
-export function mascotMood({ sleepMin, meetings }: Pick<Today, "sleepMin" | "meetings">): MascotMood {
-  if (sleepMin < 300 || meetings >= 6) return "fried";
-  if (sleepMin < 390) return "tired";
-  if (sleepMin >= 450 && meetings === 0) return "streak";
-  return "ok";
-}
-
 /** 0..1: cuánto "tiembla" el fondo. */
 export function stressOf({ sleepMin, meetings }: Pick<Today, "sleepMin" | "meetings">): number {
   const sleepDebt = Math.max(0, Math.min(1, (450 - sleepMin) / 240));
   return Math.min(1, 0.15 + sleepDebt * 0.6 + Math.min(meetings, 8) * 0.04);
-}
-
-export type DayBand = { label: string; tone: "mood" | "work" | "food" | "heart" };
-
-/** Una palabra para el día (patrón Oura/WHOOP: un estado con nombre, explicado por sus "por qué"). */
-export function dayBand(today: Pick<Today, "sleepMin" | "meetings">): DayBand {
-  const stress = stressOf(today);
-  if (stress < 0.3) return { label: "En forma", tone: "mood" };
-  if (stress < 0.5) return { label: "Bien", tone: "work" };
-  if (stress < 0.7) return { label: "Regular", tone: "food" };
-  return { label: "Ojo", tone: "heart" };
 }
 
 export type Contributor = { label: string; value: string; vs: string; trend: "up" | "down" | "flat"; isGood: boolean };
@@ -88,11 +69,53 @@ export function contributors(today: Today): Contributor[] {
   ];
 }
 
-export function logLine(today: Pick<Today, "sleepMin" | "meetings">, sleepText: string): { tag: "ok" | "warn"; text: string } {
-  const mood = mascotMood(today);
-  if (today.meetings >= 6) return { tag: "warn", text: `${today.meetings} reuniones hoy. el código va a tener que esperar.` };
-  if (mood === "fried") return { tag: "warn", text: `${sleepText} de sueño detectadas. desplegando café…` };
-  if (mood === "tired") return { tag: "warn", text: `dormiste ${sleepText}. hoy, una tarea por vez.` };
-  if (mood === "streak") return { tag: "ok", text: `dormiste ${sleepText}: eso también cuenta. 0 reuniones, modo bestia.` };
-  return { tag: "ok", text: `dormiste ${sleepText}. hay hueco para foco hasta las 11.` };
+const TZ = "America/Montevideo";
+const hourIn = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" });
+const hhmmIn = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const LATE_FROM_HOUR = 1;
+const LATE_TO_HOUR = 5;
+const LOOKBACK_MS = 20 * 60 * 60 * 1000;
+
+/** Último commit de anoche entre la 1 y las 5 (hora de Uruguay), desde el GitHub real. */
+function lateCommitAt(userId: UserId, now: Date): string | null {
+  const since = new Date(now.getTime() - LOOKBACK_MS).toISOString();
+  const rows = db
+    .select({ ts: rawEvents.ts })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "github"), eq(rawEvents.kind, "commit"), gte(rawEvents.ts, since)))
+    .orderBy(desc(rawEvents.ts))
+    .all();
+  const late = rows.find((r) => {
+    const h = Number(hourIn.format(new Date(r.ts)));
+    return h >= LATE_FROM_HOUR && h < LATE_TO_HOUR;
+  });
+  return late ? hhmmIn.format(new Date(late.ts)) : null;
+}
+
+/** Minutos desde la última comida guardada (raw_events source "meal"), o null. */
+function mealMinutesAgo(userId: UserId, now: Date): number | null {
+  const row = db
+    .select({ ts: rawEvents.ts })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "meal")))
+    .orderBy(desc(rawEvents.ts))
+    .get();
+  return row ? Math.round((now.getTime() - new Date(row.ts).getTime()) / 60000) : null;
+}
+
+/** Todo lo que el daemon necesita para elegir su estado. */
+export function daemonInput(today: Today, userId: UserId, now = new Date()): DaemonInput {
+  const avgSleepMin = Math.round(today.sleepWeek.reduce((a, b) => a + b, 0) / today.sleepWeek.length);
+  let goodNightsStreak = 0;
+  for (let i = today.sleepWeek.length - 1; i >= 0 && today.sleepWeek[i] >= avgSleepMin; i--) goodNightsStreak++;
+  return {
+    sleepMin: today.sleepMin,
+    avgSleepMin,
+    meetings: today.meetings,
+    mood: today.mood,
+    lateCommitAt: lateCommitAt(userId, now),
+    mealMinutesAgo: mealMinutesAgo(userId, now),
+    goodNightsStreak,
+    hour: Number(hourIn.format(now)),
+  };
 }

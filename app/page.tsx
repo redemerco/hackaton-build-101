@@ -1,14 +1,16 @@
 import { Pulse } from "@/components/ascii/ascii-field";
 import { Count, DurationCount } from "@/components/ascii/count";
-import { Mascot } from "@/components/ascii/mascot";
 import { StreamText } from "@/components/ascii/stream-text";
 import { Panel } from "@/components/glass/panel";
+import { Daemon } from "@/components/daemon/daemon";
+import { DaemonSpeech } from "@/components/daemon/daemon-speech";
 import { MoodCheckin } from "@/components/mood-checkin";
 import { NudgeBanner } from "@/components/nudge-banner";
 import { Screen } from "@/components/screen";
 import { StatCard } from "@/components/stat-card";
 import { formatDuration, sparkline } from "@/lib/ascii";
-import { contributors, dayBand, getToday, logLine, mascotMood, stressOf, type Contributor } from "@/lib/today";
+import { deriveState, linesFor, STATES } from "@/lib/daemon";
+import { contributors, daemonInput, getToday, stressOf, type Contributor } from "@/lib/today";
 import { getCurrentUser } from "@/lib/users";
 
 // ponytail: nudge fijo de ejemplo; Joaco lo reemplaza por el que calcula de calendar + actividad.
@@ -32,8 +34,9 @@ function ContributorRow({ c }: { c: Contributor }) {
 export default async function Hoy() {
   const user = await getCurrentUser();
   const today = getToday(user.id);
-  const log = logLine(today, formatDuration(today.sleepMin));
-  const band = dayBand(today);
+  const input = daemonInput(today, user.id);
+  const state = deriveState(input);
+  const spec = STATES[state];
 
   return (
     <Screen>
@@ -41,13 +44,14 @@ export default async function Hoy() {
       <h1 className="sr-only">Hoy, {user.name}</h1>
 
       <Panel className="gap-4">
-        <div className="grid grid-cols-[auto_1fr] items-center gap-4">
-          <Mascot mood={mascotMood(today)} size="lg" />
-          <div className="grid gap-1.5">
-            <p className="font-pixel text-[22px] leading-none" style={{ color: `var(--${band.tone})` }}>{band.label}</p>
-            <p className="font-mono text-[13px] leading-snug text-foreground/90">
-              <span className={log.tag === "warn" ? "text-heart" : "text-mood"}>[{log.tag}]</span> {log.text}
+        <div className="grid grid-cols-[auto_1fr] items-center gap-3">
+          <Daemon state={state} bpm={today.restingBpm} isInteractive className="-my-2 -ml-2" />
+          <div className="grid min-w-0 gap-2">
+            <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="font-pixel text-[22px] leading-none" style={{ color: `var(--${spec.tone})` }}>{spec.title}</span>
+              <span className="rounded-full bg-white/[.07] px-2 py-0.5 font-mono text-[11px] text-dim">● {spec.process}</span>
             </p>
+            <DaemonSpeech lines={linesFor(state, input)} tone={spec.tone} />
           </div>
         </div>
         <ul aria-label="Por qué" className="grid gap-2 border-t border-white/10 pt-3">

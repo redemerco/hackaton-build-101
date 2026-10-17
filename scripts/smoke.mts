@@ -28,4 +28,25 @@ const half = scaleItem({ name: "x", grams: [100, 150], kcal: [200, 300] }, 0.5);
 assert.deepEqual(half.kcal, [100, 150]);
 assert.deepEqual(totalKcal([half, { kcal: [10, 20] }]), [110, 170]);
 
+const baseDay = { sleepMin: 432, avgSleepMin: 420, meetings: 2, mood: 4, lateCommitAt: null, mealMinutesAgo: null, goodNightsStreak: 1, hour: 15 };
+// daemon: cada estado y cada cara compone una grilla de 40×40 sin desarmarse
+const daemon = await import("../lib/daemon.ts");
+for (const st of Object.keys(daemon.STATES) as (keyof typeof daemon.STATES)[]) {
+  for (const eyes of [undefined, "blink", "wide", "happy"] as const) {
+    const rows = daemon.composeBody(st, { eyes });
+    assert.equal(rows.length, 40);
+    assert.ok(rows.every((r) => r.length === 40), `${st}/${eyes} desarmado`);
+  }
+  assert.ok(daemon.linesFor(st, baseDay).length > 0, `${st} sin frases`);
+}
+assert.ok(daemon.toRuns(daemon.composeBody("enforma")).length > 50);
+// prioridad: lo urgente gana
+assert.equal(daemon.deriveState({ ...baseDay, hour: 3 }), "durmiendo");
+assert.equal(daemon.deriveState({ ...baseDay, sleepMin: 250 }), "fundido");
+assert.equal(daemon.deriveState({ ...baseDay, lateCommitAt: "02:14" }), "buho");
+assert.equal(daemon.deriveState({ ...baseDay, meetings: 4 }), "reunionitis");
+assert.equal(daemon.deriveState({ ...baseDay, mood: 2 }), "cansado");
+assert.equal(daemon.deriveState({ ...baseDay, mealMinutesAgo: 10 }), "comiendo");
+assert.equal(daemon.deriveState(baseDay), "enforma");
+
 console.log("smoke OK");

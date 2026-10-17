@@ -309,3 +309,35 @@ dialog[data-sheet][data-state="closing"]::backdrop { opacity: 0; transition: opa
 /* Flash de obturador al elegir la foto: solo opacity, 260ms. */
 @keyframes camera-flash { from { opacity: 0.85; } to { opacity: 0; visibility: hidden; } }
 .camera-flash { position: fixed; inset: 0; z-index: 70; background: #fff; pointer-events: none; animation: camera-flash 260ms ease-out forwards; }
+
+/* ---------- daemon (components/daemon) ---------- */
+/* Respira en 2 cuadros con salto de 1 píxel entero (idle clásico de pixel art): nunca queda borroso. */
+@keyframes daemon-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
+.daemon-breath { animation: daemon-breathe 4s steps(1, end) infinite; }
+/* Accesorios: cada uno con su vida propia, también en saltos de píxel. */
+@keyframes daemon-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes daemon-float { 0% { transform: translateY(1px); opacity: 0.4; } 50% { opacity: 1; } 100% { transform: translateY(-2px); opacity: 0; } }
+@keyframes daemon-wave { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1px); } }
+@keyframes daemon-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+@keyframes daemon-drip { 0% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(3px); opacity: 1; } 100% { transform: translateY(3px); opacity: 0; } }
+.daemon-acc-sparkle, .daemon-acc-stars { animation: daemon-twinkle 1.2s steps(1, end) infinite; }
+.daemon-acc-zz { animation: daemon-float 2.4s steps(4, end) infinite; }
+.daemon-acc-steam { animation: daemon-wave 0.5s steps(1, end) infinite; }
+.daemon-acc-note, .daemon-acc-dots { animation: daemon-hop 0.9s steps(1, end) infinite; }
+.daemon-acc-drop { animation: daemon-drip 1.8s steps(3, end) infinite; }
+.daemon-acc-moon { animation: daemon-twinkle 3s steps(1, end) infinite; }
+/* Reacción: se aplasta y rebota (se re-monta en cada reacción para que la animación vuelva a correr). */
+@keyframes daemon-squash {
+  0% { transform: scale(1, 1); }
+  25% { transform: scale(1.12, 0.86); }
+  55% { transform: scale(0.94, 1.08); }
+  100% { transform: scale(1, 1); }
+}
+.daemon-bounce { transform-origin: 50% 90%; animation: daemon-squash 460ms var(--spring) both; }
+/* Globito con cola hacia el daemon */
+.daemon-bubble { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bubble-tone) 35%, transparent); }
+.daemon-bubble::before {
+  content: ""; position: absolute; left: -6px; top: 14px; width: 10px; height: 10px; transform: rotate(45deg);
+  background: inherit; border-left: 1px solid color-mix(in srgb, var(--bubble-tone) 35%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--bubble-tone) 35%, transparent);
+}

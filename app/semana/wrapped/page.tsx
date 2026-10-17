@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Pulse } from "@/components/ascii/ascii-field";
-import { Mascot } from "@/components/ascii/mascot";
+import { Daemon } from "@/components/daemon/daemon";
 import { Screen } from "@/components/screen";
 import { ShareButton } from "@/components/share-button";
 import { WrappedSlides } from "@/components/wrapped-slides";
@@ -40,7 +40,7 @@ export default function WrappedPage() {
         <article className={SLIDE}>
           <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {W.week} · esta semana fuiste</p>
           <div className="grid justify-items-start gap-4">
-            <Mascot mood="ok" size="lg" />
+            <Daemon state="racha" scale={3} />
             <h1 className="font-pixel text-[33px] leading-none text-mood">{W.archetype.name}</h1>
           </div>
           <p className="text-[15px] leading-relaxed text-foreground/90">{W.archetype.why}.</p>

@@ -7,6 +7,7 @@ import { Decode } from "@/components/ascii/count";
 import { Spinner } from "@/components/ascii/spinner";
 import { StreamText } from "@/components/ascii/stream-text";
 import { Sheet } from "@/components/glass/sheet";
+import { reactDaemon } from "@/lib/daemon-events";
 import { EXAMPLE_ANALYSIS, formatRange, scaleItem, totalKcal, type MealAnalysis } from "@/lib/meals";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -74,7 +75,11 @@ export function MealCamera() {
             </span>
           </div>
         )}
-        {isScanned && <MealResult analysis={analysis} onSave={() => { toast("[meal] guardada"); close(); }} />}
+        {isScanned && <MealResult analysis={analysis} onSave={() => {
+          toast("[meal] guardada");
+          reactDaemon({ mood: "happy", text: "comida anotada. buen provecho." });
+          close();
+        }} />}
       </Sheet>
     </>
   );

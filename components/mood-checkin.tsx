@@ -6,6 +6,7 @@ import { saveMood } from "@/app/actions/mood";
 import { Sheet } from "@/components/glass/sheet";
 import { STAT_CARD, STAT_HINT, STAT_LABEL } from "@/components/stat-card";
 import { MOODS, moodFace } from "@/lib/ascii";
+import { reactDaemon } from "@/lib/daemon-events";
 import { cn } from "@/lib/utils";
 
 /** El vital de ánimo en Hoy: al tocarlo abre la hoja con las 5 caras. Un toque guarda. */
@@ -20,6 +21,11 @@ export function MoodCheckin({ mood }: { mood: number | null }) {
       try {
         await saveMood(value);
         toast(`[mood] ${value}/5 guardado`);
+        reactDaemon(value >= 4
+          ? { mood: "happy", text: `ánimo ${value}/5. anotado, me alegro.` }
+          : value <= 2
+            ? { mood: "sad", text: `ánimo ${value}/5. anotado. hoy vamos despacio.` }
+            : { mood: "surprised", text: `ánimo ${value}/5. anotado.` });
         setIsOpen(false);
       } catch (error) {
         console.error("[mood]", error);
