@@ -1,6 +1,6 @@
 import "server-only";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
-import { getAI, MODEL } from "@/lib/ai";
+import { generateJson } from "@/lib/ai";
 import { formatDuration } from "@/lib/ascii";
 import { getConnection } from "@/lib/connections";
 import { db, insertRawEvents, rawEvents } from "@/lib/db";
@@ -72,7 +72,7 @@ function meetingsToday(userId: string, now: number): Meeting[] {
   return [...byId.values()].sort((a, b) => a.start - b.start);
 }
 
-// TODO: pasar a getHourly de lib/hourly.ts cuando Santi lo suba. Mientras, commits por hora local de los últimos 14 días.
+// Commits por hora local, acumulados en los últimos 14 días (lib/hourly.ts arma un día por vez, no el acumulado).
 function commitsByHour(userId: string, now: number): number[] {
   const rows = db
     .select({ ts: rawEvents.ts })
@@ -197,16 +197,6 @@ function buildPrompt(inp: Inputs): string {
   return lines.join("\n");
 }
 
-// TODO: pasar a generateJson de lib/ai.ts cuando Santi lo suba.
-async function generateJsonLocal<T>(system: string, prompt: string): Promise<T> {
-  const res = await getAI().models.generateContent({
-    model: MODEL,
-    contents: prompt,
-    config: { systemInstruction: system, responseMimeType: "application/json" },
-  });
-  return JSON.parse(res.text ?? "null") as T;
-}
-
 /** Sin IA: la reunión más próxima al pico de commits va justo después del pico; sin reuniones, el nudge. Rótulo [ejemplo]. */
 function deterministic(inp: Inputs): AgentAction[] {
   const lead = inp.sleepMin !== null ? `Dormiste ${formatDuration(inp.sleepMin)} y tu pico` : "Tu pico";
@@ -266,7 +256,7 @@ function cachedProposal(userId: string, inp: Inputs): AgentAction[] | null {
 export async function proposeActions(userId: string, now = Date.now()): Promise<Proposal> {
   const inp = gatherInputs(userId, now);
   try {
-    const raw = await generateJsonLocal<unknown>(SYSTEM, buildPrompt(inp));
+    const raw = await generateJson<unknown>({ contents: buildPrompt(inp), config: { systemInstruction: SYSTEM } });
     return { actions: validate(raw, inp), origin: "ia" };
   } catch (error) {
     console.error("[agent] la IA no propuso, cae a cache/ejemplo", error);
