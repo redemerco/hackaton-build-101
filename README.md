@@ -11,7 +11,7 @@ Hackatón Build 101
 
 ```bash
 npm install
-cp .env.example .env.local      # completar keys; VAPID: npx web-push generate-vapid-keys
+cp .env.example .env.local      # completar keys (GEMINI_API_KEY: aistudio.google.com/apikey); VAPID: npx web-push generate-vapid-keys
 npm run dev                     # http://localhost:3000
 npm run smoke                   # chequeo rápido de la DB
 ```
@@ -27,7 +27,7 @@ npm run smoke                   # chequeo rápido de la DB
 | `lib/db.ts` | `db` (Drizzle), tablas `rawEvents` / `pushSubscriptions`, `insertRawEvents(rows): number` (idempotente por `user_id+source+kind+ts`) |
 | `lib/users.ts` | `getCurrentUser()` (server, lee cookie `pulso_user`, default santi), `USERS`, `isUserId`, `type UserId` |
 | `lib/user-list.ts` | lo mismo sin `server-only`, para componentes cliente |
-| `lib/claude.ts` | `MODEL` (`claude-sonnet-5-5`), `getClaude()`, `streamText(params): ReadableStream` → `return new Response(streamText({...}))` |
+| `lib/ai.ts` | Gemini: `MODEL` (`gemini-flash-latest`), `getAI()`, `streamText({ contents, config? }): ReadableStream` → `return new Response(streamText({...}))`. Imágenes: partes `{ inlineData: { mimeType, data } }` |
 | `lib/push.ts` | `sendPush(userId, { title, body, url? })` → `{ sent, removed }`, `saveSubscription` |
 | `components/` | `PageHeader`, `EmptyState`, `StatCard`, `ui/*` (shadcn: button, card, badge, skeleton, sonner, select) |
 
