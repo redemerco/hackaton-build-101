@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { publicOrigin } from "../_origin";
+import { publicOrigin } from "@/lib/public-origin";
 
 // GET /api/health/callback → Google vuelve acá con ?code=... (o ?error=...).
 // Canjea el code por tokens para confirmar que el login anduvo.

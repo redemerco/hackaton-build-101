@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 // Calcula el origin público real de la app.
 // Detrás de cloudflared, req.url trae el origin interno (http://localhost:3228),
-// que NO coincide con el redirect_uri registrado en Google. Por eso:
+// que NO coincide con el redirect_uri registrado en el proveedor OAuth. Por eso:
 //   1) PULSO_PUBLIC_URL si está seteada (lo más confiable)
 //   2) headers X-Forwarded-Proto / X-Forwarded-Host que agrega el proxy
 //   3) fallback al origin del request

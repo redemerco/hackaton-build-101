@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { publicOrigin } from "../_origin";
+import { publicOrigin } from "@/lib/public-origin";
 
 // Scopes mínimos para probar el login de Google Health + Calendar.
 const SCOPES = [

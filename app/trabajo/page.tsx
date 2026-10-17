@@ -3,8 +3,17 @@ import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
 import { formatDuration, sparkline } from "@/lib/ascii";
 import { getWorkDay, MEETING_SLOTS_PER_DAY, meetingMinutes, type WorkLogEntry } from "@/lib/work";
+import { buttonVariants } from "@/components/ui/button";
 
 const MESSAGE_WIDTH = 21;
+
+function ConnectSlackButton() {
+  return (
+    <a href="/api/slack/connect" className={buttonVariants({ variant: "default", size: "lg", className: "w-full" })}>
+      Conectar Slack
+    </a>
+  );
+}
 
 function LogLine({ entry }: { entry: WorkLogEntry }) {
   if (entry.type === "pr") {
@@ -33,6 +42,7 @@ export default function TrabajoPage() {
     <>
       <Pulse bpm={60} stress={0.35} />
       <PageHeader title="Trabajo" subtitle={day.isExample ? "[ejemplo] hasta conectar GitHub, Linear y Calendar" : "GitHub · Linear · Calendar"} />
+      <ConnectSlackButton />
 
       <Panel label="git log · hoy" meta={`${day.commits} commits`}>
         <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-[10.5px] leading-[1.55]">
