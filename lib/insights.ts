@@ -11,9 +11,12 @@ export type Insight = {
   basis: string; // "12 vs 18 días"
   evidence: string; // paper, o "hipótesis tuya: sin estudios directos"
   isHypothesis: boolean;
+  detail?: Detail; // los días de cada grupo ("ver los días")
   tryThis: string; // una prueba chica que la persona controla (lo que vuelve útil a un insight)
   weight: number; // para ordenar: tamaño del efecto relativo a tu variación
 };
+
+export type Detail = { aLabel: string; bLabel: string; a: number[]; b: number[]; unit: "min" | "ánimo" | "hora" };
 
 export type Pending = { id: string; question: string; need: string };
 
@@ -50,12 +53,17 @@ const clock = (minuteFrom18: number) => {
 };
 
 /** Compara `metric` entre los días que cumplen `inA` y los que no. null si algún grupo tiene menos de 5 días. */
-function compare(pairs: { inA: boolean; value: number }[]): { a: number; b: number; na: number; nb: number; spread: number } | null {
+type Compared = { a: number; b: number; na: number; nb: number; spread: number; A: number[]; B: number[] };
+
+function compare(pairs: { inA: boolean; value: number }[]): Compared | null {
   const A = pairs.filter((p) => p.inA).map((p) => p.value);
   const B = pairs.filter((p) => !p.inA).map((p) => p.value);
   if (A.length < MIN_PER_GROUP || B.length < MIN_PER_GROUP) return null;
-  return { a: mean(A), b: mean(B), na: A.length, nb: B.length, spread: sd([...A, ...B]) || 1 };
+  return { a: mean(A), b: mean(B), na: A.length, nb: B.length, spread: sd([...A, ...B]) || 1, A, B };
 }
+
+/** Los valores crudos de cada grupo, para que cualquiera (el jurado) pueda verificar el cruce a mano. */
+const detail = (c: Compared, aLabel: string, bLabel: string, unit: Detail["unit"]): Detail => ({ aLabel, bLabel, a: c.A, b: c.B, unit });
 
 /** Los cruces que tienen datos suficientes (ordenados por peso) y los que todavía no, con cuánto falta. */
 export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending: Pending[] } {
@@ -103,6 +111,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     else if (Math.abs(c.a - c.b) >= 0.4)
       ready.push({
         id: "sueno-animo",
+        detail: detail(c, "después de noche corta", "el resto", "ánimo"),
         tryThis: "La próxima noche corta, anotá el ánimo igual: así vemos si el patrón se sostiene.",
         question,
         text: `Los días después de dormir 1 h menos que tu media tu ánimo promedia ${fmtMood(c.a)}, contra ${fmtMood(c.b)} el resto.`,
@@ -148,6 +157,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     else if (c.b - c.a >= 20)
       ready.push({
         id: "tarde-sueno",
+        detail: detail(c, "trabajo después de las 23 h", "el resto", "min"),
         tryThis: "Probá cortar a las 22:30 tres noches y comparamos con las otras.",
         question,
         text: `Las noches que tu último commit o mensaje fue después de las 23 h dormiste ${fmtMin(c.b - c.a)} menos que las otras.`,
@@ -185,6 +195,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (c && c.a - c.b >= 0.4)
       ready.push({
         id: "foco",
+        detail: detail(c, "con bloque de 2 h", "sin bloque de 2 h", "ánimo"),
         tryThis: "Reservá mañana un bloque de 2 h sin reuniones y hacé el check-in a la tarde.",
         question,
         text: `Tus días con al menos un bloque de 2 h sin reuniones promedian ${fmtMood(c.a)} de ánimo, contra ${fmtMood(c.b)} los otros.${today?.longestFreeMin != null ? ` Hoy tu bloque libre más largo es de ${fmtMin(today.longestFreeMin)}.` : ""}`,
@@ -208,6 +219,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (c && c.a - c.b >= 20)
       ready.push({
         id: "reuniones-sueno",
+        detail: detail(c, "más de 4 h de reunión", "el resto", "hora"),
         tryThis: "El próximo día pesado de reuniones, poné una alarma para cortar a las 22:30.",
         question,
         text: `Los días con más de 4 h de reunión te acostaste ${fmtMin(c.a - c.b)} más tarde que los otros.`,
@@ -253,6 +265,7 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (c && c.a - c.b >= 0.4)
       ready.push({
         id: "movimiento",
+        detail: detail(c, "más activos", "menos activos", "ánimo"),
         tryThis: "Probá 20 min activos tres días seguidos y mirá tu ánimo esos días.",
         question,
         text: `Los días que superás ${median} min en zona activa tu ánimo promedia ${fmtMood(c.a)}, contra ${fmtMood(c.b)} los otros.`,

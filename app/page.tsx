@@ -16,7 +16,7 @@ import { deriveState, linesFor, STATES } from "@/lib/daemon";
 import { contributors, daemonInput, getToday, stressOf, type Contributor } from "@/lib/today";
 import { getBuddy } from "@/lib/buddy";
 import { getCross } from "@/lib/cross";
-import type { Insight, Pending } from "@/lib/insights";
+import type { Detail, Insight, Pending } from "@/lib/insights";
 import { buildMePrompt, ME_FALLBACK } from "@/lib/summary-me";
 import { getCurrentUser } from "@/lib/users";
 
@@ -36,6 +36,33 @@ function ContributorRow({ c }: { c: Contributor }) {
   );
 }
 
+// bedMinute viene en minutos desde las 18:00 de la víspera
+const fromSix = (m: number) => {
+  const t = (Math.round(m) + 18 * 60) % (24 * 60);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+};
+const FMT: Record<Detail["unit"], (v: number) => string> = { min: (v) => formatDuration(Math.round(v)), ánimo: (v) => String(v), hora: fromSix };
+
+function DetailRows({ d }: { d: Detail }) {
+  const row = (label: string, values: number[]) => (
+    <p className="grid gap-0.5">
+      <span className="text-dim">{label} ({values.length})</span>
+      <span className="flex flex-wrap gap-x-2 text-foreground/80">
+        {values.map((v, k) => <span key={k} className="whitespace-nowrap tabular-nums">{FMT[d.unit](v)}</span>)}
+      </span>
+    </p>
+  );
+  return (
+    <details className="group font-mono text-[11px] leading-relaxed">
+      <summary className="cursor-pointer list-none text-faint group-open:text-dim">ver los días ▾</summary>
+      <div className="mt-1.5 grid gap-1.5">
+        {row(d.aLabel, d.a)}
+        {row(d.bLabel, d.b)}
+      </div>
+    </details>
+  );
+}
+
 function InsightRow({ i }: { i: Insight }) {
   return (
     <li className="grid gap-1 border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
@@ -45,6 +72,7 @@ function InsightRow({ i }: { i: Insight }) {
       <p className="font-mono text-[11px] text-faint">
         {i.basis} · {i.isHypothesis ? <span className="text-mood">{i.evidence}</span> : i.evidence}
       </p>
+      {i.detail && <DetailRows d={i.detail} />}
     </li>
   );
 }
