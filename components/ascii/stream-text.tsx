@@ -82,7 +82,7 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className, 
       if (!src) return typeFallback();
       readStream(src).catch((error) => {
         if (abort.signal.aborted) return;
-        console.error("[stream-text] falló, uso el respaldo", error);
+        console.warn("[stream-text] falló, uso el respaldo", error);
         if (!isCancelled) typeFallback();
       });
     }, 0));

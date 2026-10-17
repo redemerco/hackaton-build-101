@@ -64,7 +64,7 @@ export default async function Hoy() {
         <StatCard
           label="pulso"
           value={<Count value={today.restingBpm} />}
-          hint={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> {today.hrvMs}ms</span>}
+          hint={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> bpm</span>}
         />
         <MoodCheckin mood={today.mood} />
       </div>

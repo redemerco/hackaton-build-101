@@ -5,6 +5,7 @@ import { Screen } from "@/components/screen";
 import { ShareButton } from "@/components/share-button";
 import { WrappedSlides } from "@/components/wrapped-slides";
 import { getBuddy } from "@/lib/buddy";
+import type { DaemonState } from "@/lib/daemon";
 import { getCurrentUser } from "@/lib/users";
 import type { WrappedHighlight } from "@/lib/week";
 import { getWrapped } from "@/lib/wrapped";
@@ -12,6 +13,14 @@ import { getWrapped } from "@/lib/wrapped";
 const LABEL_WIDTH = 13;
 const VALUE_WIDTH = 5;
 const RULE = "─".repeat(29);
+// La cara del compañero acompaña al arquetipo (los nombres salen de lib/wrapped.ts).
+const ARCHETYPE_FACE: Record<string, DaemonState> = {
+  "Búho de merges": "buho",
+  "Hilo infinito": "cansado",
+  "Agenda llena": "reunionitis",
+  "Cierra-tickets": "racha",
+  "Ritmo constante": "enforma",
+};
 const SLIDE = "glass glass-panel grid min-h-[56dvh] content-between gap-4 rounded-2xl px-5 py-6";
 
 function Highlight({ h, week }: { h: WrappedHighlight; week: number }) {
@@ -45,7 +54,7 @@ export default async function WrappedPage() {
         <article className={SLIDE}>
           <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {W.week} · esta semana fuiste</p>
           <div className="grid justify-items-start gap-4">
-            <Daemon state="racha" buddy={buddy} scale={3} />
+            <Daemon state={ARCHETYPE_FACE[W.archetype.name] ?? "racha"} buddy={buddy} scale={3} />
             <h1 className="font-pixel text-[33px] leading-none text-mood">{W.archetype.name}</h1>
           </div>
           <p className="text-[15px] leading-relaxed text-foreground/90">{W.archetype.why}.</p>

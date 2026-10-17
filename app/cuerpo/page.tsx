@@ -5,7 +5,9 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Panel } from "@/components/glass/panel";
 import { Screen } from "@/components/screen";
-import { asciiLine, formatDuration, sparkline } from "@/lib/ascii";
+import { asciiLine, fitMonoFontSize, formatDuration, sparkline } from "@/lib/ascii";
+
+const STEPS_TRACKING_EM = 0.35;
 import { getLastNight, minutesByStage } from "@/lib/body";
 import { getCurrentUser } from "@/lib/users";
 
@@ -48,6 +50,7 @@ export default async function CuerpoPage() {
           <span className="text-sleep">█ profundo {formatDuration(byStage.deep)}</span>
           <span className="text-[#c9a7ff]">█ rem {formatDuration(byStage.rem)}</span>
           <span className="text-[#6f7bd9]">█ liviano {formatDuration(byStage.light)}</span>
+          {byStage.awake > 0 && <span className="text-[#ff9b8f]">█ despierto {formatDuration(byStage.awake)}</span>}
         </p>
       </Panel>
 
@@ -55,7 +58,11 @@ export default async function CuerpoPage() {
         label="pulso · noche"
         meta={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> {night.restingBpm} reposo</span>}
       >
-        <pre aria-hidden className="m-0 font-mono text-xs leading-3 text-heart">{asciiLine(night.hrNight, 5)}</pre>
+        <div className="@container">
+          <pre aria-hidden className="m-0 font-mono leading-none text-heart" style={{ fontSize: fitMonoFontSize(night.hrNight.length, 20) }}>
+            {asciiLine(night.hrNight, 5)}
+          </pre>
+        </div>
         <dl className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 font-mono text-[13px] tabular-nums">
           <dt className="text-dim">reposo</dt><dd className="font-semibold"><Count value={night.restingBpm} /> bpm</dd>
           <dd className="text-right text-xs text-dim">típico {night.restingTypical[0]}–{night.restingTypical[1]}</dd>
@@ -67,7 +74,17 @@ export default async function CuerpoPage() {
       </Panel>
 
       <Panel label="pasos · 08 → 19 h" meta={<Count value={steps} />}>
-        <p aria-hidden className="font-mono text-xl tracking-[2px] text-work">{sparkline(night.stepsByHour)}</p>
+        <div aria-hidden className="@container">
+          <p
+            className="font-mono leading-none text-work"
+            style={{ fontSize: fitMonoFontSize(night.stepsByHour.length, 32, STEPS_TRACKING_EM), letterSpacing: `${STEPS_TRACKING_EM}em` }}
+          >
+            {sparkline(night.stepsByHour)}
+          </p>
+          <p className="mt-1.5 flex justify-between font-mono text-[11px] tabular-nums text-faint">
+            <span>08</span><span>19</span>
+          </p>
+        </div>
       </Panel>
     </Screen>
   );

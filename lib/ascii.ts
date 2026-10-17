@@ -4,6 +4,16 @@ const BLOCKS = "▁▂▃▄▅▆▇█";
 export const SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
 export const FIELD_CHARS = " .·:-=+*#%@";
 
+const MONO_ADVANCE_EM = 0.6; // ancho de un carácter de Geist Mono
+
+/**
+ * Tamaño de letra para que `cols` caracteres mono llenen el ancho del contenedor más cercano
+ * con `container-type: inline-size` (clase `@container`). Con `maxPx` como techo para series cortas.
+ */
+export function fitMonoFontSize(cols: number, maxPx = 16, trackingEm = 0): string {
+  return `min(${maxPx}px, calc(100cqi / ${Math.max(1, cols) * (MONO_ADVANCE_EM + trackingEm)}))`;
+}
+
 /** Una barra de 8 alturas por valor, escalada entre el mínimo y el máximo de la serie. */
 export function sparkline(values: readonly number[]): string {
   if (values.length === 0) return "";

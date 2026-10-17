@@ -39,11 +39,11 @@ export function getToday(userId: UserId): Today {
   const nightMin = (sm?: Record<string, number>) => (sm ? sm.light + sm.deep + sm.rem : undefined);
   const realSleep = night.isExample ? undefined : nightMin(night.stageMinutes);
 
-  const exampleWeek = [402, 431, 352, 470, 410, 440, 432];
+  const exampleWeek = [402, 431, 352, 470, 410, 440, 420]; // el último = la noche de ejemplo de lib/body (7h00)
   const sleepWeek = realSleep ? [...exampleWeek.slice(0, 6), realSleep] : exampleWeek;
 
   return {
-    sleepMin: realSleep ?? 432,
+    sleepMin: realSleep ?? 420,
     sleepWeek,
     restingBpm: 58,
     restingTypical: [55, 62],
