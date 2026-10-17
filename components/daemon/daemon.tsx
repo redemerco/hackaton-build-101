@@ -87,8 +87,10 @@ export function Daemon({ state, buddy = DEFAULT_BUDDY, scale = 3, bpm = 60, isIn
     return () => clearInterval(id);
   }, [state]);
 
-  // reacciones que vienen de la app
+  // reacciones que vienen de la app: solo el compañero principal (el interactivo) las escucha,
+  // si no, una vista previa en Ajustes rebotaría cada vez que pasa algo en Hoy (y viceversa)
   useEffect(() => {
+    if (!isInteractive) return;
     let timer: ReturnType<typeof setTimeout>;
     const off = onDaemonReaction((r) => {
       clearTimeout(timer);
@@ -100,7 +102,7 @@ export function Daemon({ state, buddy = DEFAULT_BUDDY, scale = 3, bpm = 60, isIn
       off();
       clearTimeout(timer);
     };
-  }, []);
+  }, [isInteractive]);
 
   const body = useMemo(() => toRuns(buddy, composeBody(buddy, state, { ...frame, ...reaction })), [buddy, state, frame, reaction]);
   const accessory = useMemo(() => (spec.acc ? toRuns(buddy, composeAccessory(buddy, spec.acc)) : []), [buddy, spec.acc]);

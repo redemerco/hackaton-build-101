@@ -9,7 +9,6 @@ import { setCurrentUser } from "@/app/actions/user";
 import { Sheet } from "@/components/glass/sheet";
 import { PushToggle } from "@/components/push-toggle";
 import { BUDDIES, buddyName, type BuddyId } from "@/lib/daemon";
-import { reactDaemon } from "@/lib/daemon-events";
 import { USERS, type UserId } from "@/lib/user-list";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +49,7 @@ export function SettingsSheet({ currentUserId, currentBuddy }: { currentUserId: 
     startTransition(async () => {
       try {
         await setBuddy(id);
-        reactDaemon({ mood: "happy", text: `hola, soy ${buddyName(id).toLowerCase()}. te acompaño.` });
+        toast(`${buddyName(id)} es tu compañero`);
       } catch {
         toast.error("No se pudo cambiar de compañero");
       }
@@ -104,7 +103,7 @@ export function SettingsSheet({ currentUserId, currentBuddy }: { currentUserId: 
                   id === currentBuddy && "bg-mood/20 shadow-[inset_0_0_0_1px_var(--mood)]",
                 )}
               >
-                <Daemon state={id === currentBuddy ? "racha" : "bien"} buddy={id} scale={2} />
+                <Daemon key={`${id}-${id === currentBuddy}`} state={id === currentBuddy ? "racha" : "bien"} buddy={id} scale={2} />
                 {buddyName(id)}
               </button>
             ))}
