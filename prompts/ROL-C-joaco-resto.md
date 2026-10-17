@@ -22,7 +22,7 @@ CONTRATO COMPARTIDO (no romperlo — Santi y Renzo trabajan en paralelo):
 TU ROL: C — JOACO — EL RESTO: trabajo + cerebro + pitch
 
 1) INGESTS DE TRABAJO (arrancá por acá: no necesitan la base de Santi):
-   - `lib/sources/github.ts`: Octokit con GITHUB_TOKEN (PAT) → commits, PRs, issues, reviews **de este mismo repo** → `raw_events`.
+   - `lib/sources/github.ts`: commits, PRs, issues, reviews → `raw_events`. Hoy con GITHUB_TOKEN (PAT) sobre este repo; cuando Renzo pushee su OAuth, pasa a usar el token de cada usuario.
    - `lib/sources/linear.ts`: GraphQL `https://api.linear.app/graphql` — **OJO: header `Authorization: <API_KEY>` SIN "Bearer"** (ahorra 30 min de debugging). Issues y estados → `raw_events`.
    - Calendar: primero tile con carga manual/mock; el OAuth real **comparte el proyecto y consent screen que configura Renzo** (scope `calendar.events.readonly`) — recién cuando Renzo tenga Health andando.
    - Slack NO (primero en cortarse; solo si sobra absolutamente todo).

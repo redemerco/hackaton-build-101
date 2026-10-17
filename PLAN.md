@@ -48,14 +48,14 @@ Patrón de las demos ganadoras (investigado en la ronda anterior): **input real 
 1. PWA base: Next.js instalable (manifest + service worker), switcher de usuario sin auth real (3 usuarios hardcodeados).
 2. **Google Health API (Fitbit) OAuth + ingest**: sueño con etapas, pulso (reposo diario + intraday a 1s), HRV, pasos (1 min), SpO2. OAuth estándar de Google web-server con `access_type=offline` (access token dura 1h; en Testing el refresh vence a los 7 días — sobra). Historia en chunks: máx 14 días por query para heart-rate, 90 para el resto. 300 req/min/usuario. **Los datos llegan solo cuando el dispositivo sincroniza** → sync manual antes de cada dry-run y del pitch. Camino crítico — arranca en H0.
 3. Foto de comida → Claude vision → registro nutricional (cámara desde la PWA).
-4. Ingest trabajo nivel 1: **GitHub (PAT)** + **Linear (API key)** — los de fricción cero.
+4. Ingest trabajo nivel 1: **GitHub (OAuth por usuario, sobre el login de Renzo)** + **Linear (API key)**.
 5. Digest personal con correlaciones, **en streaming** (la IA tiene que verse trabajar). Fallback cacheado con efecto typewriter.
 6. Check-in de ánimo (1 click).
 7. Nudge: al menos 1 real por push (`web-push` + VAPID; en iOS requiere la PWA **instalada en home screen**, iOS 16.4+ — instalarla en los 3 teléfonos el día 1). Fallback: nudge in-app. Sin scheduler ni cron: el nudge se calcula de datos reales y se dispara con un botón oculto "enviar ahora" durante la demo (mismo patrón que "regenerar").
 8. Semana Wrapped card (artefacto de cierre).
 
 **Integraciones de trabajo — línea de corte explícita** (eligieron las 4; este es el orden de entrada y de corte):
-- GitHub: siempre (PAT, cero fricción).
+- GitHub: siempre. Cada usuario conecta **su** GitHub desde el celu con el OAuth que arma Renzo; el ingest usa el token de ese usuario y trae su actividad. Mientras el OAuth no esté, un PAT en `.env.local` alimenta el mismo ingest (misma interfaz).
 - Linear: siempre (API key personal) — *con la condición de usarlo de verdad durante la hackathon para que haya datos*.
 - Google Calendar: **sube de prioridad** — vive en el mismo proyecto de Google Cloud y la misma consent screen que Google Health (scope `calendar.events.readonly`): un solo login OAuth da salud + calendario. Entra apenas el OAuth de Health funcione.
 - Slack: **el primero que se corta**. OAuth más friccionado y el dato (horas activas en chat) es el que menos suma. Si entra: user token con scope `search:read` (`search.messages` — cuenta mensajes y horarios, jamás contenido). Fallback cero-fricción: crear un workspace gratis solo para la demo.
@@ -75,7 +75,7 @@ Patrón de las demos ganadoras (investigado en la ronda anterior): **input real 
 - **Claude API** (`claude-sonnet-5-5`): vision para comidas, streaming para digest. Un solo pipeline simple, sin multi-agente (lección PostHog). Comidas: desglose por ítem en gramos y **rangos** de calorías, no un número seco — la literatura mide ~±30% desde foto; con rangos somos honestos y defendibles ante jueces.
 - **Google Health API + Calendar** (mismo OAuth); **Octokit** con PAT; **Linear GraphQL** con API key — ojo: header `Authorization: <API_KEY>` **sin** "Bearer" (ahorra 30 min de debugging); Slack según línea de corte.
 - **Demo: laptop en localhost; el teléfono entra por túnel HTTPS con dominio estático (ngrok free incluye uno) sobre hotspot propio.** La PWA instalada y su push subscription quedan atadas al origin: el dominio se fija en H0 y no cambia más, o la PWA instalada el día 1 muere antes del pitch. El OAuth **nunca pasa por el túnel**: corre una sola vez por usuario en la laptop con callback `localhost`; el teléfono solo lee datos a través del túnel. Backup: deploy Vercel + Neon si el túnel molesta en el dry-run 1. Resiliencia: datos pre-ingestados, fallbacks cacheados.
-- Sin auth real: switcher de usuario. OAuth de GitHub/login de usuarios = nota de producción.
+- Login y OAuth de GitHub por usuario: **real**, lo arma Renzo. El switcher queda hasta que su login esté en `main`.
 
 ## Reparto (3 personas, todos con IA)
 
