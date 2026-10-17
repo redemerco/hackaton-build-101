@@ -20,7 +20,7 @@ export const MEETING_SLOTS_PER_DAY = 27; // 09 → 18 en franjas de 20 min
 
 const TZ = "America/Argentina/Buenos_Aires";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }); // YYYY-MM-DD local
-const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const LOG_MAX = 8;
 
 // Commits y PRs reales de raw_events. Sin datos de GitHub, cae al día de ejemplo.

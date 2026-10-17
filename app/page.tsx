@@ -12,10 +12,9 @@ import { formatDuration, sparkline } from "@/lib/ascii";
 import { deriveState, linesFor, STATES } from "@/lib/daemon";
 import { contributors, daemonInput, getToday, stressOf, type Contributor } from "@/lib/today";
 import { getBuddy } from "@/lib/buddy";
+import { getNudge } from "@/lib/nudge";
 import { getCurrentUser } from "@/lib/users";
 
-// ponytail: nudge fijo de ejemplo; Joaco lo reemplaza por el que calcula de calendar + actividad.
-const EXAMPLE_NUDGE = "Llevás 3h sin moverte ▁▁▁▁▁▁ y tenés 40 min libres antes de la daily. Caminá un rato.";
 
 const TREND_GLYPH: Record<Contributor["trend"], string> = { up: "▲", down: "▼", flat: "■" };
 
@@ -70,7 +69,7 @@ export default async function Hoy() {
         <MoodCheckin mood={today.mood} />
       </div>
 
-      <NudgeBanner text={EXAMPLE_NUDGE} />
+      <NudgeBanner text={getNudge(user.id).body} />
 
       <Panel label="observación" meta={today.isExample ? "[ejemplo]" : "gemini"}>
         <StreamText fallback={[today.insight]} tokenMs={45} className="text-[15px] leading-relaxed" />
