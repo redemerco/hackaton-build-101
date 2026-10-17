@@ -103,7 +103,7 @@ function parseNight(data: Record<string, unknown>): Night | null {
       startHour: startLocal.getUTCHours(),
       stages,
       stageMinutes,
-      isExample: false,
+      isExample: data._mock === true, // scripts/seed-demo.mts: se rotula como ejemplo
     };
   } catch {
     return null;

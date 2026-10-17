@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "smoke": "node scripts/smoke.mts"
+    "smoke": "node scripts/smoke.mts",
+    "seed:demo": "node scripts/seed-demo.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

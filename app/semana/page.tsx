@@ -23,6 +23,7 @@ export default async function SemanaPage() {
         <Ranking
           team={ranking.team}
           isExample={ranking.isExample}
+          isSimulated={ranking.rows.some((r) => r.isSimulated)}
           today={sortToday(ranking.rows).map((r) => toEntry(r, r.today?.score ?? null, r.today?.isPartial ? "parcial" : undefined))}
           week={sortWeek(ranking.rows).map((r) => toEntry(r, r.week?.score ?? null, r.week ? `${r.week.days}/7 días` : undefined))}
         />

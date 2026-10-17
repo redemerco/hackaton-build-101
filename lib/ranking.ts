@@ -21,6 +21,7 @@ export type RankRow = {
   name: string;
   isMe: boolean;
   look: Look; // personaje y color de esa persona
+  isSimulated: boolean; // datos de scripts/seed-demo.mts (se rotula en la UI)
   today: DayScore | null;
   week: { score: number; days: number } | null;
 };
@@ -67,7 +68,7 @@ function sleepOf(data: Json): { key: string; sleep: NonNullable<DayInput["sleep"
 }
 
 /** Insumos del puntaje por día local, para un usuario. */
-function dayInputs(userId: string, sinceMs: number): Map<string, DayInput> {
+function dayInputs(userId: string, sinceMs: number): { days: Map<string, DayInput>; isSimulated: boolean } {
   const rows = db
     .select()
     .from(rawEvents)
@@ -75,6 +76,7 @@ function dayInputs(userId: string, sinceMs: number): Map<string, DayInput> {
     .all();
   const days = new Map<string, DayInput>();
   const at = (key: string) => days.get(key) ?? days.set(key, {}).get(key)!;
+  let isSimulated = false;
 
   for (const r of rows) {
     let data: Json;
@@ -83,6 +85,7 @@ function dayInputs(userId: string, sinceMs: number): Map<string, DayInput> {
     } catch {
       continue;
     }
+    if (data._mock === true) isSimulated = true;
     if (r.kind === "sleep") {
       const s = sleepOf(data);
       // si hay dos sesiones el mismo día (siesta), suma
@@ -106,11 +109,11 @@ function dayInputs(userId: string, sinceMs: number): Map<string, DayInput> {
       day.azm = (day.azm ?? 0) + n;
     }
   }
-  return days;
+  return { days, isSimulated };
 }
 
-function scoresFor(userId: string, now: number): { today: DayScore | null; week: RankRow["week"] } {
-  const days = dayInputs(userId, now - (WEEK_DAYS + BASELINE_DAYS) * DAY_MS);
+function scoresFor(userId: string, now: number): Pick<RankRow, "today" | "week" | "isSimulated"> {
+  const { days, isSimulated } = dayInputs(userId, now - (WEEK_DAYS + BASELINE_DAYS) * DAY_MS);
   const scoreOn = (offset: number): DayScore | null => {
     const key = keyOf(now - offset * DAY_MS);
     const day = days.get(key);
@@ -121,6 +124,7 @@ function scoresFor(userId: string, now: number): { today: DayScore | null; week:
   };
   const week = Array.from({ length: WEEK_DAYS }, (_, i) => scoreOn(i)).filter((s): s is DayScore => s !== null);
   return {
+    isSimulated,
     today: scoreOn(0),
     week: week.length ? { score: Math.round(mean(week.map((s) => s.score))!), days: week.length } : null,
   };
@@ -135,7 +139,7 @@ function exampleRanking(me: UserId, team: string | null): Ranking {
   const fake: Record<string, [number, number]> = { santi: [82, 77], renzo: [74, 79], joaco: [61, 66] };
   const rows = USERS.map((u) => {
     const [today, week] = fake[u.id];
-    return { userId: u.id, name: u.name, isMe: u.id === me, look: getLook(u.id), today: { score: today, parts: {}, isPartial: false }, week: { score: week, days: 7 } };
+    return { userId: u.id, name: u.name, isMe: u.id === me, look: getLook(u.id), isSimulated: false, today: { score: today, parts: {}, isPartial: false }, week: { score: week, days: 7 } };
   });
   return { team, rows, isExample: true };
 }
