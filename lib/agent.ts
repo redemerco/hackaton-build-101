@@ -1,11 +1,15 @@
 import "server-only";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { getAI, MODEL } from "@/lib/ai";
 import { formatDuration } from "@/lib/ascii";
+import { getConnection } from "@/lib/connections";
 import { db, insertRawEvents, rawEvents } from "@/lib/db";
 import { getNudge } from "@/lib/nudge";
+import { freshToken } from "@/lib/oauth";
+import { sendPush } from "@/lib/push";
 import { dayInputs } from "@/lib/ranking";
 import { mean } from "@/lib/score";
+import { syncCalendarUser } from "@/lib/sources/calendar";
 
 // Agente: propone acciones concretas (mover una reunión, bloquear foco, mandar el nudge) con datos reales y las ejecuta
 // solo con Confirmar. La IA elige; el código valida (eventos que existen, horarios del mismo día, sin pisar reuniones).
@@ -22,6 +26,11 @@ export type AgentAction = {
   /** Rótulo honesto del origen: "ejemplo" = regla fija sin IA; "cache" = última propuesta de la IA (sin wifi). */
   tag?: "ejemplo" | "cache";
 };
+
+export type RunResult =
+  | { status: "done"; message: string; url?: string }
+  | { status: "simulated"; message: string; url: string }
+  | { status: "error"; message: string };
 
 // Montevideo no tiene horario de verano desde 2015: el offset es fijo.
 const TZ = "America/Montevideo";
@@ -228,6 +237,13 @@ function deterministic(inp: Inputs): AgentAction[] {
 
 type Proposal = { actions: AgentAction[]; origin: "ia" | "cache" | "ejemplo" };
 
+function lastProposal(userId: string, sinceIso?: string): (Proposal & { ts: string }) | null {
+  const conds = [eq(rawEvents.userId, userId), eq(rawEvents.source, "agent"), eq(rawEvents.kind, "proposal")];
+  if (sinceIso) conds.push(gte(rawEvents.ts, sinceIso));
+  const row = db.select().from(rawEvents).where(and(...conds)).orderBy(desc(rawEvents.ts)).limit(1).get();
+  return row ? { ...(JSON.parse(row.json) as Proposal), ts: row.ts } : null;
+}
+
 /** Última propuesta de la IA de hoy cuyas reuniones siguen siendo válidas: el [cache] del dry-run sin wifi. */
 function cachedProposal(userId: string, inp: Inputs): AgentAction[] | null {
   const startOfDay = new Date(Date.parse(atLocal(inp.today, 0))).toISOString();
@@ -263,4 +279,77 @@ export async function proposeActions(userId: string, now = Date.now()): Promise<
 /** Guarda la propuesta en raw_events: es lo que `run` relee por `id` (nunca confía en el payload del cliente). */
 export function saveProposal(userId: string, proposal: Proposal, now = Date.now()) {
   insertRawEvents([{ source: "agent", kind: "proposal", userId, ts: new Date(now).toISOString(), data: proposal }]);
+}
+
+/** Link para hacerlo a mano en Google Calendar, en el día de la acción. */
+export function calendarDayUrl(iso?: string): string {
+  const key = dayKey.format(iso ? new Date(iso) : new Date()).replaceAll("-", "/");
+  return `https://calendar.google.com/calendar/r/day/${key}`;
+}
+
+const span = (a: AgentAction) =>
+  a.type === "block_focus"
+    ? `de ${hhmm.format(new Date(a.to!))} a ${hhmm.format(new Date(Date.parse(a.to!) + (a.minutes ?? 0) * MIN))}`
+    : `de ${hhmm.format(new Date(a.from!))} a ${hhmm.format(new Date(a.to!))}`;
+
+type GoogleTime = { dateTime?: string; date?: string; timeZone?: string };
+
+/** Ejecuta UNA acción de la última propuesta guardada, por `id`. Solo se llama desde POST /api/agent/run. */
+export async function runAction(userId: string, actionId: string): Promise<RunResult> {
+  const proposal = lastProposal(userId);
+  const action = proposal?.actions.find((a) => a.id === actionId);
+  if (!action) return { status: "error", message: "esa propuesta ya no está vigente: recargá" };
+
+  if (action.type === "send_nudge") {
+    const nudge = getNudge(userId);
+    if (!nudge) return { status: "error", message: "sin datos para un nudge" };
+    try {
+      const { sent } = await sendPush(userId, { title: nudge.title, body: nudge.body, url: "/" });
+      return { status: "done", message: sent ? `push enviado a ${sent} dispositivo${sent > 1 ? "s" : ""}` : `sin dispositivos suscritos · ${nudge.body}` };
+    } catch (error) {
+      console.error("[agent] push falló", error);
+      return { status: "error", message: `push no disponible · ${nudge.body}` };
+    }
+  }
+
+  // block_focus es P2 y move_meeting depende del scope de escritura: nunca se presenta como ejecutada.
+  if (action.type === "block_focus" || action.isSimulated || !isCalendarWriteOk()) {
+    return { status: "simulated", message: `${span(action)} · hacelo a mano en Google Calendar`, url: calendarDayUrl(action.to) };
+  }
+
+  const conn = getConnection(userId, "calendar");
+  if (!conn) return { status: "error", message: "Calendar no está conectado" };
+  const eventUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(action.eventId!)}`;
+  try {
+    const token = await freshToken(conn);
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const getRes = await fetch(eventUrl, { headers, cache: "no-store" });
+    if (!getRes.ok) throw new Error(`calendar get ${getRes.status}: ${(await getRes.text()).slice(0, 200)}`);
+    const ev = (await getRes.json()) as { start?: GoogleTime; end?: GoogleTime; htmlLink?: string };
+    const start = Date.parse(ev.start?.dateTime ?? "");
+    const end = Date.parse(ev.end?.dateTime ?? "");
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return { status: "error", message: "la reunión no tiene horario (¿es de todo el día?)" };
+    const to = Date.parse(action.to!);
+    // Idempotente: confirmar dos veces no la mueve dos veces.
+    if (start !== to) {
+      if (start !== Date.parse(action.from!)) return { status: "error", message: "la reunión cambió desde la propuesta: recargá" };
+      // start y end se mueven el mismo delta.
+      const delta = to - start;
+      const body = {
+        start: { dateTime: new Date(start + delta).toISOString(), ...(ev.start?.timeZone && { timeZone: ev.start.timeZone }) },
+        end: { dateTime: new Date(end + delta).toISOString(), ...(ev.end?.timeZone && { timeZone: ev.end.timeZone }) },
+      };
+      const patchRes = await fetch(eventUrl, { method: "PATCH", headers, body: JSON.stringify(body) });
+      if (!patchRes.ok) throw new Error(`calendar patch ${patchRes.status}: ${(await patchRes.text()).slice(0, 200)}`);
+    }
+    // raw_events deduplica por (userId, source, kind, ts): sin esto la fila vieja queda y Trabajo muestra 2 reuniones.
+    db.delete(rawEvents)
+      .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "calendar"), sql`json_extract(${rawEvents.json}, '$.id') = ${action.eventId}`))
+      .run();
+    await syncCalendarUser(userId);
+    return { status: "done", message: `movida ${span(action)}`, url: ev.htmlLink ?? calendarDayUrl(action.to) };
+  } catch (error) {
+    console.error("[agent] move_meeting falló", error);
+    return { status: "error", message: "Google Calendar no respondió: no se movió nada" };
+  }
 }
