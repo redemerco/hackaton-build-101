@@ -32,6 +32,7 @@ export async function syncCalendarUser(userId: string): Promise<number> {
       if (!startIso) continue;
       // Guardamos SOLO metadata: nada de summary/attendees/description.
       const safe = {
+        id: typeof ev.id === "string" ? ev.id : null,
         start: startIso,
         end: endIso ?? null,
         durationMin: endIso ? Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60000) : null,
