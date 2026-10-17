@@ -6,7 +6,6 @@ import { setBuddy, setTint } from "@/app/actions/buddy";
 import { deleteMyData } from "@/app/actions/data";
 import { SourcesList } from "@/components/connect/source-card";
 import { Daemon } from "@/components/daemon/daemon";
-import { setCurrentUser } from "@/app/actions/user";
 import { Sheet } from "@/components/glass/sheet";
 import { PushToggle } from "@/components/push-toggle";
 import type { SourceOverview } from "@/lib/connection-overview";
@@ -32,16 +31,9 @@ export function SettingsSheet({ currentUserId, currentBuddy, currentTint, source
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
   const current = USERS.find((u) => u.id === currentUserId) ?? USERS[0];
-
-  const switchUser = (id: UserId) =>
-    startTransition(async () => {
-      try {
-        await setCurrentUser(id);
-        setIsOpen(false);
-      } catch {
-        toast.error("No se pudo cambiar de usuario");
-      }
-    });
+  // El usuario es quien se logueó con Google: mostramos su cuenta, no un selector.
+  const account = sources.find((s) => s.id === "health")?.account ?? null;
+  const label = account ?? current.name;
 
   const pickBuddy = (id: BuddyId) =>
     startTransition(async () => {
@@ -75,27 +67,10 @@ export function SettingsSheet({ currentUserId, currentBuddy, currentTint, source
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)} className="glass press h-11 min-w-11 rounded-full px-4 text-sm font-medium">
-        {current.id} ▾
+      <button type="button" onClick={() => setIsOpen(true)} className="glass press h-11 min-w-11 max-w-[200px] truncate rounded-full px-4 text-sm font-medium">
+        {label}
       </button>
       <Sheet open={isOpen} onClose={() => { setIsOpen(false); setIsConfirmingDelete(false); }} title="Ajustes" subtitle="Tus datos, tu dispositivo. Con tu equipo solo compartís el puntaje.">
-        <Section title="usuario">
-          <div className="grid grid-cols-3 gap-2">
-            {USERS.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                disabled={isPending}
-                aria-pressed={u.id === current.id}
-                onClick={() => switchUser(u.id)}
-                className={cn("glass press h-11 rounded-xl text-[15px] font-medium transition-[background-color] duration-200 disabled:opacity-60", u.id === current.id && "bg-mood/25")}
-              >
-                {u.name}
-              </button>
-            ))}
-          </div>
-        </Section>
-
         <Section title="tu compañero">
           <div className="grid grid-cols-4 gap-2" role="group" aria-label="Elegí tu compañero">
             {BUDDIES.map((id) => (
