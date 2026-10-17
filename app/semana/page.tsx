@@ -9,7 +9,7 @@ export default function SemanaPage() {
     <Screen>
       <Pulse bpm={60} stress={0.3} />
       <PageHeader title="Semana" subtitle="Lo que tu semana de trabajo le hizo a tu cuerpo." />
-      <Digest fallback={EXAMPLE_DIGEST} isExample />
+      <Digest fallback={EXAMPLE_DIGEST} src="/api/digest" isExample={false} />
     </Screen>
   );
 }
