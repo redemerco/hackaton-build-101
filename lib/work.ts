@@ -11,6 +11,8 @@ export type WorkDay = {
   /** Reuniones en franjas de 20 min entre 09 y 18 h: [desde, hasta) en índices de franja. */
   meetingSlots: [number, number][];
   week: { sleepMin: number[]; commits: number[]; mood: number[] }; // lu..hoy
+  /** Días con los tres datos (sueño, commits, ánimo). Por debajo de MIN_DAYS_FOR_CORRELATION no se afirma nada. */
+  daysOfData: number;
   isExample: boolean;
 };
 
@@ -73,8 +75,18 @@ const EXAMPLE_DAY: WorkDay = {
       commits: [6, 5, 3, 11, 4, 7, 9],
       mood: [3, 3, 2, 5, 3, 4, 4],
     },
+    daysOfData: 34,
     isExample: true,
 };
+
+// Exist.io pide 21 días antes de mostrar una correlación; usamos el mismo umbral.
+export const MIN_DAYS_FOR_CORRELATION = 21;
+
+/** Confianza 1..5 según cuántos días hay (separada de la fuerza de la relación, como Exist.io). */
+export function confidenceStars(days: number): number {
+  if (days < MIN_DAYS_FOR_CORRELATION) return 0;
+  return Math.min(5, 2 + Math.floor((days - MIN_DAYS_FOR_CORRELATION) / 14));
+}
 
 export function meetingMinutes(slots: readonly [number, number][]): number {
   return slots.reduce((sum, [a, b]) => sum + (b - a) * 20, 0);

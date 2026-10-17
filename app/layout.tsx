@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { AsciiField } from "@/components/ascii/ascii-field";
+import { BOOT_GUARD, BootSequence } from "@/components/boot-sequence";
 import { GlassGlow } from "@/components/glass/glass-glow";
 import { TabBar } from "@/components/glass/tab-bar";
 import { SettingsSheet } from "@/components/settings-sheet";
@@ -30,11 +31,15 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await getCurrentUser();
   return (
-    <html lang="es" className={`dark ${geistSans.variable} ${geistMono.variable} ${departure.variable} h-full antialiased`}>
+    <html lang="es" suppressHydrationWarning className={`dark ${geistSans.variable} ${geistMono.variable} ${departure.variable} h-full antialiased`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: BOOT_GUARD }} />
+      </head>
       <body className="min-h-full bg-background font-sans text-foreground">
+        <BootSequence />
         <AsciiField />
         <GlassGlow />
-        <div className="mx-auto flex min-h-dvh max-w-md flex-col">
+        <div id="app" className="mx-auto flex min-h-dvh max-w-md flex-col">
           <header className="flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]" style={{ viewTransitionName: "app-header" }}>
             <span className="font-pixel text-[22px] leading-none text-dim">
               ~/<span className="text-foreground">build101</span>

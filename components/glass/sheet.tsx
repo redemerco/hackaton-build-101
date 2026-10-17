@@ -11,6 +11,8 @@ type SheetProps = {
 };
 
 const EXIT_MS = 200;
+const EXIT_MIN_MS = 120;
+const EXIT_MAX_MS = 260;
 const DISMISS_DISTANCE_PX = 110;
 const DISMISS_VELOCITY = 0.6; // px/ms: un "flick" corto también cierra
 
@@ -29,6 +31,7 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
     const dialog = ref.current;
     if (!dialog) return;
     clearTimeout(exitTimer.current);
+    delete document.documentElement.dataset.sheet;
     delete dialog.dataset.state;
     dialog.style.transition = "";
     dialog.style.transform = "";
@@ -36,15 +39,21 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
     if (dialog.open) dialog.close(); // dispara onClose
   }, []);
 
-  /** Sale animando desde donde esté (incluso a mitad de un arrastre). */
-  const dismiss = useCallback(() => {
+  /**
+   * Sale animando desde donde esté (incluso a mitad de un arrastre).
+   * Con `velocity` (px/ms de un flick) la salida conserva la inercia del dedo en vez de durar siempre lo mismo.
+   */
+  const dismiss = useCallback((velocity?: number) => {
     const dialog = ref.current;
     if (!dialog?.open || dialog.dataset.state === "closing") return;
     if (prefersReducedMotion()) return finish();
+    const remaining = dialog.getBoundingClientRect().height;
+    const ms = velocity ? Math.min(EXIT_MAX_MS, Math.max(EXIT_MIN_MS, remaining / velocity)) : EXIT_MS;
     dialog.dataset.state = "closing";
-    dialog.style.transition = `transform ${EXIT_MS}ms cubic-bezier(.4,0,1,1)`;
+    delete document.documentElement.dataset.sheet; // el fondo vuelve a su tamaño mientras la hoja baja
+    dialog.style.transition = `transform ${ms}ms cubic-bezier(.32,.72,0,1)`;
     dialog.style.transform = "translateY(100%)";
-    exitTimer.current = setTimeout(finish, EXIT_MS);
+    exitTimer.current = setTimeout(finish, ms);
   }, [finish]);
 
   useEffect(() => {
@@ -54,6 +63,7 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
       // la reabrieron mientras salía: cancelar la salida y volver a su lugar
       clearTimeout(exitTimer.current);
       delete dialog.dataset.state;
+      document.documentElement.dataset.sheet = "open";
       dialog.style.transition = "transform 420ms cubic-bezier(.34,1.56,.5,1)";
       dialog.style.transform = "";
       return;
@@ -61,12 +71,14 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
     if (open && !dialog.open) {
       dialog.showModal();
       document.documentElement.style.overflow = "hidden";
+      document.documentElement.dataset.sheet = "open";
     }
     if (!open && dialog.open) dismiss();
   }, [open, dismiss]);
 
   useEffect(() => () => {
     clearTimeout(exitTimer.current);
+    delete document.documentElement.dataset.sheet;
     document.documentElement.style.overflow = "";
   }, []);
 
@@ -90,7 +102,8 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
     drag.current = null;
     if (!d || !dialog) return;
     const velocity = d.dy / Math.max(1, performance.now() - d.startT);
-    if (d.dy > DISMISS_DISTANCE_PX || (d.dy > 24 && velocity > DISMISS_VELOCITY)) return dismiss();
+    if (d.dy > 24 && velocity > DISMISS_VELOCITY) return dismiss(velocity);
+    if (d.dy > DISMISS_DISTANCE_PX) return dismiss();
     dialog.style.transition = "transform 420ms cubic-bezier(.34,1.56,.5,1)";
     dialog.style.transform = "";
   };
@@ -104,7 +117,9 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
         e.preventDefault(); // Esc: salir animando
         dismiss();
       }}
-      onClick={(e) => e.target === e.currentTarget && dismiss()}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) dismiss();
+      }}
       aria-label={title}
       className="glass fixed inset-x-0 bottom-0 top-auto m-0 mx-auto max-h-[88dvh] w-full max-w-md overflow-hidden rounded-t-3xl bg-[rgb(16_19_28/.82)] p-0 text-foreground open:flex open:flex-col"
     >

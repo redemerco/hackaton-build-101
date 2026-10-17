@@ -3,7 +3,7 @@ import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
 import { Screen } from "@/components/screen";
 import { formatDuration, sparkline } from "@/lib/ascii";
-import { getWorkDay, MEETING_SLOTS_PER_DAY, meetingMinutes, type WorkLogEntry } from "@/lib/work";
+import { confidenceStars, getWorkDay, MEETING_SLOTS_PER_DAY, meetingMinutes, MIN_DAYS_FOR_CORRELATION, type WorkLogEntry } from "@/lib/work";
 import { getCurrentUser } from "@/lib/users";
 
 const MESSAGE_WIDTH = 21;
@@ -19,6 +19,41 @@ function LogLine({ entry }: { entry: WorkLogEntry }) {
       {entry.additions > 0 && entry.deletions > 0 && " "}
       {entry.deletions > 0 && <span className="text-heart">-{entry.deletions}</span>}
     </>
+  );
+}
+
+const PROGRESS_CELLS = 10;
+
+/** Honestidad primero: cuántos días hay, qué tanta confianza da, y que correlación no es causa. */
+function CorrelationNote({ days }: { days: number }) {
+  const filled = Math.min(PROGRESS_CELLS, Math.round((days / MIN_DAYS_FOR_CORRELATION) * PROGRESS_CELLS));
+  const stars = confidenceStars(days);
+  const hasEnough = days >= MIN_DAYS_FOR_CORRELATION;
+  return (
+    <div className="grid gap-2 border-t border-white/10 pt-3">
+      <p className="flex flex-wrap items-baseline justify-between gap-2 font-mono text-[13px] tabular-nums">
+        <span>
+          <span aria-hidden className="text-work">{"▓".repeat(filled)}</span>
+          <span aria-hidden className="text-white/15">{"░".repeat(PROGRESS_CELLS - filled)}</span>{" "}
+          {days} días
+        </span>
+        {hasEnough && (
+          <span role="img" aria-label={`confianza ${stars} de 5`} className="text-mood">
+            {"★".repeat(stars)}<span className="text-white/20">{"★".repeat(5 - stars)}</span>
+          </span>
+        )}
+      </p>
+      {hasEnough ? (
+        <p className="text-[15px] leading-relaxed text-foreground/90">
+          Los días que dormiste menos de 6 h hiciste menos commits y tu ánimo bajó.
+        </p>
+      ) : (
+        <p className="text-[15px] leading-relaxed text-foreground/90">
+          Todavía no alcanza: hacen falta {MIN_DAYS_FOR_CORRELATION} días para decir algo.
+        </p>
+      )}
+      <p className="text-xs leading-relaxed text-dim">Correlación, no causa: puede ser una cosa sobre la otra, un tercer factor o casualidad.</p>
+    </div>
   );
 }
 
@@ -60,7 +95,7 @@ export default async function TrabajoPage() {
             </div>
           ))}
         </div>
-        <p className="text-[15px] leading-relaxed text-foreground/90">El miércoles dormiste menos, hiciste menos commits y tu ánimo bajó. Correlación, no causa.</p>
+        <CorrelationNote days={day.daysOfData} />
       </Panel>
     </Screen>
   );

@@ -7,7 +7,9 @@ export type Night = {
   stages: SleepStage[]; // una por cada 15 min
   hrNight: number[]; // bpm a lo largo de la noche
   restingBpm: number;
+  restingTypical: [number, number]; // tu rango típico, no el de la población
   hrvMs: number;
+  hrvTypical: [number, number];
   stepsByHour: number[]; // 08..19
   isExample: boolean;
 };
@@ -34,7 +36,9 @@ export function getLastNight(): Night {
     stages,
     hrNight: Array.from({ length: 34 }, (_, i) => 51 + (1 - Math.sin((Math.PI * i) / 33)) * 13 + Math.sin(i * 0.9) * 1.2),
     restingBpm: 58,
+    restingTypical: [55, 62],
     hrvMs: 48,
+    hrvTypical: [41, 52],
     stepsByHour: [120, 80, 60, 300, 1100, 640, 90, 70, 380, 1300, 210, 62],
     isExample: true,
   };

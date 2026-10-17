@@ -23,6 +23,8 @@ export type WrappedRow = { label: string; value: string; spark?: string; note?: 
 
 export const EXAMPLE_WRAPPED = {
   week: 42,
+  // Abre con identidad, como Spotify/Oura: un arquetipo antes que los números.
+  archetype: { name: "Búho de merges", why: "9 de tus 37 commits fueron después de la 1 de la mañana" },
   rows: [
     { label: "sueño prom.", value: "6h04", spark: "▅▃▂▁▃▆▅", kind: "sleep" },
     { label: "commits", value: "37", spark: "▂▅█▃▁▁▆", kind: "work" },

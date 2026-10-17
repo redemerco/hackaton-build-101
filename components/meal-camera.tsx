@@ -21,6 +21,7 @@ export function MealCamera() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isScanned, setIsScanned] = useState(false);
+  const [flashId, setFlashId] = useState(0); // cada foto dispara un flash de obturador
   const analysis: MealAnalysis = EXAMPLE_ANALYSIS;
 
   useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
@@ -30,6 +31,7 @@ export function MealCamera() {
     if (!file.type.startsWith("image/")) return toast.error("Eso no es una foto. Probá de nuevo.");
     if (file.size > MAX_BYTES) return toast.error("La foto pesa más de 10 MB. Sacala con menos resolución.");
     setIsScanned(false);
+    setFlashId((n) => n + 1);
     setPhotoUrl(URL.createObjectURL(file));
     setIsOpen(true);
   };
@@ -62,6 +64,7 @@ export function MealCamera() {
         }}
       />
 
+      {flashId > 0 && <span key={flashId} aria-hidden className="camera-flash" />}
       <Sheet open={isOpen} onClose={onClosed} title={isScanned ? "Tu plato" : "Analizando"} subtitle="Estimación desde la foto: siempre en rangos.">
         {photoUrl && (
           <div className="relative overflow-hidden rounded-xl bg-[#07080c] ring-1 ring-inset ring-white/10">

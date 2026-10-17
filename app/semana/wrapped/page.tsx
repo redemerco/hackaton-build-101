@@ -12,7 +12,7 @@ const RULE = "─".repeat(29);
 // ponytail: Wrapped de ejemplo como HTML; la imagen compartible con next/og queda para cuando haya datos reales.
 export default function WrappedPage() {
   const shareText = [
-    `build101 · semana ${W.week}`,
+    `build101 · semana ${W.week}: ${W.archetype.name}`,
     ...W.rows.map((r) => `${r.label.padEnd(LABEL_WIDTH)}${r.value.padStart(VALUE_WIDTH)}  ${r.spark ?? r.note ?? ""}`),
     `mejor día: ${W.bestDay.name}`,
   ].join("\n");
@@ -24,7 +24,9 @@ export default function WrappedPage() {
         ← semana
       </Link>
       <article className="glass glass-panel grid gap-3 rounded-2xl px-4 py-5">
-        <h1 className="font-pixel text-[44px] leading-none text-mood">SEMANA {W.week}</h1>
+        <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {W.week} · esta semana fuiste</p>
+        <h1 className="font-pixel text-[33px] leading-none text-mood">{W.archetype.name}</h1>
+        <p className="text-[15px] leading-relaxed text-foreground/90">{W.archetype.why}.</p>
         <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-[13px] leading-[1.7] tabular-nums">
           <span className="text-dim">$ build101 wrapped --sem {W.week}</span>{"\n"}
           <span className="text-dim">{RULE}</span>{"\n"}

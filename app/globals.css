@@ -209,11 +209,15 @@
 
 /* Tabs: desliza en la dirección de la tab elegida. Header, barra y fondo quedan anclados. */
 ::view-transition { pointer-events: none; }
-::view-transition-old(.nav-forward) { --slide-offset: -48px; animation: var(--dur-exit) ease-in both vt-fade reverse, 380ms ease-in-out both vt-slide reverse; }
-::view-transition-new(.nav-forward) { --slide-offset: 48px; animation: 210ms ease-out var(--dur-exit) both vt-fade, 380ms ease-in-out both vt-slide; }
-::view-transition-old(.nav-back) { --slide-offset: 48px; animation: var(--dur-exit) ease-in both vt-fade reverse, 380ms ease-in-out both vt-slide reverse; }
-::view-transition-new(.nav-back) { --slide-offset: -48px; animation: 210ms ease-out var(--dur-exit) both vt-fade, 380ms ease-in-out both vt-slide; }
-@keyframes vt-fade { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: blur(0); } }
+/* Cambiar de tab es lo más frecuente de la app: corto (≤240ms) y siempre ease-out (Emil Kowalski / Rauno). */
+:root { --ease-out-strong: cubic-bezier(0.2, 0.8, 0.2, 1); }
+::view-transition-old(.nav-forward) { --slide-offset: -32px; animation: 120ms var(--ease-out-strong) both vt-fade reverse, 200ms var(--ease-out-strong) both vt-slide reverse; }
+::view-transition-new(.nav-forward) { --slide-offset: 32px; animation: 180ms var(--ease-out-strong) 60ms both vt-fade, 240ms var(--ease-out-strong) both vt-slide; }
+::view-transition-old(.nav-back) { --slide-offset: 32px; animation: 120ms var(--ease-out-strong) both vt-fade reverse, 200ms var(--ease-out-strong) both vt-slide reverse; }
+::view-transition-new(.nav-back) { --slide-offset: -32px; animation: 180ms var(--ease-out-strong) 60ms both vt-fade, 240ms var(--ease-out-strong) both vt-slide; }
+/* Safari no aplica backdrop-filter durante una View Transition (WebKit 302256): el vidrio se vuelve más opaco mientras dura. */
+:root:active-view-transition .glass { background-color: rgb(16 19 28 / 0.88); }
+@keyframes vt-fade { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: none; } }
 @keyframes vt-slide { from { translate: var(--slide-offset); } to { translate: 0; } }
 ::view-transition-group(app-header),
 ::view-transition-group(tab-bar),
@@ -282,3 +286,26 @@
 dialog[data-sheet][open] { animation: sheet-in 420ms cubic-bezier(0.2, 0.9, 0.25, 1) backwards; } /* backwards: al terminar manda el transform inline del arrastre */
 dialog[data-sheet]::backdrop { background: rgb(5 6 10 / 0.55); animation: backdrop-in 260ms ease-out backwards; }
 dialog[data-sheet][data-state="closing"]::backdrop { opacity: 0; transition: opacity 200ms ease-in; }
+
+/* Boot del primer frame (components/boot-sequence.tsx): 3 líneas que se tipean y un fundido a Hoy, ~1.5 s en total. */
+@keyframes boot-type { from { max-width: 0; } to { max-width: calc(var(--n) * 1ch); } }
+@keyframes boot-out { to { opacity: 0; visibility: hidden; } }
+@keyframes boot-wake { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
+.boot { animation: boot-out 280ms var(--ease-out-strong, ease-out) 1.45s forwards; }
+.boot-mascot { animation: boot-wake 360ms var(--ease-out-strong, ease-out) both; }
+.boot-line {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 0;
+  animation: boot-type calc(var(--n) * 9ms) steps(var(--n)) calc(180ms + var(--i) * 340ms) forwards;
+}
+:root[data-booted] .boot { display: none; }
+@media (prefers-reduced-motion: reduce) { .boot { display: none; } }
+
+/* Con una hoja abierta, la app de atrás se achica y se redondea, como en iOS (curva de Vaul). */
+#app { transform-origin: 50% 0; transition: transform 500ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 500ms cubic-bezier(0.32, 0.72, 0, 1); }
+:root[data-sheet="open"] #app { transform: scale(0.94) translateY(calc(env(safe-area-inset-top) + 10px)); border-radius: 16px; overflow: hidden; }
+
+/* Flash de obturador al elegir la foto: solo opacity, 260ms. */
+@keyframes camera-flash { from { opacity: 0.85; } to { opacity: 0; visibility: hidden; } }
+.camera-flash { position: fixed; inset: 0; z-index: 70; background: #fff; pointer-events: none; animation: camera-flash 260ms ease-out forwards; }

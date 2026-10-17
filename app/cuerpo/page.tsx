@@ -28,6 +28,10 @@ export default async function CuerpoPage() {
   const byStage = minutesByStage(night.stages);
   const asleep = byStage.light + byStage.deep + byStage.rem;
   const steps = night.stepsByHour.reduce((a, b) => a + b, 0);
+  const minBpm = Math.min(...night.hrNight);
+  const [h0, m0] = night.start.split(":").map(Number);
+  const minAt = h0 * 60 + m0 + Math.round((night.hrNight.indexOf(minBpm) / (night.hrNight.length - 1)) * asleep);
+  const minAtText = `${String(Math.floor(minAt / 60) % 24).padStart(2, "0")}:${String(minAt % 60).padStart(2, "0")}`;
 
   return (
     <Screen>
@@ -52,10 +56,14 @@ export default async function CuerpoPage() {
         meta={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> {night.restingBpm} reposo</span>}
       >
         <pre aria-hidden className="m-0 font-mono text-xs leading-3 text-heart">{asciiLine(night.hrNight, 5)}</pre>
-        <p className="flex gap-4 font-mono text-[13px] tabular-nums text-dim">
-          <span>min <b className="text-foreground"><Count value={Math.round(Math.min(...night.hrNight))} /></b></span>
-          <span>hrv <b className="text-foreground"><Count value={night.hrvMs} /></b> ms</span>
-        </p>
+        <dl className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 font-mono text-[13px] tabular-nums">
+          <dt className="text-dim">reposo</dt><dd className="font-semibold"><Count value={night.restingBpm} /> bpm</dd>
+          <dd className="text-right text-xs text-dim">típico {night.restingTypical[0]}–{night.restingTypical[1]}</dd>
+          <dt className="text-dim">hrv</dt><dd className="font-semibold"><Count value={night.hrvMs} /> ms</dd>
+          <dd className="text-right text-xs text-dim">típico {night.hrvTypical[0]}–{night.hrvTypical[1]}</dd>
+          <dt className="text-dim">mínimo</dt><dd className="font-semibold"><Count value={Math.round(minBpm)} /> bpm</dd>
+          <dd className="text-right text-xs text-dim">a las {minAtText}</dd>
+        </dl>
       </Panel>
 
       <Panel label="pasos · 08 → 19 h" meta={<Count value={steps} />}>
