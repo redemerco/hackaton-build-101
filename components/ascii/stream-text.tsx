@@ -5,6 +5,10 @@ import { DataChip, type Domain } from "@/components/ascii/data-chip";
 import { Caret } from "@/components/ascii/spinner";
 
 export type StreamPart = string | { chip: string; kind: Domain };
+export type StreamSource = "live" | "cache" | "fallback";
+
+// lo antepone lib/summary.ts y app/api/digest cuando la IA se cae y re-tipean lo último guardado
+const CACHE_PREFIX = "[cache · IA no disponible] ";
 
 type StreamTextProps = {
   /** Texto de respaldo (o de ejemplo). Se "tipea" si no hay `src` o si `src` falla. */
@@ -15,8 +19,8 @@ type StreamTextProps = {
   runId?: number;
   tokenMs?: number;
   className?: string;
-  /** "live" si vino de `src`; "fallback" si se tipeó el respaldo. Para rotular "[ejemplo]" en la UI. */
-  onSource?: (source: "live" | "fallback") => void;
+  /** "live" si vino de `src`; "cache" si el server re-tipeó el último guardado (IA caída); "fallback" si se tipeó el respaldo. */
+  onSource?: (source: StreamSource) => void;
 };
 
 type Token = { text: string } | { chip: string; kind: Domain };
@@ -64,15 +68,21 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className, 
     const readStream = async (url: string) => {
       const res = await fetch(url, { method: "POST", signal: abort.signal });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-      onSourceRef.current?.("live");
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let text = "";
+      let reported = false;
       for (;;) {
         const { value, done } = await reader.read();
         if (done || isCancelled) break;
         text += value;
-        setTokens([{ text }]);
+        // se decide con lo primero que llega: el rótulo dice la verdad sobre de dónde vino el texto
+        if (!reported && text.length >= CACHE_PREFIX.length) {
+          reported = true;
+          onSourceRef.current?.(text.startsWith(CACHE_PREFIX) ? "cache" : "live");
+        }
+        setTokens([{ text: text.startsWith(CACHE_PREFIX) ? text.slice(CACHE_PREFIX.length) : text }]);
       }
+      if (!reported && text) onSourceRef.current?.("live");
       if (!isCancelled) setIsDone(true);
     };
 

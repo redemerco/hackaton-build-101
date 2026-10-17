@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { StreamText } from "@/components/ascii/stream-text";
+import { StreamText, type StreamSource } from "@/components/ascii/stream-text";
 import { Panel } from "@/components/glass/panel";
 
 export type SummaryCountView = { label: string; value: number };
@@ -18,8 +18,8 @@ type SummaryProps = {
 /** Resumen daily en streaming (lib/summary.ts). Si la IA se cae re-tipea el último real con "[cache …]". */
 export function Summary({ label, src, counts, fallback }: SummaryProps) {
   const [runId, setRunId] = useState(0);
-  const [source, setSource] = useState<"live" | "fallback" | null>(null);
-  const meta = source === "fallback" ? "[sin IA]" : source === "live" ? "gemini" : "…";
+  const [source, setSource] = useState<StreamSource | null>(null);
+  const meta = source === "fallback" ? "[sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "live" ? "gemini" : "…";
   const used = counts.filter((c) => c.value > 0);
 
   return (

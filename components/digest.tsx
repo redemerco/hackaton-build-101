@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { StreamText, type StreamPart } from "@/components/ascii/stream-text";
+import { StreamText, type StreamPart, type StreamSource } from "@/components/ascii/stream-text";
 import { Panel } from "@/components/glass/panel";
 
 /**
@@ -11,8 +11,8 @@ import { Panel } from "@/components/glass/panel";
  */
 export function Digest({ fallback, src, isExample }: { fallback: readonly StreamPart[]; src?: string; isExample: boolean }) {
   const [runId, setRunId] = useState(0);
-  const [source, setSource] = useState<"live" | "fallback" | null>(null);
-  const meta = isExample || source === "fallback" ? "[ejemplo · sin IA]" : source === "live" ? "gemini" : "…";
+  const [source, setSource] = useState<StreamSource | null>(null);
+  const meta = isExample || source === "fallback" ? "[ejemplo · sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "live" ? "gemini" : "…";
   return (
     <>
       <Panel label="tu digest" meta={meta} className="content-start">
