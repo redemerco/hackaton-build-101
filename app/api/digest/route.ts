@@ -31,6 +31,7 @@ export async function POST() {
       } catch (error) {
         if (text || !cached) return controller.error(error);
         console.error("[digest] IA caída, re-tipeo el último digest guardado", error);
+        controller.enqueue(encoder.encode("[cache · IA no disponible] "));
         for (const word of cached.split(/(?<=\s)/)) {
           controller.enqueue(encoder.encode(word));
           await new Promise((r) => setTimeout(r, WORD_MS));

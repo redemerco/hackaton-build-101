@@ -9,7 +9,7 @@ export const BOOT_GUARD = `try{if(sessionStorage.getItem("${BOOT_KEY}"))document
 
 const LINES = [
   { text: "$ build101 --wake", className: "text-dim" },
-  { text: "> sueño ✓  pulso ✓  git ✓  comidas ✓", className: "text-foreground/90" },
+  { text: "> leyendo sueño · pulso · git · comidas", className: "text-foreground/90" },
   { text: "> tu cuerpo y tu trabajo, en el mismo gráfico.", className: "text-mood" },
 ] as const;
 

@@ -11,10 +11,12 @@ import { Panel } from "@/components/glass/panel";
  */
 export function Digest({ fallback, src, isExample }: { fallback: readonly StreamPart[]; src?: string; isExample: boolean }) {
   const [runId, setRunId] = useState(0);
+  const [source, setSource] = useState<"live" | "fallback" | null>(null);
+  const meta = isExample || source === "fallback" ? "[ejemplo · sin IA]" : source === "live" ? "gemini" : "…";
   return (
     <>
-      <Panel label="tu digest" meta={isExample ? "[ejemplo]" : "gemini"} className="content-start">
-        <StreamText fallback={fallback} src={src} runId={runId} tokenMs={65} className="text-[15px] leading-relaxed" />
+      <Panel label="tu digest" meta={meta} className="content-start">
+        <StreamText fallback={fallback} src={src} runId={runId} tokenMs={65} onSource={setSource} className="text-[15px] leading-relaxed" />
         <p className="font-mono text-xs text-faint">observaciones de tus datos, no diagnóstico médico.</p>
       </Panel>
       <div className="grid grid-cols-2 gap-2">

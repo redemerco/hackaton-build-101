@@ -116,6 +116,9 @@ function MealResult({ analysis, onSave }: { analysis: MealAnalysis; onSave: () =
           </li>
         ))}
       </ul>
+      <p className="rounded-lg bg-heart/15 px-3 py-2 font-mono text-xs text-heart">
+        [ejemplo · sin IA todavía] este resultado es fijo; el análisis real con Gemini está en construcción
+      </p>
       <div className="flex items-baseline justify-between border-t border-dashed border-white/20 pt-3">
         <span className="text-sm text-dim">total estimado</span>
         <span className="font-mono text-2xl font-semibold tabular-nums text-food">

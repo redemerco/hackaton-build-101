@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DataChip, type Domain } from "@/components/ascii/data-chip";
 import { Caret } from "@/components/ascii/spinner";
 
@@ -15,6 +15,8 @@ type StreamTextProps = {
   runId?: number;
   tokenMs?: number;
   className?: string;
+  /** "live" si vino de `src`; "fallback" si se tipeó el respaldo. Para rotular "[ejemplo]" en la UI. */
+  onSource?: (source: "live" | "fallback") => void;
 };
 
 type Token = { text: string } | { chip: string; kind: Domain };
@@ -26,9 +28,14 @@ function tokenize(parts: readonly StreamPart[]): Token[] {
 }
 
 /** Texto que llega de a pedazos con cursor de terminal. Con `src` lee el stream real; si falla, tipea el respaldo. */
-export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }: StreamTextProps) {
+export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className, onSource }: StreamTextProps) {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isDone, setIsDone] = useState(false);
+
+  const onSourceRef = useRef(onSource);
+  useEffect(() => {
+    onSourceRef.current = onSource;
+  }, [onSource]);
 
   // Depende del contenido, no de la identidad del array: pasar `fallback={[texto]}` inline no reinicia el stream.
   const fallbackKey = JSON.stringify(fallback);
@@ -40,6 +47,7 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
     const all = tokenize(JSON.parse(fallbackKey) as StreamPart[]);
 
     const typeFallback = () => {
+      onSourceRef.current?.("fallback");
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         setTokens(all);
         setIsDone(true);
@@ -56,6 +64,7 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
     const readStream = async (url: string) => {
       const res = await fetch(url, { method: "POST", signal: abort.signal });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      onSourceRef.current?.("live");
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let text = "";
       for (;;) {
