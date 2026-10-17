@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Screen } from "@/components/screen";
 import { formatDuration, sparkline } from "@/lib/ascii";
 import { getWorkDay, MEETING_SLOTS_PER_DAY, meetingMinutes, type WorkLogEntry } from "@/lib/work";
+import { getCurrentUser } from "@/lib/users";
 
 const MESSAGE_WIDTH = 21;
 
@@ -21,8 +22,8 @@ function LogLine({ entry }: { entry: WorkLogEntry }) {
   );
 }
 
-export default function TrabajoPage() {
-  const day = getWorkDay();
+export default async function TrabajoPage() {
+  const day = getWorkDay((await getCurrentUser()).id);
   const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => day.meetingSlots.some(([a, b]) => i >= a && i < b));
   const series = [
     { label: "sueño", values: day.week.sleepMin, className: "text-sleep" },
