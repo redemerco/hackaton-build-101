@@ -45,6 +45,16 @@ export function hypnogramLanes(stages: readonly SleepStage[]): Record<SleepStage
   ) as Record<SleepStage, string>;
 }
 
+/** Caras del check-in de ánimo, de 1 (fundido) a 5 (a full). */
+export const MOODS = [
+  { value: 1, face: "x_x", label: "fundido" },
+  { value: 2, face: "-_-", label: "cansado" },
+  { value: 3, face: "._.", label: "normal" },
+  { value: 4, face: "^_^", label: "bien" },
+  { value: 5, face: "*o*", label: "a full" },
+] as const;
+export const moodFace = (mood: number | null): string => MOODS.find((m) => m.value === mood)?.face ?? "?_?";
+
 /** "7h12" a partir de minutos. */
 export function formatDuration(minutes: number): string {
   const m = Math.max(0, Math.round(minutes));

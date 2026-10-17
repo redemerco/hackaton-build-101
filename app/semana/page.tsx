@@ -1,12 +1,14 @@
-import { EmptyState } from "@/components/empty-state";
+import { Pulse } from "@/components/ascii/ascii-field";
+import { Digest } from "@/components/digest";
 import { PageHeader } from "@/components/page-header";
+import { EXAMPLE_DIGEST } from "@/lib/week";
 
-// Placeholder: lo reemplaza Joaco con el digest en streaming y el Wrapped.
 export default function SemanaPage() {
   return (
     <>
-      <PageHeader title="Semana" subtitle="Tu digest y el Wrapped." />
-      <EmptyState art="(-_-)" title="Próximamente" description="La IA te cuenta tu semana: sueño, commits, reuniones y ánimo." />
+      <Pulse bpm={60} stress={0.3} />
+      <PageHeader title="Semana" subtitle="Lo que tu semana de trabajo le hizo a tu cuerpo." />
+      <Digest fallback={EXAMPLE_DIGEST} isExample />
     </>
   );
 }

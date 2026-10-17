@@ -1,4 +1,8 @@
+import "server-only";
+import { and, desc, eq } from "drizzle-orm";
 import type { MascotMood } from "@/components/ascii/mascot";
+import { db, rawEvents } from "@/lib/db";
+import type { UserId } from "@/lib/users";
 
 export type Today = {
   sleepMin: number;
@@ -11,17 +15,29 @@ export type Today = {
   isExample: boolean;
 };
 
-const MOOD_FACES = ["x_x", "-_-", "._.", "^_^", "*o*"] as const;
-export const moodFace = (mood: number | null): string => (mood ? MOOD_FACES[mood - 1] : "?_?");
+export { moodFace } from "@/lib/ascii";
 
-// ponytail: día de ejemplo fijo hasta que Renzo ingeste google_health/mood en raw_events; ahí esto pasa a leer la DB.
-export function getToday(): Today {
+/** Último check-in de ánimo de hoy (día local del server), o null. */
+function todaysMood(userId: UserId): number | null {
+  const row = db
+    .select({ ts: rawEvents.ts, json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "mood")))
+    .orderBy(desc(rawEvents.ts))
+    .get();
+  if (!row || new Date(row.ts).toDateString() !== new Date().toDateString()) return null;
+  const mood = (JSON.parse(row.json) as { mood?: unknown }).mood;
+  return typeof mood === "number" ? mood : null;
+}
+
+// ponytail: sueño y pulso de ejemplo hasta que Renzo ingeste google_health; el ánimo ya es real.
+export function getToday(userId: UserId): Today {
   return {
     sleepMin: 432,
     sleepWeek: [402, 431, 352, 470, 410, 440, 432],
     restingBpm: 58,
     hrvMs: 48,
-    mood: 4,
+    mood: todaysMood(userId),
     meetings: 2,
     insight: "Los días con una sola reunión hiciste el doble de commits. Hoy tenés dos: buen día para cerrar un PR.",
     isExample: true,

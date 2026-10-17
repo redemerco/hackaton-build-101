@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import { AsciiField } from "@/components/ascii/ascii-field";
 import { GlassGlow } from "@/components/glass/glass-glow";
 import { TabBar } from "@/components/glass/tab-bar";
-import { UserSwitcher } from "@/components/user-switcher";
+import { SettingsSheet } from "@/components/settings-sheet";
 import { Toaster } from "@/components/ui/sonner";
 import { getCurrentUser } from "@/lib/users";
 import "./globals.css";
@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <span className="font-pixel text-[11px] text-dim">
               ~/<span className="text-foreground">build101</span>
             </span>
-            <UserSwitcher currentUserId={user.id} />
+            <SettingsSheet currentUserId={user.id} />
           </header>
           <main className="flex flex-1 flex-col gap-3 px-4 pb-32 pt-2">{children}</main>
         </div>
