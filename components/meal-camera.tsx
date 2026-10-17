@@ -68,9 +68,13 @@ export function MealCamera() {
 
   return (
     <>
-      <label htmlFor={inputId} className="glass press grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-food">
-        <CameraIcon className="size-5" aria-hidden />
-        <span className="sr-only">Sacarle una foto a la comida</span>
+      <label
+        htmlFor={inputId}
+        className="glass press flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-food/15 px-4 text-[15px] font-semibold text-food shadow-[inset_0_0_0_1px_var(--food)]"
+      >
+        <CameraIcon className="size-[18px]" aria-hidden />
+        foto
+        <span className="sr-only">: sacarle una foto a la comida</span>
       </label>
       <input
         id={inputId}

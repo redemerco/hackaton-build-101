@@ -17,7 +17,7 @@ function FoodPanels({ userId }: { userId: string }) {
   const meals = getMealsToday(userId);
   return (
     <>
-      <Panel label="comidas de hoy" meta={<span className="text-food">{formatRange(totalKcal(meals))} kcal</span>}>
+      <Panel label="comidas de hoy" meta={meals.length ? <span className="text-food">{formatRange(totalKcal(meals))} kcal</span> : undefined}>
         <ul className="grid gap-3">
           {meals.map((m) => (
             <li key={m.time + m.title} className="grid grid-cols-[48px_1fr_auto] items-baseline gap-2 text-[15px]">
@@ -27,7 +27,7 @@ function FoodPanels({ userId }: { userId: string }) {
             </li>
           ))}
         </ul>
-        {!meals.length && <p className="text-[15px] text-dim">Todavía no guardaste comidas hoy. Tocá la cámara de arriba para sacarle una foto a la próxima.</p>}
+        {!meals.length && <p className="text-[15px] text-dim">Todavía no guardaste comidas hoy. Tocá «foto» arriba para sacarle una a la próxima.</p>}
       </Panel>
     </>
   );
