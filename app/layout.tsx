@@ -11,8 +11,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { Suspense } from "react";
 import { ConnectionToast } from "@/components/connection-toast";
 import { getBuddy } from "@/lib/buddy";
-import { getConnectionStatus } from "@/lib/connections";
+import { getConnection, getConnectionStatus } from "@/lib/connections";
 import { getCurrentUser } from "@/lib/users";
+import { LoginGate } from "@/components/login-gate";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
@@ -35,6 +36,8 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
+  // Gate: sin conexión Google no se entra. El login de Google autentica + conecta Fitbit.
+  const signedIn = Boolean(getConnection(user.id, "google"));
   return (
     <html lang="es" suppressHydrationWarning className={`dark ${geistSans.variable} ${geistMono.variable} ${departure.variable} h-full antialiased`}>
       <head>
@@ -44,23 +47,29 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <BootSequence buddy={buddy} />
         <AsciiField />
         <GlassGlow />
-        <div id="app" className="mx-auto flex min-h-dvh max-w-md flex-col">
-          <header className="flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]" style={{ viewTransitionName: "app-header" }}>
-            <span className="font-pixel text-[22px] leading-none text-dim">
-              ~/<span className="text-foreground">build101</span>
-            </span>
-            <SettingsSheet
-              currentUserId={user.id}
-              currentBuddy={buddy}
-              connections={getConnectionStatus(user.id)}
-              configured={{ github: Boolean(process.env.GITHUB_CLIENT_ID), linear: Boolean(process.env.LINEAR_CLIENT_ID), slack: Boolean(process.env.SLACK_CLIENT_ID) }}
-            />
-          </header>
-          <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">
-            <PullToSync>{children}</PullToSync>
-          </main>
-        </div>
-        <TabBar />
+        {!signedIn ? (
+          <LoginGate />
+        ) : (
+          <>
+            <div id="app" className="mx-auto flex min-h-dvh max-w-md flex-col">
+              <header className="flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]" style={{ viewTransitionName: "app-header" }}>
+                <span className="font-pixel text-[22px] leading-none text-dim">
+                  ~/<span className="text-foreground">build101</span>
+                </span>
+                <SettingsSheet
+                  currentUserId={user.id}
+                  currentBuddy={buddy}
+                  connections={getConnectionStatus(user.id)}
+                  configured={{ github: Boolean(process.env.GITHUB_CLIENT_ID), linear: Boolean(process.env.LINEAR_CLIENT_ID), slack: Boolean(process.env.SLACK_CLIENT_ID) }}
+                />
+              </header>
+              <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">
+                <PullToSync>{children}</PullToSync>
+              </main>
+            </div>
+            <TabBar />
+          </>
+        )}
         <Toaster theme="dark" position="top-center" />
         <Suspense>
           <ConnectionToast />

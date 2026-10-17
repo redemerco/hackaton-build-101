@@ -23,6 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     [cfg.scopeParam ?? "scope"]: cfg.scope,
     state,
     response_type: "code",
+    ...(cfg.extraAuthParams ?? {}),
   }).toString();
   for (const [k, v] of Object.entries(cfg.extraParams ?? {})) if (v) url.searchParams.set(k, v);
   return Response.redirect(url, 302);

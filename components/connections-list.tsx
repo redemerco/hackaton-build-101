@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Provider } from "@/lib/connections";
 
-export type ConnectionStatus = Record<Provider, string | null>;
+// Providers que se conectan desde Ajustes (google es el login de entrada, no va acá).
+type Connectable = Exclude<Provider, "google">;
+
+export type ConnectionStatus = Record<Connectable, string | null>;
 /** Si el servidor tiene el CLIENT_ID del proveedor; sin eso, "Conectar" no puede arrancar el login. */
-export type ConnectionConfig = Record<Provider, boolean>;
+export type ConnectionConfig = Record<Connectable, boolean>;
 
 // Las que se conectan por OAuth de usuario (backend de Joaco: /api/connect/<p>). Health y Calendar los conecta Renzo.
-const OAUTH: { id: Provider; name: string; what: string }[] = [
+const OAUTH: { id: Connectable; name: string; what: string }[] = [
   { id: "github", name: "GitHub", what: "commits y PRs" },
   { id: "linear", name: "Linear", what: "issues" },
   { id: "slack", name: "Slack", what: "solo horarios, nunca mensajes" },
@@ -23,9 +26,9 @@ const PENDING = [
 /** Conexiones en Ajustes: "Conectar" arranca el login del proveedor; al volver, ConnectionToast avisa. */
 export function ConnectionsList({ status, configured }: { status: ConnectionStatus; configured: ConnectionConfig }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<Provider | null>(null);
+  const [busy, setBusy] = useState<Connectable | null>(null);
 
-  const disconnect = async (id: Provider, name: string) => {
+  const disconnect = async (id: Connectable, name: string) => {
     setBusy(id);
     try {
       const res = await fetch(`/api/connect/${id}`, { method: "DELETE" });

@@ -30,7 +30,7 @@ db.run(sql`CREATE TABLE IF NOT EXISTS connections (
   PRIMARY KEY (user_id, provider)
 )`);
 
-export type Provider = "github" | "linear" | "slack";
+export type Provider = "github" | "linear" | "slack" | "google";
 export type Connection = typeof connections.$inferSelect;
 
 export function saveConnection(c: Omit<Connection, "createdAt">) {
@@ -54,7 +54,7 @@ export function listConnections(provider: Provider): Connection[] {
 }
 
 /** Para la UI de Ajustes: qué tiene conectado el usuario, sin tokens. */
-export function getConnectionStatus(userId: string): Record<Provider, string | null> {
+export function getConnectionStatus(userId: string): Record<Exclude<Provider, "google">, string | null> {
   return {
     github: getConnection(userId, "github")?.account ?? null,
     linear: getConnection(userId, "linear")?.account ?? null,

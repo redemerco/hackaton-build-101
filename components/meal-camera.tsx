@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ascii/spinner";
 import { StreamText } from "@/components/ascii/stream-text";
 import { Sheet } from "@/components/glass/sheet";
 import { reactDaemon } from "@/lib/daemon-events";
-import { EXAMPLE_ANALYSIS, formatRange, scaleItem, totalKcal, type MealAnalysis } from "@/lib/meals";
+import { formatRange, scaleItem, totalKcal, type MealAnalysis } from "@/lib/meals";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -23,9 +23,26 @@ export function MealCamera() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScanned, setIsScanned] = useState(false);
   const [flashId, setFlashId] = useState(0); // cada foto dispara un flash de obturador
-  const analysis: MealAnalysis = EXAMPLE_ANALYSIS;
+  const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
+
+  // Manda la foto a Gemini (vía nuestro endpoint) y guarda el análisis real.
+  const analyze = async (file: File) => {
+    setAnalysis(null);
+    setError(false);
+    try {
+      const body = new FormData();
+      body.append("photo", file);
+      const res = await fetch("/api/comer/analizar", { method: "POST", body });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as MealAnalysis;
+      setAnalysis(data);
+    } catch {
+      setError(true);
+    }
+  };
 
   const onFile = (file: File | undefined) => {
     if (!file) return;
@@ -35,12 +52,15 @@ export function MealCamera() {
     setFlashId((n) => n + 1);
     setPhotoUrl(URL.createObjectURL(file));
     setIsOpen(true);
+    void analyze(file);
   };
   // Cerrar anima la hoja; la foto se suelta recién en onClose, así el contenido no se vacía mientras baja.
   const close = () => setIsOpen(false);
   const onClosed = () => {
     setIsOpen(false);
     setPhotoUrl(null);
+    setAnalysis(null);
+    setError(false);
   };
 
   return (
@@ -71,11 +91,21 @@ export function MealCamera() {
           <div className="relative overflow-hidden rounded-xl bg-[#07080c] ring-1 ring-inset ring-white/10">
             <AsciiScan src={photoUrl} onDone={() => setIsScanned(true)} className="block aspect-[5/4] w-full" />
             <span className="glass absolute bottom-3 left-3 rounded-full px-3 py-1.5 font-mono text-[13px]">
-              {isScanned ? `✓ ${analysis.items.length} ítems` : <Spinner label="escaneando" className="font-mono text-[13px]" />}
+              {isScanned && analysis ? `✓ ${analysis.items.length} ítems` : <Spinner label="escaneando" className="font-mono text-[13px]" />}
             </span>
           </div>
         )}
-        {isScanned && <MealResult analysis={analysis} onSave={() => {
+        {isScanned && error && (
+          <p className="rounded-lg bg-heart/15 px-3 py-3 text-center font-mono text-[13px] text-heart">
+            No se pudo analizar la foto. Probá de nuevo con mejor luz.
+          </p>
+        )}
+        {isScanned && !error && !analysis && (
+          <div className="grid place-items-center py-6">
+            <Spinner label="analizando con IA" className="font-mono text-[13px]" />
+          </div>
+        )}
+        {isScanned && analysis && <MealResult analysis={analysis} onSave={() => {
           toast("[meal] guardada");
           reactDaemon({ mood: "happy", text: "comida anotada. buen provecho." });
           close();
@@ -121,9 +151,6 @@ function MealResult({ analysis, onSave }: { analysis: MealAnalysis; onSave: () =
           </li>
         ))}
       </ul>
-      <p className="rounded-lg bg-heart/15 px-3 py-2 font-mono text-xs text-heart">
-        [ejemplo · sin IA todavía] este resultado es fijo; el análisis real con Gemini está en construcción
-      </p>
       <div className="flex items-baseline justify-between border-t border-dashed border-white/20 pt-3">
         <span className="text-sm text-dim">total estimado</span>
         <span className="font-mono text-2xl font-semibold tabular-nums text-food">

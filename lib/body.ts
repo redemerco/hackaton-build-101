@@ -1,4 +1,6 @@
 import type { SleepStage } from "@/lib/ascii";
+import { db, rawEvents } from "@/lib/db";
+import { and, desc, eq } from "drizzle-orm";
 
 export type Night = {
   start: string; // "23:48"
@@ -11,6 +13,7 @@ export type Night = {
   hrvMs: number;
   hrvTypical: [number, number];
   stepsByHour: number[]; // 08..19
+  stageMinutes?: Record<SleepStage, number>; // minutos reales por etapa (del summary de Fitbit); si falta, se derivan de stages
   isExample: boolean;
 };
 
@@ -26,8 +29,7 @@ function exampleStages(cols: number): SleepStage[] {
   });
 }
 
-// ponytail: noche de ejemplo hasta que exista el ingest de google_health (Renzo); misma forma que va a devolver la query.
-export function getLastNight(): Night {
+function exampleNight(): Night {
   const stages = exampleStages(29);
   return {
     start: "23:48",
@@ -42,6 +44,87 @@ export function getLastNight(): Night {
     stepsByHour: [120, 80, 60, 300, 1100, 640, 90, 70, 380, 1300, 210, 62],
     isExample: true,
   };
+}
+
+// Hora local del dato usando el offset que trae Google (ej. "-10800s" = UTC-3), no la del server.
+function localHHMM(iso: string, offsetSec: number): string {
+  const d = new Date(Date.parse(iso) + offsetSec * 1000);
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+// Mapea el type de una etapa de Google Health a nuestra escala.
+function mapStage(raw: string): SleepStage {
+  const s = raw.toUpperCase();
+  if (s === "DEEP") return "deep";
+  if (s === "REM") return "rem";
+  if (s === "AWAKE" || s === "WAKE") return "awake";
+  return "light"; // LIGHT / ASLEEP / UNKNOWN
+}
+
+// Arma una Night real desde el dataPoint de sueño de Google Health (forma: data.sleep.{interval,stages}).
+function parseNight(data: Record<string, unknown>): Night | null {
+  try {
+    const sleep = (data.sleep ?? {}) as Record<string, unknown>;
+    const interval = (sleep.interval ?? {}) as Record<string, string>;
+    const start = interval.startTime;
+    const end = interval.endTime;
+    if (!start || !end) return null;
+
+    const offSec = parseInt(interval.startUtcOffset ?? "0", 10) || 0;
+    const stageList = (sleep.stages as Array<Record<string, string>>) ?? [];
+
+    // Grilla de 15 min por etapa (cada columna de la UI = 15 min).
+    const COL_MIN = 15;
+    let stages: SleepStage[] = [];
+    for (const st of stageList) {
+      if (!st.startTime || !st.endTime) continue;
+      const cols = Math.max(1, Math.round((Date.parse(st.endTime) - Date.parse(st.startTime)) / 60000 / COL_MIN));
+      stages.push(...Array(cols).fill(mapStage(String(st.type ?? "LIGHT"))));
+    }
+    if (stages.length === 0) {
+      const cols = Math.max(4, Math.round((Date.parse(end) - Date.parse(start)) / 60000 / COL_MIN));
+      stages = exampleStages(cols);
+    }
+
+    // Minutos reales por etapa del summary de Fitbit (sin redondeo de la grilla).
+    const summary = (sleep.summary ?? {}) as Record<string, unknown>;
+    const ss = (summary.stagesSummary as Array<Record<string, string>>) ?? [];
+    let stageMinutes: Record<SleepStage, number> | undefined;
+    if (ss.length) {
+      stageMinutes = { awake: 0, light: 0, deep: 0, rem: 0 };
+      for (const row of ss) stageMinutes[mapStage(String(row.type))] += parseInt(row.minutes ?? "0", 10) || 0;
+    }
+    const base = exampleNight(); // HR/HRV/pasos de ejemplo (el dato de sueño no los trae junto)
+    const startLocal = new Date(Date.parse(start) + offSec * 1000);
+    return {
+      ...base,
+      start: localHHMM(start, offSec),
+      end: localHHMM(end, parseInt(interval.endUtcOffset ?? String(offSec), 10) || offSec),
+      startHour: startLocal.getUTCHours(),
+      stages,
+      stageMinutes,
+      isExample: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Lee la última noche real de raw_events (source "google", kind "sleep"); si no hay, usa el ejemplo rotulado.
+export function getLastNight(userId?: string): Night {
+  try {
+    const where = userId
+      ? and(eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), eq(rawEvents.userId, userId))
+      : and(eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"));
+    const row = db.select().from(rawEvents).where(where).orderBy(desc(rawEvents.ts)).limit(1).get();
+    if (row) {
+      const parsed = parseNight(JSON.parse(row.json));
+      if (parsed) return parsed;
+    }
+  } catch (error) {
+    console.error("[body] getLastNight", error);
+  }
+  return exampleNight();
 }
 
 /** Minutos por etapa (cada etapa del array son 15 min). */
