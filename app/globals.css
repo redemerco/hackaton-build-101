@@ -154,12 +154,71 @@
 }
 /* Se aplasta con rebote al tocarlo: lo "líquido" está en el movimiento. */
 @utility press {
-  transition: transform 0.45s var(--spring);
+  transition-property: transform;
+  transition-duration: 0.45s;
+  transition-timing-function: var(--spring);
   &:active {
-    transform: scale(0.93);
+    transform: scale(0.96);
     transition-duration: 0.12s;
+    transition-timing-function: ease-out;
   }
 }
+/* Para lo que se toca grande y con ganas (la burbuja de la cámara). */
+@utility press-strong {
+  &:active {
+    transform: scale(0.88);
+  }
+}
+
+/* ---------- movimiento ---------- */
+:root {
+  --dur-exit: 150ms;
+  --dur-enter: 320ms;
+  --stagger: 45ms;
+}
+/* Cada pantalla entra en cascada: los hijos directos de <main> suben 8px y se desenfocan. */
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes token-in {
+  from { opacity: 0; filter: blur(2px); }
+  to { opacity: 1; filter: blur(0); }
+}
+@keyframes idle-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+.stagger > * {
+  animation: enter-up var(--dur-enter) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.stagger > :nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+.stagger > :nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+.stagger > :nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+.stagger > :nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+.stagger > :nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
+.stagger > :nth-child(n + 7) { animation-delay: calc(var(--stagger) * 6); }
+.token-in { animation: token-in 220ms ease-out both; }
+.idle-bob { animation: idle-bob 2.6s ease-in-out infinite; }
+
+/* Tabs: desliza en la dirección de la tab elegida. Header, barra y fondo quedan anclados. */
+::view-transition { pointer-events: none; }
+::view-transition-old(.nav-forward) { --slide-offset: -48px; animation: var(--dur-exit) ease-in both vt-fade reverse, 380ms ease-in-out both vt-slide reverse; }
+::view-transition-new(.nav-forward) { --slide-offset: 48px; animation: 210ms ease-out var(--dur-exit) both vt-fade, 380ms ease-in-out both vt-slide; }
+::view-transition-old(.nav-back) { --slide-offset: 48px; animation: var(--dur-exit) ease-in both vt-fade reverse, 380ms ease-in-out both vt-slide reverse; }
+::view-transition-new(.nav-back) { --slide-offset: -48px; animation: 210ms ease-out var(--dur-exit) both vt-fade, 380ms ease-in-out both vt-slide; }
+@keyframes vt-fade { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: blur(0); } }
+@keyframes vt-slide { from { translate: var(--slide-offset); } to { translate: 0; } }
+::view-transition-group(app-header),
+::view-transition-group(tab-bar),
+::view-transition-group(ascii-field) { animation: none; z-index: 100; }
+::view-transition-old(app-header),
+::view-transition-old(tab-bar),
+::view-transition-old(ascii-field) { display: none; }
+::view-transition-new(app-header),
+::view-transition-new(tab-bar),
+::view-transition-new(ascii-field) { animation: none; }
+::view-transition-group(ascii-field) { z-index: -1; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass {
     background: rgb(30 34 46 / 0.94);
@@ -178,7 +237,11 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .press, .press:active { transition: none; transform: none; }
-  * { animation: none !important; }
+  *, ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 @layer base {
@@ -190,5 +253,25 @@
   }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
   }
+  /* sin zoom por doble toque ni selección accidental en controles */
+  a, button, label, [role="button"], summary {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  h1, h2, h3 { text-wrap: balance; }
+  p, li, figcaption { text-wrap: pretty; }
+  :focus-visible { outline: 2px solid var(--mood); outline-offset: 2px; }
 }
+/* Hoja inferior: sube con resorte, el fondo se oscurece. La salida la maneja components/glass/sheet.tsx. */
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+dialog[data-sheet][open] { animation: sheet-in 420ms cubic-bezier(0.2, 0.9, 0.25, 1) backwards; } /* backwards: al terminar manda el transform inline del arrastre */
+dialog[data-sheet]::backdrop { background: rgb(5 6 10 / 0.55); animation: backdrop-in 260ms ease-out both; }
+dialog[data-sheet][data-state="closing"]::backdrop { opacity: 0; transition: opacity 200ms ease-in; }

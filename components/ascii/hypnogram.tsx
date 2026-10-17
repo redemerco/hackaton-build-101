@@ -15,10 +15,10 @@ export function Hypnogram({ stages, startHour }: { stages: readonly SleepStage[]
   ).join("").trimEnd();
 
   return (
-    <div aria-hidden className="grid gap-px font-mono text-[9px] leading-[11px]">
+    <div aria-hidden className="grid gap-0.5 font-mono text-[11px] leading-[13px]">
       {SLEEP_STAGES.map((stage) => (
-        <div key={stage} className="grid grid-cols-[52px_1fr] items-center">
-          <span className="text-[9.5px] text-dim">{LANE_LABEL[stage]}</span>
+        <div key={stage} className="grid grid-cols-[68px_1fr] items-center">
+          <span className="text-[11px] text-dim">{LANE_LABEL[stage]}</span>
           <pre className="m-0 whitespace-pre text-[#2d3345]">
             {lanes[stage].split(/(█+)/).map((run, i) =>
               run.startsWith("█") ? <span key={i} style={{ color: LANE_COLOR[stage] }}>{run}</span> : run,
@@ -26,7 +26,7 @@ export function Hypnogram({ stages, startHour }: { stages: readonly SleepStage[]
           </pre>
         </div>
       ))}
-      <pre className="m-0 ml-[52px] mt-0.5 whitespace-pre text-faint">{axis}</pre>
+      <pre className="m-0 ml-[68px] mt-1 whitespace-pre text-faint">{axis}</pre>
     </div>
   );
 }

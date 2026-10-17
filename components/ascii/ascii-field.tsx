@@ -62,7 +62,7 @@ export function AsciiField() {
   }, []);
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" style={{ viewTransitionName: "ascii-field" }}>
       <pre
         ref={ref}
         className="m-0 h-full w-full overflow-hidden whitespace-pre font-mono text-[10px] leading-[12px] text-transparent"

@@ -1,6 +1,7 @@
 import { Pulse } from "@/components/ascii/ascii-field";
 import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
+import { Screen } from "@/components/screen";
 import { formatDuration, sparkline } from "@/lib/ascii";
 import { getWorkDay, MEETING_SLOTS_PER_DAY, meetingMinutes, type WorkLogEntry } from "@/lib/work";
 
@@ -30,12 +31,12 @@ export default function TrabajoPage() {
   ];
 
   return (
-    <>
+    <Screen>
       <Pulse bpm={60} stress={0.35} />
       <PageHeader title="Trabajo" subtitle={day.isExample ? "[ejemplo] hasta conectar GitHub, Linear y Calendar" : "GitHub · Linear · Calendar"} />
 
       <Panel label="git log · hoy" meta={`${day.commits} commits`}>
-        <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-[10.5px] leading-[1.55]">
+        <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-xs leading-[1.7]">
           {day.log.map((entry, i) => (
             <span key={i}><LogLine entry={entry} />{"\n"}</span>
           ))}
@@ -43,23 +44,23 @@ export default function TrabajoPage() {
       </Panel>
 
       <Panel label="reuniones" meta={`${day.meetingSlots.length} · ${formatDuration(meetingMinutes(day.meetingSlots))}`}>
-        <pre aria-hidden className="m-0 whitespace-pre font-mono text-[10px] leading-tight">
+        <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] leading-tight">
           {slots.map((busy, i) => <span key={i} className={busy ? "text-work" : "text-[#2d3345]"}>{busy ? "█" : "░"}</span>)}
         </pre>
-        <pre aria-hidden className="m-0 whitespace-pre font-mono text-[9px] text-faint">{"09       12       15       18"}</pre>
+        <pre aria-hidden className="m-0 whitespace-pre font-mono text-[13px] text-faint">{"09       12       15       18"}</pre>
       </Panel>
 
       <Panel label="sueño × commits × ánimo · 7 días">
-        <div className="grid gap-1 font-mono text-[11px]">
+        <div className="grid gap-1.5 font-mono">
           {series.map((s) => (
-            <div key={s.label} className="grid grid-cols-[64px_1fr] items-center">
-              <span className="text-[10px] text-dim">{s.label}</span>
-              <span aria-label={`${s.label}: ${s.values.join(", ")}`} className={`text-[13px] tracking-[2px] ${s.className}`}>{sparkline(s.values)}</span>
+            <div key={s.label} className="grid grid-cols-[76px_1fr] items-center">
+              <span className="text-xs text-dim">{s.label}</span>
+              <span aria-label={`${s.label}: ${s.values.join(", ")}`} className={`text-lg tracking-[3px] ${s.className}`}>{sparkline(s.values)}</span>
             </div>
           ))}
         </div>
-        <p className="text-[12.5px] text-foreground/85">El miércoles dormiste menos, hiciste menos commits y tu ánimo bajó. Correlación, no causa.</p>
+        <p className="text-[15px] leading-relaxed text-foreground/90">El miércoles dormiste menos, hiciste menos commits y tu ánimo bajó. Correlación, no causa.</p>
       </Panel>
-    </>
+    </Screen>
   );
 }

@@ -6,14 +6,14 @@ import { SPINNER } from "@/lib/ascii";
 const FRAME_MS = 90;
 
 /** Spinner braille ⠋ con un texto tipo log: "⠋ leyendo sueño…". */
-export function Spinner({ label }: { label?: string }) {
+export function Spinner({ label, className }: { label?: string; className?: string }) {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setFrame((f) => (f + 1) % SPINNER.length), FRAME_MS);
     return () => clearInterval(id);
   }, []);
   return (
-    <span role="status" className="font-mono text-xs text-dim">
+    <span role="status" className={className ?? "font-mono text-[13px] text-dim"}>
       {SPINNER[frame]}
       {label ? ` ${label}` : ""}
     </span>

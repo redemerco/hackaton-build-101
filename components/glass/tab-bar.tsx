@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BriefcaseIcon, CalendarRangeIcon, HeartPulseIcon, SparkleIcon } from "lucide-react";
@@ -8,49 +9,90 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/", label: "Hoy", Icon: SparkleIcon },
   { href: "/cuerpo", label: "Cuerpo", Icon: HeartPulseIcon },
-  null, // la cámara va al centro
+  { href: "/comer", label: "Comer", Icon: null }, // la cámara, al centro
   { href: "/trabajo", label: "Trabajo", Icon: BriefcaseIcon },
   { href: "/semana", label: "Semana", Icon: CalendarRangeIcon },
 ] as const;
 
-/** Barra flotante de vidrio con la cámara como burbuja central (beat 0:45 de la demo). */
+const activeIndexOf = (pathname: string) =>
+  TABS.findIndex((t) => (t.href === "/" ? pathname === "/" : pathname.startsWith(t.href)));
+
+type Pill = { x: number; width: number } | null;
+
+/**
+ * Barra flotante de vidrio. Una pastilla se desliza con resorte hasta la tab activa,
+ * y la navegación lleva la dirección (nav-forward / nav-back) para que la pantalla deslice hacia ese lado.
+ */
 export function TabBar() {
   const pathname = usePathname();
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const active = activeIndexOf(pathname);
+  const navRef = useRef<HTMLElement>(null);
+  const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [pill, setPill] = useState<Pill>(null);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const nav = navRef.current;
+      const tab = tabRefs.current[active];
+      if (!nav || !tab || TABS[active]?.Icon === null) return setPill(null);
+      const n = nav.getBoundingClientRect();
+      const t = tab.getBoundingClientRect();
+      setPill({ x: t.left - n.left, width: t.width });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [active]);
 
   return (
     <nav
+      ref={navRef}
       aria-label="Principal"
       className="glass fixed inset-x-3 z-40 mx-auto grid h-16 max-w-md grid-cols-[1fr_1fr_72px_1fr_1fr] items-center rounded-full px-1"
-      style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+      style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)", viewTransitionName: "tab-bar" }}
     >
-      {TABS.map((tab) =>
-        tab === null ? (
-          <Link
-            key="camara"
-            href="/comer"
-            aria-label="Sacarle una foto a la comida"
-            aria-current={isActive("/comer") ? "page" : undefined}
-            className="glass press -mt-7 grid size-14 place-items-center justify-self-center rounded-full"
-            style={{ background: "radial-gradient(circle at 32% 26%, rgb(255 255 255 / .6), transparent 46%), rgb(255 179 64 / .32)" }}
-          >
-            <span className="size-6 rounded-full border-2 border-foreground" />
-          </Link>
-        ) : (
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-1.5 left-0 rounded-full bg-white/12 shadow-[inset_0_1px_0_rgb(255_255_255/.35)] transition-[transform,width,opacity] duration-500 ease-[cubic-bezier(.34,1.56,.5,1)]"
+        style={{ width: pill?.width ?? 0, transform: `translateX(${pill?.x ?? 0}px)`, opacity: pill ? 1 : 0 }}
+      />
+      {TABS.map((tab, i) => {
+        const isActive = i === active;
+        const types = i === active ? undefined : [i > active ? "nav-forward" : "nav-back"];
+        const setRef = (el: HTMLAnchorElement | null) => { tabRefs.current[i] = el; };
+        if (tab.Icon === null) {
+          return (
+            <Link
+              key={tab.href}
+              ref={setRef}
+              href={tab.href}
+              transitionTypes={types}
+              aria-label="Sacarle una foto a la comida"
+              aria-current={isActive ? "page" : undefined}
+              className="glass press press-strong -mt-7 grid size-14 place-items-center justify-self-center rounded-full"
+              style={{ background: "radial-gradient(circle at 32% 26%, rgb(255 255 255 / .6), transparent 46%), rgb(255 179 64 / .32)" }}
+            >
+              <span className={cn("size-6 rounded-full border-2 border-foreground transition-transform duration-300", isActive && "scale-75 bg-foreground")} />
+            </Link>
+          );
+        }
+        return (
           <Link
             key={tab.href}
+            ref={setRef}
             href={tab.href}
-            aria-current={isActive(tab.href) ? "page" : undefined}
+            transitionTypes={types}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "press flex flex-col items-center gap-1 py-2 text-[10px] font-medium text-dim",
-              isActive(tab.href) && "text-foreground [&_svg]:text-mood",
+              "press relative flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium text-dim transition-colors duration-200",
+              isActive && "text-foreground [&_svg]:text-mood",
             )}
           >
-            <tab.Icon className="size-5" aria-hidden />
+            <tab.Icon className={cn("size-5 transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.5,1)]", isActive && "-translate-y-px scale-110")} aria-hidden />
             {tab.label}
           </Link>
-        ),
-      )}
+        );
+      })}
     </nav>
   );
 }

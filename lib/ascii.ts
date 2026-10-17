@@ -67,10 +67,15 @@ export type FieldParams = { cols: number; rows: number; t: number; bpm: number; 
  * El fondo vivo: ondas suaves + un anillo doble ("lub-dub") que sale del centro al ritmo del pulso.
  * `stress` (0..1) sube la densidad y agrega parpadeo.
  */
-export function asciiField({ cols, rows, t, bpm, stress }: FieldParams): string {
+// Calibración del ritmo: el fondo acompaña, no distrae. Subir FIELD_TIME_SCALE lo acelera.
+const FIELD_TIME_SCALE = 0.35;
+const BEATS_PER_RING = 3; // un anillo cada 3 latidos (~3 s a 60 bpm); el ♥ de la UI sí late en cada uno
+
+export function asciiField({ cols, rows, t: rawT, bpm, stress }: FieldParams): string {
+  const t = rawT * FIELD_TIME_SCALE;
   const cx = cols / 2;
   const cy = rows * 0.42;
-  const phase = (t * bpm / 60) % 1;
+  const phase = ((rawT * bpm) / 60 / BEATS_PER_RING) % 1;
   const maxR = Math.max(cols * 0.5, rows) * 0.9;
   const r1 = phase * maxR;
   const r2 = Math.max(0, phase - 0.16) * maxR;

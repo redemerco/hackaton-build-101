@@ -19,7 +19,7 @@ const CONNECTIONS = [
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="grid gap-2">
-      <h3 className="font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] text-dim">{title}</h3>
+      <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-dim">{title}</h3>
       {children}
     </section>
   );
@@ -55,7 +55,7 @@ export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)} className="glass press h-8 rounded-full px-3 text-xs font-medium">
+      <button type="button" onClick={() => setIsOpen(true)} className="glass press h-10 rounded-full px-4 text-sm font-medium">
         {current.id} ▾
       </button>
       <Sheet open={isOpen} onClose={() => { setIsOpen(false); setIsConfirmingDelete(false); }} title="Ajustes" subtitle="Tus datos, tu dispositivo. Nadie más los ve.">
@@ -68,7 +68,7 @@ export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
                 disabled={isPending}
                 aria-pressed={u.id === current.id}
                 onClick={() => switchUser(u.id)}
-                className={cn("glass press rounded-2xl py-2.5 text-sm font-medium disabled:opacity-60", u.id === current.id && "bg-mood/25")}
+                className={cn("glass press h-11 rounded-xl text-[15px] font-medium transition-[background-color] duration-200 disabled:opacity-60", u.id === current.id && "bg-mood/25")}
               >
                 {u.name}
               </button>
@@ -81,7 +81,7 @@ export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
         </Section>
 
         <Section title="conexiones">
-          <ul className="grid gap-1.5 font-mono text-[12px]">
+          <ul className="grid gap-2 font-mono text-sm">
             {CONNECTIONS.map((c) => (
               <li key={c.name} className="flex justify-between">
                 <span>{c.name}</span>
@@ -93,18 +93,18 @@ export function SettingsSheet({ currentUserId }: { currentUserId: UserId }) {
 
         <Section title="esto es tuyo">
           <div className="grid grid-cols-2 gap-2">
-            <a href="/api/export" className="glass press rounded-full py-2.5 text-center text-sm font-medium">Exportar JSON</a>
+            <a href="/api/export" className="glass press grid h-11 place-items-center rounded-full text-[15px] font-medium">Exportar JSON</a>
             {isConfirmingDelete ? (
-              <button type="button" disabled={isPending} onClick={wipe} className="glass press rounded-full bg-heart/30 py-2.5 text-sm font-semibold disabled:opacity-60">
+              <button type="button" disabled={isPending} onClick={wipe} className="glass press h-11 rounded-full bg-heart/30 text-[15px] font-semibold disabled:opacity-60">
                 Sí, borrar todo
               </button>
             ) : (
-              <button type="button" onClick={() => setIsConfirmingDelete(true)} className="glass press rounded-full py-2.5 text-sm font-medium text-heart">
+              <button type="button" onClick={() => setIsConfirmingDelete(true)} className="glass press h-11 rounded-full text-[15px] font-medium text-heart">
                 Borrar mis datos
               </button>
             )}
           </div>
-          {isConfirmingDelete && <p className="text-xs text-dim">Borra tus comidas, ánimo y datos de salud y trabajo de esta app. No se puede deshacer.</p>}
+          {isConfirmingDelete && <p className="text-sm text-dim">Borra tus comidas, ánimo y datos de salud y trabajo de esta app. No se puede deshacer.</p>}
         </Section>
       </Sheet>
     </>

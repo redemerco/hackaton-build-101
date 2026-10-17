@@ -63,6 +63,11 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
     const img = new Image();
     img.onload = () => {
       if (isCancelled) return;
+      // Resolución real en pantalla (hasta 2x) para que los caracteres se vean nítidos en retina.
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.round((canvas.clientWidth || 536) * dpr);
+      canvas.height = Math.round((canvas.clientHeight || 428) * dpr);
+      const cells = CELLS.map((c) => c * dpr);
       const { width: w, height: h } = canvas;
       drawCover(ctx, img, w, h);
       const pixels = ctx.getImageData(0, 0, w, h).data;
@@ -72,13 +77,13 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
       photo.getContext("2d")?.drawImage(canvas, 0, 0);
 
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        asciiPass(ctx, pixels, w, h, CELLS[CELLS.length - 1], 0, h);
+        asciiPass(ctx, pixels, w, h, cells[cells.length - 1], 0, h);
         onDoneRef.current?.();
         return;
       }
 
       const start = performance.now();
-      const scanEnd = STEP_MS * CELLS.length;
+      const scanEnd = STEP_MS * cells.length;
       let lastDraw = 0;
       const frame = (now: number) => {
         // ~15 fps: la pasada fina son ~10k fillText, no hace falta repetirla a 60 fps
@@ -91,19 +96,19 @@ export function AsciiScan({ src, onDone, className }: AsciiScanProps) {
         if (t < scanEnd) {
           const stage = Math.floor(t / STEP_MS);
           const lineY = Math.floor(((t % STEP_MS) / STEP_MS) * h);
-          if (stage > 0) asciiPass(ctx, pixels, w, h, CELLS[stage - 1], lineY, h);
+          if (stage > 0) asciiPass(ctx, pixels, w, h, cells[stage - 1], lineY, h);
           else { ctx.fillStyle = BG; ctx.fillRect(0, lineY, w, h - lineY); }
-          asciiPass(ctx, pixels, w, h, CELLS[stage], 0, lineY);
-          const glow = ctx.createLinearGradient(0, lineY - 30, 0, lineY + 2);
+          asciiPass(ctx, pixels, w, h, cells[stage], 0, lineY);
+          const glow = ctx.createLinearGradient(0, lineY - 30 * dpr, 0, lineY + 2);
           glow.addColorStop(0, `rgba(${SCAN_COLOR},0)`);
           glow.addColorStop(1, `rgba(${SCAN_COLOR},.55)`);
           ctx.fillStyle = glow;
-          ctx.fillRect(0, lineY - 30, w, 32);
+          ctx.fillRect(0, lineY - 30 * dpr, w, 32 * dpr);
           raf = requestAnimationFrame(frame);
           return;
         }
         // revelado: la foto real aparece sobre el ASCII fino
-        asciiPass(ctx, pixels, w, h, CELLS[CELLS.length - 1], 0, h);
+        asciiPass(ctx, pixels, w, h, cells[cells.length - 1], 0, h);
         ctx.globalAlpha = Math.min(1, (t - scanEnd) / REVEAL_MS);
         ctx.drawImage(photo, 0, 0);
         ctx.globalAlpha = 1;

@@ -35,13 +35,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <AsciiField />
         <GlassGlow />
         <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-          <header className="flex items-center justify-between px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
-            <span className="font-pixel text-[11px] text-dim">
+          <header className="flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]" style={{ viewTransitionName: "app-header" }}>
+            <span className="font-pixel text-[22px] leading-none text-dim">
               ~/<span className="text-foreground">build101</span>
             </span>
             <SettingsSheet currentUserId={user.id} />
           </header>
-          <main className="flex flex-1 flex-col gap-3 px-4 pb-32 pt-2">{children}</main>
+          <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)] pt-1">{children}</main>
         </div>
         <TabBar />
         <Toaster theme="dark" position="top-center" />

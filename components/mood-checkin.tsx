@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { saveMood } from "@/app/actions/mood";
 import { Sheet } from "@/components/glass/sheet";
+import { STAT_CARD, STAT_HINT, STAT_LABEL } from "@/components/stat-card";
 import { MOODS, moodFace } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
@@ -32,11 +33,11 @@ export function MoodCheckin({ mood }: { mood: number | null }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="glass glass-panel press grid min-w-0 gap-0.5 rounded-2xl px-3 py-2.5 text-left"
+        className={`${STAT_CARD} press text-left`}
       >
-        <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-dim">ánimo</span>
-        <span className="font-pixel text-[11px] leading-7">{moodFace(mood)}</span>
-        <span className="truncate font-mono text-[11px] text-mood">{mood ? `${mood}/5 · tocá` : "tocá para contar"}</span>
+        <span className={STAT_LABEL}>ánimo</span>
+        <span className="font-pixel text-[22px] leading-none">{moodFace(mood)}</span>
+        <span className={`${STAT_HINT} text-mood`}>{mood ? `${mood}/5 · tocá` : "tocá"}</span>
       </button>
 
       <Sheet open={isOpen} onClose={() => setIsOpen(false)} title="¿Cómo venís?" subtitle="Un toque por día. Se cruza con tu sueño y tu semana.">
@@ -49,11 +50,11 @@ export function MoodCheckin({ mood }: { mood: number | null }) {
               aria-pressed={picked === m.value}
               onClick={() => pick(m.value)}
               className={cn(
-                "glass press grid justify-items-center gap-1 rounded-2xl pb-2 pt-3 text-[10px] font-medium disabled:opacity-60",
+                "glass press grid justify-items-center gap-2 rounded-xl pb-2.5 pt-3.5 text-xs font-medium transition-[background-color,box-shadow] duration-200 disabled:opacity-60",
                 picked === m.value && "bg-mood/25 shadow-[inset_0_0_0_1px_var(--mood)]",
               )}
             >
-              <span className="font-pixel text-[11px]">{m.face}</span>
+              <span className="font-pixel text-[22px] leading-none">{m.face}</span>
               {m.label}
             </button>
           ))}

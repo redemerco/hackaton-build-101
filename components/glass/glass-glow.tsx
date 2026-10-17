@@ -12,9 +12,13 @@ export function GlassGlow() {
       glass.style.setProperty("--mx", `${e.clientX - r.left}px`);
       glass.style.setProperty("--my", `${e.clientY - r.top}px`);
     };
+    // iOS Safari solo aplica :active si hay un listener de touchstart: sin esto, `press` no se aplasta en el iPhone.
+    const noop = () => {};
+    document.addEventListener("touchstart", noop, { passive: true });
     document.addEventListener("pointermove", onMove, { passive: true });
     document.addEventListener("pointerdown", onMove, { passive: true });
     return () => {
+      document.removeEventListener("touchstart", noop);
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerdown", onMove);
     };

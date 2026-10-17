@@ -34,8 +34,9 @@ Pantallas, dueños, estados y **dónde engancha cada uno su dato real**: [`docs/
 | `lib/ai.ts` | Gemini: `MODEL` (`gemini-flash-latest`), `getAI()`, `streamText({ contents, config? }): ReadableStream` → `return new Response(streamText({...}))`. Imágenes: partes `{ inlineData: { mimeType, data } }` |
 | `lib/push.ts` | `sendPush(userId, { title, body, url? })` → `{ sent, removed }`, `saveSubscription` |
 | `components/glass/` | `Panel` (tarjeta de vidrio con `label`/`meta`), `Sheet` (hoja inferior, `<dialog>` nativo), `TabBar`, utilidades CSS `glass`, `glass-panel`, `press` |
-| `components/ascii/` | `AsciiField` + `<Pulse bpm stress/>` (fondo vivo), `Mascot`, `Hypnogram`, `Spinner`, `Caret`, `AsciiScan` (foto → ASCII), `StreamText` (`src` real con respaldo tipeado; pasale un `fallback` constante, no un array inline), `DataChip` |
+| `components/ascii/` | `AsciiField` + `<Pulse bpm stress/>` (fondo vivo), `Mascot`, `Hypnogram`, `Spinner`, `Caret`, `AsciiScan` (foto → ASCII), `StreamText` (`src` real con respaldo tipeado), `Count` / `DurationCount` (números que cuentan), `Decode` (cifras que se decodifican), `DataChip` |
 | `lib/ascii.ts` | `sparkline()`, `asciiLine()`, `hypnogramLanes()`, `formatDuration()`, `asciiField()` (puras, testeadas en `npm run smoke`) |
+| `components/screen.tsx` | `Screen`: envolvé el contenido de cada `page.tsx` con esto (transición entre tabs + entrada en cascada) |
 | `components/` | `PageHeader`, `EmptyState`, `StatCard`, `ui/*` (shadcn). Colores por dominio: `text-sleep`, `text-heart`, `text-food`, `text-work`, `text-mood`; fuente pixel: `font-pixel` |
 
 `raw_events`: `source` = fuente (`google_health`, `github`, `linear`, `meal`, `mood`…), `kind` = tipo dentro de la fuente, `ts` = ISO 8601 UTC, `json` = payload crudo.

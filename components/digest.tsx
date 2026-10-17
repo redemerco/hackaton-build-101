@@ -14,14 +14,14 @@ export function Digest({ fallback, src, isExample }: { fallback: readonly Stream
   return (
     <>
       <Panel label="tu digest" meta={isExample ? "[ejemplo]" : "gemini"} className="content-start">
-        <StreamText fallback={fallback} src={src} runId={runId} tokenMs={65} className="text-[13.5px] leading-relaxed" />
-        <p className="font-mono text-[10.5px] text-faint">observaciones de tus datos, no diagnóstico médico.</p>
+        <StreamText fallback={fallback} src={src} runId={runId} tokenMs={65} className="text-[15px] leading-relaxed" />
+        <p className="font-mono text-xs text-faint">observaciones de tus datos, no diagnóstico médico.</p>
       </Panel>
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => setRunId((n) => n + 1)} className="glass press rounded-full py-3 text-sm font-semibold">
+        <button type="button" onClick={() => setRunId((n) => n + 1)} className="glass press h-12 rounded-full text-[15px] font-semibold">
           ↻ Regenerar
         </button>
-        <Link href="/semana/wrapped" className="glass press rounded-full bg-mood/20 py-3 text-center text-sm font-semibold">
+        <Link href="/semana/wrapped" transitionTypes={["nav-forward"]} className="glass press grid h-12 place-items-center rounded-full bg-mood/20 text-[15px] font-semibold">
           Ver Wrapped
         </Link>
       </div>

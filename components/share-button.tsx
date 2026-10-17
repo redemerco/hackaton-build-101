@@ -19,7 +19,7 @@ export function ShareButton({ title, text }: { title: string; text: string }) {
     }
   };
   return (
-    <button type="button" onClick={share} className="glass press w-full rounded-full py-3 text-sm font-semibold">
+    <button type="button" onClick={share} className="glass press h-12 w-full rounded-full text-[15px] font-semibold">
       Compartir
     </button>
   );

@@ -30,10 +30,13 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isDone, setIsDone] = useState(false);
 
+  // Depende del contenido, no de la identidad del array: pasar `fallback={[texto]}` inline no reinicia el stream.
+  const fallbackKey = JSON.stringify(fallback);
+
   useEffect(() => {
     let isCancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const all = tokenize(fallback);
+    const all = tokenize(JSON.parse(fallbackKey) as StreamPart[]);
 
     const typeFallback = () => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -77,11 +80,18 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className }
       isCancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [fallback, src, runId, tokenMs]);
+  }, [fallbackKey, src, runId, tokenMs]);
 
   return (
     <p className={className} aria-busy={!isDone}>
-      {tokens.map((t, i) => ("chip" in t ? <DataChip key={i} kind={t.kind}>{t.chip}</DataChip> : <span key={i}>{t.text}</span>))}
+      {/* key por índice: solo las palabras nuevas montan y hacen el fade; las anteriores quedan quietas */}
+      {tokens.map((t, i) =>
+        "chip" in t ? (
+          <span key={i} className="token-in"><DataChip kind={t.kind}>{t.chip}</DataChip></span>
+        ) : (
+          <span key={i} className="token-in">{t.text}</span>
+        ),
+      )}
       {!isDone && <Caret />}
     </p>
   );
