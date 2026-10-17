@@ -9,6 +9,9 @@ import { getCurrentUser } from "@/lib/users";
 import { getLinearWeek, getSlackToday, type SlackToday } from "@/lib/work-signals";
 import { SourcesList } from "@/components/connect/source-card";
 import { getSourcesOverview } from "@/lib/connection-overview";
+import { buildWorkPrompt, EXAMPLE_WORK_SUMMARY } from "@/lib/summary-work";
+// Plan B: cuando esté components/summary.tsx (Santi), este import pasa a "@/components/summary".
+import { Summary } from "./work-summary";
 
 const MESSAGE_WIDTH = 21;
 
@@ -125,6 +128,7 @@ export default async function TrabajoPage() {
     );
   }
 
+  const { counts } = buildWorkPrompt(userId);
   const connected = [day && "GitHub", linear.hasData && "Linear", slack.hasData && "Slack"].filter(Boolean).join(" · ");
   const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => (day?.meetingSlots ?? []).some(([a, b]) => i >= a && i < b));
   const series = day
@@ -146,6 +150,8 @@ export default async function TrabajoPage() {
           <SourcesList sources={oauthSources} />
         </Panel>
       )}
+
+      <Summary label="hoy, en trabajo" src="/api/summary/work" fallback={EXAMPLE_WORK_SUMMARY} counts={counts} isExample={false} />
 
       {day && (
         <Panel label="git log · hoy" meta={`${day.commits} commits`}>
