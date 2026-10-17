@@ -1,8 +1,8 @@
 import "server-only";
 import { and, asc, eq, gte } from "drizzle-orm";
-import type { StreamPart } from "@/components/ascii/stream-text";
 import { getConnection, type Provider } from "@/lib/connections";
 import { db, rawEvents } from "@/lib/db";
+import type { SummaryCount } from "@/lib/summary";
 import { getWorkDay, meetingsToday } from "@/lib/work";
 import { getLinearWeek, getSlackToday } from "@/lib/work-signals";
 
@@ -21,15 +21,8 @@ Escribí en español rioplatense, cálido y directo, como un compañero que mira
 - Si ves una relación (más reuniones, menos commits), es correlación, no causa: decilo así.
 - Si una fuente dice "no conectado", decilo en media oración. Nunca inventes datos que no están.`;
 
-export const EXAMPLE_WORK_SUMMARY: readonly StreamPart[] = [
-  "[ejemplo] Arrancaste a commitear a las 10:12 y hasta el mediodía metiste ",
-  { chip: "5 commits", kind: "work" },
-  ", casi todos chicos. De 14 a 16 se te juntaron ",
-  { chip: "3 reuniones", kind: "work" },
-  " y en esa franja no hubo ni un commit. Cerraste el día con un PR mergeado a las 18:40: las reuniones y el código se repartieron el día, pero eso es correlación, no causa.",
-];
-
-export type WorkCount = { label: string; n: number };
+export const EXAMPLE_WORK_SUMMARY =
+  "[ejemplo] Arrancaste a commitear a las 10:12 y hasta el mediodía metiste 5 commits, casi todos chicos. De 14 a 16 se te juntaron 3 reuniones y en esa franja no hubo ni un commit. Cerraste el día con un PR mergeado a las 18:40: las reuniones y el código se repartieron el día, pero eso es correlación, no causa.";
 
 type Row = { source: string; kind: string; ts: string; json: string };
 
@@ -58,7 +51,7 @@ function isConnected(userId: string, provider: Provider): boolean {
     .get();
 }
 
-export function buildWorkPrompt(userId: string): { system: string; prompt: string; counts: WorkCount[] } {
+export function buildWorkPrompt(userId: string): { system: string; prompt: string; counts: SummaryCount[] } {
   const now = new Date();
   const today = dayKey.format(now);
   const rows = db
@@ -109,11 +102,11 @@ export function buildWorkPrompt(userId: string): { system: string; prompt: strin
     system: WORK_SYSTEM,
     prompt: `Hoy es ${today}, son las ${hhmm.format(now)} en Montevideo.\n\n${sections.join("\n\n")}`,
     counts: [
-      { label: "commits", n: on.github ? commits : 0 },
-      { label: "PRs", n: on.github ? prs : 0 },
-      { label: "issues", n: issues },
-      { label: "mensajes", n: on.slack ? slack.messages : 0 },
-      { label: "reuniones", n: on.calendar ? meetings.length : 0 },
+      { label: "commits", value: on.github ? commits : 0 },
+      { label: "PRs", value: on.github ? prs : 0 },
+      { label: "issues", value: issues },
+      { label: "mensajes", value: on.slack ? slack.messages : 0 },
+      { label: "reuniones", value: on.calendar ? meetings.length : 0 },
     ],
   };
 }

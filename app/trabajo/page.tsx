@@ -11,8 +11,7 @@ import { getLinearWeek, getSlackToday, type SlackToday } from "@/lib/work-signal
 import { SourcesList } from "@/components/connect/source-card";
 import { getSourcesOverview } from "@/lib/connection-overview";
 import { buildWorkPrompt, EXAMPLE_WORK_SUMMARY } from "@/lib/summary-work";
-// Plan B: cuando esté components/summary.tsx (Santi), este import pasa a "@/components/summary".
-import { Summary } from "./work-summary";
+import { Summary } from "@/components/summary";
 
 const MESSAGE_WIDTH = 21;
 
@@ -159,7 +158,7 @@ export default async function TrabajoPage() {
         </Panel>
       )}
 
-      <Summary label="hoy, en trabajo" src="/api/summary/work" fallback={EXAMPLE_WORK_SUMMARY} counts={counts} isExample={false} />
+      <Summary label="hoy, en trabajo" src="/api/summary/work" fallback={EXAMPLE_WORK_SUMMARY} counts={counts} />
 
       {day && (
         <Panel label="git log · hoy" meta={`${day.commits} commits`}>
