@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { BottomNav } from "@/components/bottom-nav";
+import localFont from "next/font/local";
+import { AsciiField } from "@/components/ascii/ascii-field";
+import { GlassGlow } from "@/components/glass/glass-glow";
+import { TabBar } from "@/components/glass/tab-bar";
 import { UserSwitcher } from "@/components/user-switcher";
 import { Toaster } from "@/components/ui/sonner";
 import { getCurrentUser } from "@/lib/users";
@@ -8,6 +11,8 @@ import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// Departure Mono (OFL 1.1, ver app/fonts/DepartureMono-LICENSE.txt). Nítida solo en 11/22/33/44 px.
+const departure = localFont({ src: "./fonts/DepartureMono-Regular.woff2", variable: "--font-departure", display: "swap" });
 
 export const metadata: Metadata = {
   title: "build101",
@@ -16,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#0a0c12",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -25,20 +30,21 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await getCurrentUser();
   return (
-    <html lang="es" className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full bg-background text-foreground font-sans">
+    <html lang="es" className={`dark ${geistSans.variable} ${geistMono.variable} ${departure.variable} h-full antialiased`}>
+      <body className="min-h-full bg-background font-sans text-foreground">
+        <AsciiField />
+        <GlassGlow />
         <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur pt-[max(0.75rem,env(safe-area-inset-top))]">
-            <span className="flex items-center gap-2 font-semibold tracking-tight">
-              <span className="size-2.5 rounded-full bg-emerald-400" aria-hidden />
-              build101
+          <header className="flex items-center justify-between px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
+            <span className="font-pixel text-[11px] text-dim">
+              ~/<span className="text-foreground">build101</span>
             </span>
             <UserSwitcher currentUserId={user.id} />
           </header>
-          <main className="flex-1 px-4 py-5 pb-24">{children}</main>
-          <BottomNav />
+          <main className="flex flex-1 flex-col gap-3 px-4 pb-32 pt-2">{children}</main>
         </div>
-        <Toaster theme="dark" />
+        <TabBar />
+        <Toaster theme="dark" position="top-center" />
       </body>
     </html>
   );

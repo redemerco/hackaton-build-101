@@ -1,21 +1,55 @@
-import { PageHeader } from "@/components/page-header";
+import { Pulse } from "@/components/ascii/ascii-field";
+import { Mascot } from "@/components/ascii/mascot";
+import { Caret } from "@/components/ascii/spinner";
+import { Panel } from "@/components/glass/panel";
 import { PushToggle } from "@/components/push-toggle";
 import { StatCard } from "@/components/stat-card";
+import { formatDuration, sparkline } from "@/lib/ascii";
+import { getToday, logLine, mascotMood, moodFace, stressOf } from "@/lib/today";
 import { getCurrentUser } from "@/lib/users";
 
-export default async function Home() {
+export default async function Hoy() {
   const user = await getCurrentUser();
+  const today = getToday();
+  const sleep = formatDuration(today.sleepMin);
+  const log = logLine(today, sleep);
+
   return (
     <>
-      <PageHeader title={`Hola, ${user.name}`} subtitle="Tu cuerpo y tu trabajo, en el mismo gráfico." />
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Sueño" value="—" hint={user.hasWearable ? "Esperando Google Health" : "Sin wearable"} />
-        <StatCard label="Ánimo" value="—" hint="Check-in de hoy" />
+      <Pulse bpm={today.restingBpm} stress={stressOf(today)} />
+      <h1 className="sr-only">Hoy, {user.name}</h1>
+
+      <Panel className="grid-cols-[auto_1fr] items-center gap-3">
+        <Mascot mood={mascotMood(today)} />
+        <p className="font-mono text-[11.5px] leading-snug text-foreground/85">
+          <span className={log.tag === "warn" ? "text-heart" : "text-mood"}>[{log.tag}]</span> {log.text}
+        </p>
+      </Panel>
+
+      <div className="grid grid-cols-3 gap-2">
+        <StatCard label="sueño" value={sleep} hint={<span className="text-sleep">{sparkline(today.sleepWeek)}</span>} />
+        <StatCard
+          label="pulso"
+          value={<>{today.restingBpm}<span className="ml-0.5 text-[10px] font-normal text-dim">bpm</span></>}
+          hint={<span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> hrv {today.hrvMs}ms</span>}
+        />
+        <StatCard
+          label="ánimo"
+          value={<span className="font-pixel text-[11px] font-normal">{moodFace(today.mood)}</span>}
+          hint={<span className="text-mood">{today.mood ? `${today.mood}/5` : "sin check-in"}</span>}
+        />
       </div>
-      <section className="mt-6 flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Notificaciones</h2>
+
+      <Panel label="observación" meta={today.isExample ? "[ejemplo]" : "gemini"}>
+        <p className="text-[13.5px] leading-relaxed">
+          {today.insight}
+          <Caret />
+        </p>
+      </Panel>
+
+      <Panel label="notificaciones">
         <PushToggle />
-      </section>
+      </Panel>
     </>
   );
 }

@@ -24,7 +24,7 @@ export function UserSwitcher({ currentUserId }: { currentUserId: UserId }) {
           }
         });
       }}
-      className="h-8 rounded-md border bg-card px-2 text-sm disabled:opacity-50"
+      className="glass press h-8 appearance-none rounded-full bg-transparent px-3 text-xs font-medium disabled:opacity-50"
     >
       {USERS.map((u) => (
         <option key={u.id} value={u.id}>

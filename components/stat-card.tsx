@@ -1,13 +1,12 @@
-import { Card, CardContent } from "@/components/ui/card";
+import type { ReactNode } from "react";
 
-export function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/** Vital chico de vidrio: etiqueta, número grande y una línea ASCII o de contexto. */
+export function StatCard({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-1">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-        <span className="text-2xl font-semibold tabular-nums">{value}</span>
-        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
-      </CardContent>
-    </Card>
+    <div className="glass glass-panel grid min-w-0 gap-0.5 rounded-2xl px-3 py-2.5">
+      <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-dim">{label}</span>
+      <span className="whitespace-nowrap font-mono text-lg font-semibold tabular-nums tracking-tight">{value}</span>
+      {hint && <span className="truncate font-mono text-[11px]">{hint}</span>}
+    </div>
   );
 }

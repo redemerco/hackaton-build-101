@@ -20,6 +20,10 @@ npm run smoke                   # chequeo rápido de la DB
 - El teléfono entra por el túnel ngrok (HTTPS lo pone ngrok). `npm run dev:https` existe pero la primera vez pide sudo (mkcert instala una CA).
 - La DB es `data/pulso.db` (SQLite, se crea sola, no se commitea).
 
+## Diseño
+
+Pantallas, dueños y estados: [`docs/pantallas.md`](docs/pantallas.md). Propuesta visual viva: https://claude.ai/artifact/L7vWgdUTTZ2qRHTxsPKoTE
+
 ## Contrato (no romper sin avisar)
 
 | Archivo | Qué expone |
@@ -29,7 +33,10 @@ npm run smoke                   # chequeo rápido de la DB
 | `lib/user-list.ts` | lo mismo sin `server-only`, para componentes cliente |
 | `lib/ai.ts` | Gemini: `MODEL` (`gemini-flash-latest`), `getAI()`, `streamText({ contents, config? }): ReadableStream` → `return new Response(streamText({...}))`. Imágenes: partes `{ inlineData: { mimeType, data } }` |
 | `lib/push.ts` | `sendPush(userId, { title, body, url? })` → `{ sent, removed }`, `saveSubscription` |
-| `components/` | `PageHeader`, `EmptyState`, `StatCard`, `ui/*` (shadcn: button, card, badge, skeleton, sonner, select) |
+| `components/glass/` | `Panel` (tarjeta de vidrio con `label`/`meta`), `TabBar`, utilidades CSS `glass`, `glass-panel`, `press` |
+| `components/ascii/` | `AsciiField` + `<Pulse bpm stress/>` (fondo vivo), `Mascot`, `Hypnogram`, `Spinner`, `Caret` |
+| `lib/ascii.ts` | `sparkline()`, `asciiLine()`, `hypnogramLanes()`, `formatDuration()`, `asciiField()` (puras, testeadas en `npm run smoke`) |
+| `components/` | `PageHeader`, `EmptyState`, `StatCard`, `ui/*` (shadcn). Colores por dominio: `text-sleep`, `text-heart`, `text-food`, `text-work`, `text-mood`; fuente pixel: `font-pixel` |
 
 `raw_events`: `source` = fuente (`google_health`, `github`, `linear`, `meal`, `mood`…), `kind` = tipo dentro de la fuente, `ts` = ISO 8601 UTC, `json` = payload crudo.
 Next 16.4 con `cacheComponents` **apagado**: todas las páginas son dinámicas, podés usar `getCurrentUser()` sin `Suspense`.
