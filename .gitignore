@@ -44,3 +44,6 @@ next-env.d.ts
 /data/
 /certificates/
 !.env.example
+
+# python (scripts/buddy-sprites.py)
+__pycache__/
