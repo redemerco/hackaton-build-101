@@ -1,5 +1,6 @@
 import "server-only";
 import { saveConnection, type Connection, type Provider } from "@/lib/connections";
+import { LINEAR_SCOPE, normalizeScopes, SLACK_USER_SCOPE } from "@/lib/agent-work";
 
 // OAuth web-server de GitHub y Linear: botón "Conectar" → login en el proveedor → /api/connect/<p>/callback.
 type Config = {
@@ -36,7 +37,8 @@ export const PROVIDERS: Record<Provider, Config> = {
   linear: {
     authorizeUrl: "https://linear.app/oauth/authorize",
     tokenUrl: "https://api.linear.app/oauth/token",
-    scope: "read",
+    // "write": el agente crea issues y baja prioridades (siempre con Confirmar). Las conexiones viejas quedan en "read".
+    scope: LINEAR_SCOPE,
     clientId: process.env.LINEAR_CLIENT_ID,
     clientSecret: process.env.LINEAR_CLIENT_SECRET,
     account: async (token) => {
@@ -52,9 +54,10 @@ export const PROVIDERS: Record<Provider, Config> = {
   slack: {
     authorizeUrl: "https://slack.com/oauth/v2/authorize",
     tokenUrl: "https://slack.com/api/oauth.v2.access",
-    // Token de usuario: search:read para contar mensajes y horarios (jamás leemos el contenido);
-    // users.profile:write y dnd:write para que el agente ponga tu estado y "no molestar" (modo foco). Coma, no espacio.
-    scope: "search:read,users.profile:write,dnd:write",
+    // Token de usuario. search:read: contamos mensajes y horarios, jamás leemos el contenido.
+    // users.profile:write + dnd:write: estado "En foco" y no molestar durante un bloque de foco (solo con Confirmar).
+    // OJO: tienen que estar en "User Token Scopes" de la app en api.slack.com o el authorize falla (invalid_scope).
+    scope: SLACK_USER_SCOPE,
     scopeParam: "user_scope",
     // Con el team, Slack va directo al workspace de la demo en vez de preguntar "¿cuál es tu workspace?".
     extraParams: { team: process.env.SLACK_TEAM_ID },
@@ -125,7 +128,11 @@ export function publicOrigin(req: Request): string {
 
 export const callbackUrl = (req: Request, p: Provider) => `${publicOrigin(req)}/api/connect/${p}/callback`;
 
-type TokenResponse = { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
+/** `scope`: Slack lo manda como "a,b" en authed_user; Linear como array o string. */
+type TokenResponse = { access_token?: string; refresh_token?: string; expires_in?: number; scope?: unknown; error?: string };
+
+/** Scopes otorgados; si la respuesta no los trae, OAuth dice que se otorgó lo pedido. */
+const grantedScopes = (p: Provider, t: TokenResponse) => normalizeScopes(t.scope) ?? normalizeScopes(PROVIDERS[p].scope);
 
 async function requestToken(p: Provider, params: Record<string, string>): Promise<TokenResponse> {
   const cfg = PROVIDERS[p];
@@ -146,7 +153,7 @@ const expiry = (t: TokenResponse) => (t.expires_in ? new Date(Date.now() + t.exp
 export async function connect(req: Request, p: Provider, code: string, userId: string): Promise<string> {
   const t = await requestToken(p, { code, grant_type: "authorization_code", redirect_uri: callbackUrl(req, p) });
   const account = await PROVIDERS[p].account(t.access_token!);
-  saveConnection({ userId, provider: p, account, token: t.access_token!, refreshToken: t.refresh_token ?? null, expiresAt: expiry(t) });
+  saveConnection({ userId, provider: p, account, token: t.access_token!, refreshToken: t.refresh_token ?? null, expiresAt: expiry(t), scopes: grantedScopes(p, t) });
   return account;
 }
 
@@ -165,7 +172,7 @@ export async function connectGoogleLogin(req: Request, code: string): Promise<Go
   const info = (await res.json()) as { sub?: string; email?: string; name?: string };
   if (!info.sub || !info.email) throw new Error("google userinfo sin sub/email");
   const identity: GoogleIdentity = { sub: info.sub, email: info.email, name: info.name };
-  saveConnection({ userId: identity.sub, provider: "google", account: identity.email, token: t.access_token!, refreshToken: t.refresh_token ?? null, expiresAt: expiry(t) });
+  saveConnection({ userId: identity.sub, provider: "google", account: identity.email, token: t.access_token!, refreshToken: t.refresh_token ?? null, expiresAt: expiry(t), scopes: grantedScopes("google", t) });
   return identity;
 }
 
@@ -173,6 +180,6 @@ export async function connectGoogleLogin(req: Request, code: string): Promise<Go
 export async function freshToken(c: Connection): Promise<string> {
   if (!c.expiresAt || !c.refreshToken || Date.parse(c.expiresAt) - Date.now() > 60_000) return c.token;
   const t = await requestToken(c.provider as Provider, { grant_type: "refresh_token", refresh_token: c.refreshToken });
-  saveConnection({ ...c, token: t.access_token!, refreshToken: t.refresh_token ?? c.refreshToken, expiresAt: expiry(t) });
+  saveConnection({ ...c, token: t.access_token!, refreshToken: t.refresh_token ?? c.refreshToken, expiresAt: expiry(t), scopes: normalizeScopes(t.scope) ?? c.scopes });
   return t.access_token!;
 }

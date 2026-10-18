@@ -13,6 +13,7 @@ export const connections = sqliteTable(
     token: text("token").notNull(),
     refreshToken: text("refresh_token"),
     expiresAt: text("expires_at"), // ISO; null = no vence
+    scopes: text("scopes"), // scopes otorgados al conectar, separados por coma; null = conexión vieja (no se sabe)
     createdAt: text("created_at").notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.provider] })],
@@ -26,14 +27,21 @@ db.run(sql`CREATE TABLE IF NOT EXISTS connections (
   token TEXT NOT NULL,
   refresh_token TEXT,
   expires_at TEXT,
+  scopes TEXT,
   created_at TEXT NOT NULL,
   PRIMARY KEY (user_id, provider)
 )`);
 
+// Conexiones viejas: la columna se agrega sin migrar; sus filas quedan con scopes null (= sin permisos de escritura).
+if (!(db.all(sql`PRAGMA table_info(connections)`) as { name: string }[]).some((c) => c.name === "scopes")) {
+  db.run(sql`ALTER TABLE connections ADD COLUMN scopes TEXT`);
+}
+
 export type Provider = "github" | "linear" | "slack" | "google" | "calendar";
 export type Connection = typeof connections.$inferSelect;
 
-export function saveConnection(c: Omit<Connection, "createdAt">) {
+/** `scopes` sin pasar (undefined) no pisa los que ya había: al renovar el token se conservan. */
+export function saveConnection(c: Omit<Connection, "createdAt" | "scopes"> & { scopes?: string | null }) {
   const row = { ...c, createdAt: new Date().toISOString() };
   db.insert(connections)
     .values(row)
