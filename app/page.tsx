@@ -11,6 +11,7 @@ import { MoodCheckin } from "@/components/mood-checkin";
 import { Screen } from "@/components/screen";
 import { SlackReport } from "@/components/slack-report";
 import { StatCard } from "@/components/stat-card";
+import { StressMapView } from "@/components/stress-map";
 import { Summary } from "@/components/summary";
 import { formatDuration, sparkline } from "@/lib/ascii";
 import { deriveState, linesFor, STATES } from "@/lib/daemon";
@@ -159,6 +160,10 @@ export default async function Yo() {
         )}
         <MoodCheckin mood={today.mood} />
       </div>
+
+      <Panel label="estrés · esta semana" meta={isSimulated ? "[datos simulados]" : "carga × cuerpo"}>
+        <StressMapView map={cross.stress} projects={cross.projects} />
+      </Panel>
 
       <Panel label="tu día · por hora" meta={isSimulated ? "[datos simulados]" : "hoy"}>
         <CrossChart day={cross.today} nowHour={cross.nowHour} sleepMin={today.sleepMin} />

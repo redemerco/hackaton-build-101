@@ -8,6 +8,8 @@ import { createDb } from "../lib/db-core.ts";
 const DB_PATH = "data/pulso.db";
 const DAYS = 28; // > 21 días con sueño + commits + ánimo: el umbral de correlación de Trabajo se alcanza
 // mensajes con forma de commit real (la pantalla igual rotula [datos simulados])
+// repos de los commits simulados: 2 de cada 3 al proyecto principal (lo usa el reparto por proyecto de Yo)
+const REPOS = ["build101", "build101", "entraste-api"];
 const COMMIT_MESSAGES = [
   "feat: endpoint de pagos con reintentos",
   "fix: race en el refresh del token",
@@ -123,7 +125,9 @@ for (const p of PEOPLE) {
 
     // noche que termina ese día a las ~07:15 local; un par de noches malas para que haya movimiento
     const isBadNight = i % 4 === 2;
-    const asleep = Math.round(jitter(isBadNight ? p.sleepMin - 90 : p.sleepMin, 25));
+    // la semana de la hackathon (los 6 días cerrados): más trabajo y el cuerpo un poco peor, para que el mapa de estrés se mueva
+    const isCrunch = i >= 1 && i <= 6;
+    const asleep = Math.round(jitter((isBadNight ? p.sleepMin - 90 : p.sleepMin) - (isCrunch ? 35 : 0), 25));
     const deepRem = Math.round(asleep * jitter(p.deepRem, 0.04));
     const awake = Math.round(jitter(isBadNight ? p.awake + 25 : p.awake, 6));
     const end = midnightUtc + jitter(7.25, 0.5) * 3600_000;
@@ -147,8 +151,8 @@ for (const p of PEOPLE) {
     events += insert.run("sleep", p.id, isoZ(start), JSON.stringify(sleep)).changes;
 
     const dayTs = isoZ(Date.UTC(y, m - 1, d));
-    const rhr = Math.round(jitter(isBadNight ? p.rhr + 4 : p.rhr, 1.5));
-    const hrv = jitter(isBadNight ? p.hrv * 0.8 : p.hrv, 3);
+    const rhr = Math.round(jitter((isBadNight ? p.rhr + 4 : p.rhr) + (isCrunch ? 3 : 0), 1.5));
+    const hrv = jitter((isBadNight ? p.hrv * 0.8 : p.hrv) * (isCrunch ? 0.85 : 1), 3);
     events += insert.run("resting_hr", p.id, dayTs, JSON.stringify({ dailyRestingHeartRate: { date, beatsPerMinute: String(rhr) }, _mock: true })).changes;
     events += insert
       .run("hrv", p.id, dayTs, JSON.stringify({ dailyHeartRateVariability: { date, averageHeartRateVariabilityMilliseconds: Number(hrv.toFixed(1)) }, _mock: true }))
@@ -168,13 +172,13 @@ for (const p of PEOPLE) {
     const isHeavy = i % 4 === 1; // días de muchas reuniones
     // las noches malas vienen de trabajar tarde: si la noche que termina mañana (i-1) es mala, hoy se trabaja hasta tarde
     const late = (i - 1) % 4 === 2 ? [23.3, 23.8, 0.6 + 24] : [];
-    const commitHours = [10.2, 11.1, 15.4, 16.2, 17.5, ...late].map((h) => jitter(h, 0.3));
+    const commitHours = [10.2, 11.1, 15.4, 16.2, 17.5, ...(isCrunch ? [19.4, 20.6, 21.8] : []), ...late].map((h) => jitter(h, 0.3));
     for (const [k, h] of commitHours.entries()) {
       const t = at(h);
       if (t > now.getTime()) continue;
-      events += insertAny.run("github", "commit", p.id, isoZ(t), JSON.stringify({ commit: { message: COMMIT_MESSAGES[(i * 3 + k) % COMMIT_MESSAGES.length], author: { date: isoZ(t) } }, _mock: true })).changes;
+      events += insertAny.run("github", "commit", p.id, isoZ(t), JSON.stringify({ commit: { message: COMMIT_MESSAGES[(i * 3 + k) % COMMIT_MESSAGES.length], author: { date: isoZ(t) } }, html_url: `https://github.com/demo/${REPOS[(i + k) % REPOS.length]}/commit/${i}-${k}`, _mock: true })).changes;
     }
-    for (let k = 0; k < 18; k++) {
+    for (let k = 0; k < (isCrunch ? 30 : 18); k++) {
       const t = at(jitter(13, 4));
       if (t <= now.getTime()) events += insertAny.run("slack", "message", p.id, isoZ(t), JSON.stringify({ _mock: true })).changes;
     }

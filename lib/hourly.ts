@@ -98,6 +98,8 @@ export type DaySeries = {
   mood: number | null;
   azm: number | null;
   commits: number;
+  messages: number; // mensajes de Slack del día (solo la hora, nunca el texto)
+  issues: number; // movimientos de Linear del día (creado, empezado, completado)
   lateCommits: number; // 00:00–04:00
   lastWorkMinute: number | null; // último commit/mensaje del día (minuto local; 24:30 = 1470 si siguió de madrugada)
   meetingMin: number;
@@ -109,7 +111,7 @@ export type DaySeries = {
 /** Series diarias de `days` (orden cronológico). `hasCalendar` distingue "0 reuniones" de "sin Calendar". */
 export function dailySeries(rows: RawRow[], days: string[], hasCalendar: boolean): DaySeries[] {
   const byDay = new Map<string, DaySeries>(
-    days.map((day) => [day, { day, sleepMin: null, bedMinute: null, mood: null, azm: null, commits: 0, lateCommits: 0, lastWorkMinute: null, meetingMin: 0, longestFreeMin: null, restingBpm: null, hrvMs: null }]),
+    days.map((day) => [day, { day, sleepMin: null, bedMinute: null, mood: null, azm: null, commits: 0, messages: 0, issues: 0, lateCommits: 0, lastWorkMinute: null, meetingMin: 0, longestFreeMin: null, restingBpm: null, hrvMs: null }]),
   );
   const at = (day: string) => byDay.get(day);
 
@@ -144,9 +146,8 @@ export function dailySeries(rows: RawRow[], days: string[], hasCalendar: boolean
     if (r.source === "github" && r.kind === "commit") {
       d.commits++;
       if (t.minute < LATE_NIGHT_END_MIN) d.lateCommits++;
-    } else if (r.source === "slack") {
-      // solo cuenta para lastWorkMinute (arriba)
-    } else if (r.source === "mood" && typeof data.mood === "number") d.mood = data.mood;
+    } else if (r.source === "slack") d.messages++;
+    else if (r.source === "linear") d.issues++; else if (r.source === "mood" && typeof data.mood === "number") d.mood = data.mood;
     else if (r.source === "google" && r.kind === "azm") d.azm = (d.azm ?? 0) + azmOf(data);
     else if (r.source === "google" && r.kind === "resting_hr") {
       const bpm = parseInt(String((data.dailyRestingHeartRate as Json | undefined)?.beatsPerMinute), 10);

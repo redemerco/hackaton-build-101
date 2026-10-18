@@ -1,6 +1,7 @@
 // npm run smoke — chequea roundtrip e idempotencia de raw_events en una DB en memoria.
 import assert from "node:assert/strict";
 import { createDb, rawEvents } from "../lib/db-core.ts";
+import { projectsOf, stressMap } from "../lib/stress.ts";
 import { asciiField, asciiLine, formatDuration, hypnogramLanes, sparkline } from "../lib/ascii.ts";
 
 const { db, insertRawEvents } = createDb(":memory:");
@@ -133,4 +134,18 @@ const msg = JSON.stringify(buildSlackMessage({ name: "Santi", report: okReport!,
 assert.ok(msg.includes("Commits hoy") && !msg.includes("Sueño de anoche"), "lo que se apaga no llega a Slack");
 assert.ok(!msg.includes("nota secreta"), "la nota no va si no se eligió");
 assert.ok(buildReportPrompt("estoy bárbaro", metricsAll).includes("sueno: Sueño de anoche = 5h10"), "el prompt lleva las métricas con su clave");
+// estrés: 3 semanas normales y una semana con más carga y el cuerpo peor → "cuidado"
+const day = (i: number, heavy: boolean) => ({
+  day: `2026-10-${String(i + 1).padStart(2, "0")}`, sleepMin: heavy ? 330 + (i % 3) * 10 : 420 + (i % 3) * 10, bedMinute: null, mood: null, azm: null,
+  commits: heavy ? 12 + (i % 2) : 5 + (i % 3), messages: heavy ? 60 : 25 + (i % 4), issues: i % 2, lateCommits: 0, lastWorkMinute: 18 * 60,
+  meetingMin: heavy ? 240 : 60 + (i % 3) * 15, longestFreeMin: null, restingBpm: heavy ? 66 : 58 + (i % 2), hrvMs: heavy ? 38 : 55 + (i % 3) * 3,
+});
+const stressSeries = Array.from({ length: 28 }, (_, i) => day(i, i >= 21));
+assert.equal(stressMap(stressSeries).zone, "cuidado");
+assert.equal(stressMap(stressSeries.slice(0, 3)).zone, null, "sin base de 7 días no hay veredicto");
+assert.deepEqual(
+  projectsOf([{ source: "github", kind: "commit", ts: "2026-10-18T10:00:00Z", json: JSON.stringify({ html_url: "https://github.com/a/build101/commit/1" }) }], "2026-10-11").map((p) => p.name),
+  ["build101"],
+);
+
 console.log("smoke OK");

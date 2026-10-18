@@ -4,6 +4,7 @@ import { getConnection } from "@/lib/connections";
 import { db, rawEvents } from "@/lib/db";
 import { dailySeries, hourlyFor, local, type DaySeries, type Hourly, type RawRow } from "@/lib/hourly";
 import { crossInsights, type Insight, type Pending } from "@/lib/insights";
+import { projectsOf, stressMap, type ProjectShare, type StressMap } from "@/lib/stress";
 
 // Carga de raw_events para Yo: el día por hora (gráfica cruzada) y 6 semanas por día (cruces con papers).
 const HISTORY_DAYS = 42;
@@ -11,7 +12,7 @@ const DAY_MS = 86400_000;
 // lo que la app escribe sobre sí misma no es un dato del usuario
 const NOT_DATA = ["summary", "digest", "agent", "report"];
 
-export type Cross = { today: Hourly; nowHour: number; series: DaySeries[]; insights: Insight[]; pending: Pending[] };
+export type Cross = { today: Hourly; nowHour: number; series: DaySeries[]; insights: Insight[]; pending: Pending[]; stress: StressMap; projects: ProjectShare[] };
 
 function rowsFor(userId: string, sinceMs: number): RawRow[] {
   return db
@@ -28,7 +29,15 @@ export function getCross(userId: string, now = Date.now()): Cross {
   const hasCalendar = Boolean(getConnection(userId, "calendar")) || rows.some((r) => r.source === "calendar");
   const series = dailySeries(rows, days, hasCalendar);
   const { ready, pending } = crossInsights(series);
-  return { today: hourlyFor(rows, days.at(-1)!), nowHour: Math.floor(local(now).minute / 60), series, insights: ready, pending };
+  return {
+    today: hourlyFor(rows, days.at(-1)!),
+    nowHour: Math.floor(local(now).minute / 60),
+    series,
+    insights: ready,
+    pending,
+    stress: stressMap(series),
+    projects: projectsOf(rows, new Date(now - 7 * DAY_MS).toISOString()),
+  };
 }
 
 /** Pulso en reposo y HRV más recientes (hoy o ayer) y tu rango típico (media ± 1 desvío de las 4 semanas previas). */
