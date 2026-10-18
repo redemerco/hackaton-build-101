@@ -27,23 +27,26 @@ export function MealCamera() {
   const [isScanned, setIsScanned] = useState(false);
   const [flashId, setFlashId] = useState(0); // cada foto dispara un flash de obturador
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
 
   // Manda la foto a Gemini (vía nuestro endpoint) y guarda el análisis real.
   const analyze = async (file: File) => {
     setAnalysis(null);
-    setError(false);
+    setError(null);
     try {
       const body = new FormData();
       body.append("photo", file);
       const res = await fetch("/api/comer/analizar", { method: "POST", body });
-      if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as MealAnalysis;
-      setAnalysis(data);
-    } catch {
-      setError(true);
+      if (!res.ok) {
+        // el server dice por qué (sin IA, cuota, foto inválida): se muestra eso, no un consejo genérico
+        const data = (await res.json().catch(() => ({}))) as { error?: string; reason?: string };
+        throw new Error(data.reason ?? data.error ?? `error ${res.status}`);
+      }
+      setAnalysis((await res.json()) as MealAnalysis);
+    } catch (e) {
+      setError(e instanceof Error && e.message !== "Failed to fetch" ? e.message : "sin conexión con el servidor");
     }
   };
 
@@ -63,7 +66,7 @@ export function MealCamera() {
     setIsOpen(false);
     setPhotoUrl(null);
     setAnalysis(null);
-    setError(false);
+    setError(null);
   };
 
   return (
@@ -100,7 +103,7 @@ export function MealCamera() {
         )}
         {isScanned && error && (
           <p className="rounded-lg bg-heart/15 px-3 py-3 text-center font-mono text-[13px] text-heart">
-            No se pudo analizar la foto. Probá de nuevo con mejor luz.
+            ✗ no se pudo analizar la foto: {error}
           </p>
         )}
         {isScanned && !error && !analysis && (

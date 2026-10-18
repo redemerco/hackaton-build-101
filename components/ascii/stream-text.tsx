@@ -5,7 +5,7 @@ import { DataChip, type Domain } from "@/components/ascii/data-chip";
 import { Caret } from "@/components/ascii/spinner";
 
 export type StreamPart = string | { chip: string; kind: Domain };
-export type StreamSource = "live" | "cache" | "fallback";
+export type StreamSource = "live" | "reused" | "cache" | "fallback";
 
 // lo antepone lib/summary.ts y app/api/digest cuando la IA se cae y re-tipean lo último guardado
 const CACHE_PREFIX = "[cache · IA no disponible] ";
@@ -70,6 +70,8 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className, 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let text = "";
+      // lib/summary.ts avisa por header cuando re-tipea uno guardado para la misma entrada (no es una llamada nueva)
+      const isReused = res.headers.get("X-Summary") === "reused";
       let reported = false;
       for (;;) {
         const { value, done } = await reader.read();
@@ -78,11 +80,11 @@ export function StreamText({ fallback, src, runId = 0, tokenMs = 55, className, 
         // se decide con lo primero que llega: el rótulo dice la verdad sobre de dónde vino el texto
         if (!reported && text.length >= CACHE_PREFIX.length) {
           reported = true;
-          onSourceRef.current?.(text.startsWith(CACHE_PREFIX) ? "cache" : "live");
+          onSourceRef.current?.(text.startsWith(CACHE_PREFIX) ? "cache" : isReused ? "reused" : "live");
         }
         setTokens([{ text: text.startsWith(CACHE_PREFIX) ? text.slice(CACHE_PREFIX.length) : text }]);
       }
-      if (!reported && text) onSourceRef.current?.("live");
+      if (!reported && text) onSourceRef.current?.(isReused ? "reused" : "live");
       if (!isCancelled) setIsDone(true);
     };
 

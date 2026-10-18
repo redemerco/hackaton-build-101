@@ -4,6 +4,8 @@ import type { NextConfig } from "next";
 // el modelo dinámico clásico evita Suspense obligatorio alrededor de cookies().
 const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
+  // el badge "N" de dev tapaba el tab Yo en las demos locales; los errores de compilación se siguen mostrando
+  devIndicators: false,
   turbopack: {
     rules: {
       "*.css": {

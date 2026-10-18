@@ -47,9 +47,13 @@ export function ToolsProbe() {
               {t.result === null ? (
                 <p className="text-xs text-dim">sin datos todavía</p>
               ) : (
-                <pre className="m-0 max-h-40 overflow-auto rounded-lg bg-black/25 px-3 py-2 font-mono text-[11.5px] leading-snug text-foreground/85">
-                  {JSON.stringify(t.result, null, 2)}
-                </pre>
+                // el JSON crudo queda plegado: se abre para verificar, no se impone en la pantalla
+                <details className="group">
+                  <summary className="cursor-pointer list-none font-mono text-xs text-dim group-open:text-foreground/80">ver lo que trae ▾</summary>
+                  <pre className="m-0 mt-1.5 max-h-40 overflow-auto rounded-lg bg-black/25 px-3 py-2 font-mono text-[11.5px] leading-snug text-foreground/85">
+                    {JSON.stringify(t.result, null, 2)}
+                  </pre>
+                </details>
               )}
             </li>
           ))}

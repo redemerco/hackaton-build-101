@@ -19,7 +19,7 @@ type SummaryProps = {
 export function Summary({ label, src, counts, fallback }: SummaryProps) {
   const [runId, setRunId] = useState(0);
   const [source, setSource] = useState<StreamSource | null>(null);
-  const meta = source === "fallback" ? "[sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "live" ? "gemini" : "…";
+  const meta = source === "fallback" ? "[sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "reused" ? "gemini · ya generado" : source === "live" ? "gemini" : "…";
   const used = counts.filter((c) => c.value > 0);
 
   return (
