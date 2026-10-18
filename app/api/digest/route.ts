@@ -25,6 +25,8 @@ function replay(text: string): ReadableStream<Uint8Array> {
 // o responde 503 con el motivo (el cliente tipea su respaldo). Nunca un 200 cortado (detrás del proxy = 502).
 export async function POST() {
   const user = await getCurrentUser();
+  // Sin cuenta real (sin sesión o cookie inventada) no se llama a la IA: no gasta cuota de Gemini.
+  if (!user.email) return Response.json({ error: "Iniciá sesión con Google" }, { status: 401 });
   const cached = getCachedDigest(user.id);
   const fail = (error: unknown) => {
     console.error("[digest] IA no disponible", error);

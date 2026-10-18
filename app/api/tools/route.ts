@@ -5,7 +5,8 @@ import { getCurrentUser } from "@/lib/users";
 // GET /api/tools?name=comidas_hoy → corre una sola. Solo lectura.
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (user.id === "guest") return Response.json({ error: "Iniciá sesión con Google" }, { status: 401 });
+  // Sin cuenta real (sin sesión o cookie inventada) no hay datos propios que leer.
+  if (!user.email) return Response.json({ error: "Iniciá sesión con Google" }, { status: 401 });
   const name = new URL(req.url).searchParams.get("name");
   if (name) {
     const out = runTool(name, user.id);
