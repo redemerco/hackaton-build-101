@@ -25,6 +25,40 @@ function spanOf(a: AgentAction): string | null {
   return null;
 }
 
+/** Herramienta donde actúa cada acción: el encabezado de la opción ("Calendar · bloquear foco"). */
+const TOOL: Record<AgentAction["type"], string> = {
+  move_meeting: "Calendar",
+  block_focus: "Calendar",
+  block_training: "Calendar",
+  block_rest: "Calendar",
+  bedtime: "Calendar",
+  log_prompt: "Nudge",
+  send_nudge: "Nudge",
+  slack_focus: "Slack",
+  linear_create_issue: "Linear",
+  linear_lower_priority: "Linear",
+};
+
+/** Diagnóstico común a todas las acciones (el prefijo compartido de los `reason`), para decirlo una sola vez arriba. */
+function sharedReason(actions: readonly AgentAction[]): string {
+  if (actions.length < 2) return "";
+  let prefix = actions[0].reason;
+  for (const a of actions.slice(1)) {
+    let i = 0;
+    while (i < prefix.length && i < a.reason.length && prefix[i] === a.reason[i]) i++;
+    prefix = prefix.slice(0, i);
+  }
+  // cortar en un límite de frase/palabra para no partir "79%" en "7"
+  const cut = Math.max(prefix.lastIndexOf(")"), prefix.lastIndexOf("."), prefix.lastIndexOf(","));
+  return (cut > 10 ? prefix.slice(0, cut + 1) : "").trim();
+}
+
+/** Lo que el `reason` agrega al diagnóstico común ("y PUL-19 sigue abierto" → "PUL-19 sigue abierto"). */
+function extraReason(reason: string, shared: string): string {
+  if (!shared || !reason.startsWith(shared)) return reason;
+  return reason.slice(shared.length).replace(/^[\s,.;:]*(y\s+)?/i, "").trim();
+}
+
 const TITLE: Record<AgentAction["type"], string> = {
   move_meeting: "mover reunión",
   block_focus: "bloquear foco",
@@ -43,34 +77,57 @@ const slackDetail = (a: AgentAction) => (a.type === "slack_focus" && a.to ? `est
 
 const LEVEL_TONE: Record<string, string> = { bien: "text-work", regular: "text-mood", mal: "text-heart", "sin dato": "text-dim" };
 
-function ActionCard({ action }: { action: AgentAction }) {
-  const [result, setResult] = useState<RunResult | "running" | null>(
-    action.done ? { status: "done", message: action.done.message ?? "ya se ejecutó", ...(action.done.url && { url: action.done.url }) } : null,
-  );
+const doneResult = (a: AgentAction): RunResult | null =>
+  a.done ? { status: "done", message: a.done.message ?? "ya se ejecutó", ...(a.done.url && { url: a.done.url }) } : null;
+
+async function run(id: string): Promise<RunResult> {
+  try {
+    const res = await fetch("/api/agent/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    return (await res.json()) as RunResult;
+  } catch {
+    return { status: "error", message: "el servidor no respondió: probá de nuevo, no se ejecutó nada" };
+  }
+}
+
+/**
+ * Una opción del agente: la herramienta (Calendar, Linear, Nudge) y qué hace ahí. `extra` es lo que el motivo agrega al
+ * diagnóstico común. `companion`: el foco en Slack va como detalle del foco en Calendar y se confirma junto.
+ */
+function ActionCard({ action, extra, companion }: { action: AgentAction; extra: string; companion?: AgentAction }) {
+  const [result, setResult] = useState<RunResult | "running" | null>(doneResult(action));
+  const [companionResult, setCompanionResult] = useState<RunResult | null>(companion ? doneResult(companion) : null);
   const span = spanOf(action);
   const detail = slackDetail(action);
 
   async function confirm() {
     setResult("running");
-    try {
-      const res = await fetch("/api/agent/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: action.id }) });
-      setResult((await res.json()) as RunResult);
-    } catch {
-      setResult({ status: "error", message: "sin conexión: no se ejecutó nada" });
-    }
+    const main = await run(action.id);
+    setResult(main);
+    if (companion && !companion.done && !companion.reconnect && main.status !== "error") setCompanionResult(await run(companion.id));
   }
 
-  const isCalendarLink = (url: string) => url.startsWith("https://calendar.google.com") || url.includes("google.com/calendar");
   return (
     <li className="grid gap-2 border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
       <p className="flex flex-wrap items-baseline gap-x-2 font-mono text-[13px]">
-        <span className="text-work">[{TITLE[action.type]}]</span>
+        <span className="text-work">{TOOL[action.type]} · {TITLE[action.type]}</span>
         {span && <span className="tabular-nums text-dim">{span}</span>}
         {action.isSimulated && <span className="text-mood">[simulado]</span>}
         {action.tag && <span className="text-dim">[{action.tag}]</span>}
       </p>
       {detail && <p className="font-mono text-[12px] text-dim text-pretty">{detail}</p>}
-      <p className="text-[15px] leading-snug text-pretty">{action.reason}</p>
+      {companion && (
+        <p className="font-mono text-[12px] text-dim text-pretty">
+          también en Slack: {slackDetail(companion) ?? "estado en foco"}
+          {companion.isSimulated && <span className="text-mood"> [simulado]</span>}
+          {companion.reconnect && (
+            <>
+              {" · "}
+              <a href={`/api/connect/${companion.reconnect}`} className="underline underline-offset-2">reconectar Slack</a>
+            </>
+          )}
+        </p>
+      )}
+      {extra && <p className="text-[15px] leading-snug text-pretty">{extra}</p>}
       {action.reconnect && !action.done ? (
         // Sin el permiso de escritura no hay Confirmar: lleva al OAuth con los scopes nuevos y vuelve a esta propuesta.
         <a href={`/api/connect/${action.reconnect}`} className="press justify-self-start rounded-full bg-white/10 px-4 py-2 font-mono text-[13px]">
@@ -86,30 +143,42 @@ function ActionCard({ action }: { action: AgentAction }) {
           {result === "running" ? "ejecutando…" : "Confirmar"}
         </button>
       ) : (
-        <p role="status" className="font-mono text-[13px] text-pretty">
-          {result.status === "done" && <span className="text-work">hecho ✓ · </span>}
-          {result.status === "simulated" && <span className="text-mood">[simulado] · no se ejecutó · </span>}
-          {result.status === "error" && <span className="text-heart">error · </span>}
-          <span className={result.status === "error" ? "text-heart" : "text-dim"}>{result.message}</span>
-          {"url" in result && result.url && (
-            <>
-              {" · "}
-              <a href={result.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                {result.url.startsWith("/api/connect/")
-                  ? "reconectar"
-                  : result.url.includes("linear.app")
-                    ? "ver en Linear"
-                    : !isCalendarLink(result.url)
-                      ? "abrir"
-                      : result.status === "done"
-                        ? "ver en Google Calendar"
-                        : "abrir Google Calendar"}
-              </a>
-            </>
-          )}
-        </p>
+        <>
+          <ResultLine result={result} />
+          {companionResult && <ResultLine result={companionResult} prefix="Slack: " />}
+        </>
       )}
     </li>
+  );
+}
+
+const isCalendarLink = (url: string) => url.startsWith("https://calendar.google.com") || url.includes("google.com/calendar");
+
+function ResultLine({ result, prefix = "" }: { result: RunResult; prefix?: string }) {
+  return (
+    <p role="status" className="font-mono text-[13px] text-pretty">
+      {prefix && <span className="text-dim">{prefix}</span>}
+      {result.status === "done" && <span className="text-work">hecho ✓ · </span>}
+      {result.status === "simulated" && <span className="text-mood">[simulado] · no se ejecutó · </span>}
+      {result.status === "error" && <span className="text-heart">error · </span>}
+      <span className={result.status === "error" ? "text-heart" : "text-dim"}>{result.message}</span>
+      {"url" in result && result.url && (
+        <>
+          {" · "}
+          <a href={result.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+            {result.url.startsWith("/api/connect/")
+              ? "reconectar"
+              : result.url.includes("linear.app")
+                ? "ver en Linear"
+                : !isCalendarLink(result.url)
+                  ? "abrir"
+                  : result.status === "done"
+                    ? "ver en Google Calendar"
+                    : "abrir Google Calendar"}
+          </a>
+        </>
+      )}
+    </p>
   );
 }
 
@@ -208,13 +277,22 @@ export function AgentActions() {
   }
   if (!proposal) return null;
   const { actions, assessment } = proposal;
+  // El foco en Slack va dentro del foco en Calendar (se confirma junto); solo queda como opción propia si viene solo.
+  const focus = actions.find((a) => a.type === "block_focus");
+  const slack = focus ? actions.find((a) => a.type === "slack_focus") : undefined;
+  const options = actions.filter((a) => a !== slack);
+  const shared = sharedReason(options);
+  const headline = shared ? shared.charAt(0).toUpperCase() + shared.slice(1) : "";
   return (
     <>
       {assessment && <AssessmentCard a={assessment} />}
-      {actions.length > 0 && (
-        <Panel label="agente" className="js-agente scroll-mt-4" meta={`${actions.length} propuesta${actions.length > 1 ? "s" : ""}`}>
+      {options.length > 0 && (
+        <Panel label="agente" className="js-agente scroll-mt-4" meta={`${options.length} opci${options.length > 1 ? "ones" : "ón"}`}>
+          {headline && <p className="text-[15px] leading-snug text-pretty">{headline}</p>}
           <ul className="grid gap-3">
-            {actions.map((a) => <ActionCard key={a.id} action={a} />)}
+            {options.map((a) => (
+              <ActionCard key={a.id} action={a} extra={extraReason(a.reason, shared)} companion={a === focus ? slack : undefined} />
+            ))}
           </ul>
           <button type="button" onClick={fresh} disabled={busy} className="press justify-self-start font-mono text-[12px] text-faint underline underline-offset-2 disabled:opacity-60">
             {busy ? "recalculando…" : "recalcular"}

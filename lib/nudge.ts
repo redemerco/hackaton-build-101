@@ -10,7 +10,8 @@ import { isPulsoEvent } from "@/lib/pulso-events";
 
 export type Nudge = { title: string; body: string };
 
-const TZ = "America/Argentina/Buenos_Aires";
+const TZ = "America/Montevideo";
+const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }); // YYYY-MM-DD local
 const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const localHour = (d: Date) => Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }).format(d));
 
@@ -70,9 +71,13 @@ export function getNudge(userId: string, now = new Date()): Nudge | null {
       body: `Llevás ${formatDuration(streakMin)} sin cortar${what ? ` (${what})` : ""}${gap}. Caminá 10 minutos.`,
     };
   }
-  const todayCommits = work.filter((e) => e.kind === "commit").length;
+  // "Arrancaste" cuenta solo desde el inicio de HOY: la ventana de 12 h puede incluir lo de anoche.
+  const today = work.filter((e) => dayKey.format(e.t) === dayKey.format(now));
+  const todayCommits = today.filter((e) => e.kind === "commit").length;
   return {
     title: "build101",
-    body: `Arrancaste a las ${hhmm.format(new Date(work[0].t))} y llevás ${todayCommits} commit${todayCommits === 1 ? "" : "s"}${gap}. Buen momento para estirar y tomar agua.`,
+    body: today.length
+      ? `Arrancaste a las ${hhmm.format(new Date(today[0].t))} y llevás ${todayCommits} commit${todayCommits === 1 ? "" : "s"}${gap}. Buen momento para estirar y tomar agua.`
+      : `Hoy todavía no arrancaste${gap}. Buen momento para estirar y tomar agua antes de empezar.`,
   };
 }
