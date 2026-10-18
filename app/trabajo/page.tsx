@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Pulse } from "@/components/ascii/ascii-field";
 import { EmptyState } from "@/components/empty-state";
 import { Panel } from "@/components/glass/panel";
@@ -51,7 +52,11 @@ function CorrelationNote({ days }: { days: number }) {
         )}
       </p>
       {/* Con datos suficientes no hay oración fija: la lectura del cruce la hace el resumen IA. */}
-      {!hasEnough && (
+      {hasEnough ? (
+        <p className="text-[15px] leading-relaxed text-foreground/90">
+          Ya hay días suficientes para cruzar sueño, código y ánimo: los cruces con respaldo están en <Link href="/" className="underline decoration-white/30 underline-offset-4">Yo</Link>.
+        </p>
+      ) : (
         <p className="text-[15px] leading-relaxed text-foreground/90">
           Todavía no alcanza: hacen falta {MIN_DAYS_FOR_CORRELATION} días para decir algo.
         </p>

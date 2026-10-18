@@ -1,5 +1,6 @@
 import "server-only";
 import { and, desc, eq, gte } from "drizzle-orm";
+import { getCross } from "@/lib/cross";
 import { db, rawEvents } from "@/lib/db";
 import { dayInputs } from "@/lib/ranking";
 
@@ -60,7 +61,8 @@ export function getWorkDay(userId: string): WorkDay | null {
   const moodPerDay = moodWeek(userId, days);
 
   // Un día "completo" tiene sueño, commits y ánimo: la correlación solo se afirma con suficientes.
-  const daysOfData = days.filter((_, i) => sleepPerDay[i] !== null && commitsPerDay[i] > 0 && moodPerDay[i] !== null).length;
+  // Se cuenta sobre 6 semanas (la misma serie que los cruces de Yo): con 7 días nunca se llegaba al umbral de 21.
+  const daysOfData = getCross(userId).series.filter((d) => d.sleepMin !== null && d.commits > 0 && d.mood !== null).length;
 
   return {
     log,
