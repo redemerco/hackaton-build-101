@@ -168,7 +168,7 @@ export default async function Yo() {
 
       <SlackReport name={user.name} canSend={canSendToSlack()} />
 
-      <Panel label="cruces con tus datos" meta={`${cross.insights.length} con respaldo${isSimulated ? " · [simulados]" : ""}`}>
+      <Panel label="cruces con tus datos" meta={isSimulated ? `${cross.insights.length} · [simulados]` : `${cross.insights.length} con respaldo`}>
         {cross.insights.length > 0 ? (
           <ul className="grid gap-3">
             {cross.insights.slice(0, MAX_INSIGHTS).map((i) => <InsightRow key={i.id} i={i} />)}
