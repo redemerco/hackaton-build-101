@@ -3,6 +3,8 @@
 import assert from "node:assert/strict";
 import { createDb } from "../lib/db-core.ts";
 import { claimRun, doneRuns, finishRun, releaseRun } from "../lib/agent-runs.ts";
+import { insertOrRevive } from "../lib/calendar-insert.ts";
+import { isPulsoEvent } from "../lib/pulso-events.ts";
 import {
   agentConfig,
   assess,
@@ -130,5 +132,54 @@ assert.deepEqual(claimRun(db, "u1", "act-2", "log_prompt"), { ok: true });
 // un "running" colgado (crash) más viejo que 2 min se puede retomar
 assert.deepEqual(claimRun(db, "u1", "act-3", "block_focus", Date.now() - 5 * 60_000), { ok: true });
 assert.deepEqual(claimRun(db, "u1", "act-3", "block_focus"), { ok: true });
+
+// bloques de Pulso: por la marca del sync o por el id determinístico (también el recreado con sufijo)
+assert.equal(isPulsoEvent({ id: "abc", pulso: true }), true);
+assert.equal(isPulsoEvent({ id: id1 }), true);
+assert.equal(isPulsoEvent({ id: `${id1}r${Date.now().toString(32)}` }), true);
+assert.equal(isPulsoEvent({ id: "reunion123" }), false);
+assert.equal(isPulsoEvent({}), false);
+
+// insert con 409: confirmado = ya estaba; borrado (cancelled) = se reactiva o se recrea con otro id
+type Call = { method: string; url: string; body?: Record<string, unknown> };
+function mockFetch(responses: Array<[number, unknown]>) {
+  const calls: Call[] = [];
+  const fn = async (url: string, init?: RequestInit) => {
+    calls.push({ method: init?.method ?? "GET", url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+    const [status, json] = responses.shift() ?? [500, {}];
+    return new Response(JSON.stringify(json), { status });
+  };
+  return { fn, calls };
+}
+const evBody = { id: id1, summary: "A dormir 23:30", start: { dateTime: "2026-10-14T23:30:00-03:00" } };
+const hdr = { Authorization: "Bearer x" };
+{
+  const m = mockFetch([[200, { htmlLink: "L-new" }]]);
+  assert.deepEqual(await insertOrRevive(m.fn, hdr, evBody), { outcome: "created", eventId: id1, link: "L-new" });
+}
+{
+  const m = mockFetch([[409, {}], [200, { status: "confirmed", htmlLink: "L-old" }]]);
+  assert.deepEqual(await insertOrRevive(m.fn, hdr, evBody), { outcome: "existed", eventId: id1, link: "L-old" });
+  assert.deepEqual(m.calls.map((c) => c.method), ["POST", "GET"]);
+}
+{
+  const m = mockFetch([[409, {}], [200, { status: "cancelled" }], [200, { htmlLink: "L-revived" }]]);
+  assert.deepEqual(await insertOrRevive(m.fn, hdr, evBody), { outcome: "revived", eventId: id1, link: "L-revived" });
+  assert.deepEqual(m.calls.map((c) => c.method), ["POST", "GET", "PATCH"]);
+  assert.equal(m.calls[2].body?.status, "confirmed");
+  assert.equal(m.calls[2].body?.summary, "A dormir 23:30");
+  assert.equal(m.calls[2].body?.id, undefined);
+}
+{
+  const m = mockFetch([[409, {}], [200, { status: "cancelled" }], [403, {}], [200, { htmlLink: "L-again" }]]);
+  const r = await insertOrRevive(m.fn, hdr, evBody, 1_000_000);
+  assert.equal(r.outcome, "revived");
+  assert.equal(r.eventId, `${id1}r${(1_000_000).toString(32)}`);
+  assert.equal(m.calls[3].body?.id, r.eventId);
+}
+{
+  const m = mockFetch([[500, {}]]);
+  await assert.rejects(insertOrRevive(m.fn, hdr, evBody), /calendar insert 500/);
+}
 
 console.log("agent-rules OK");

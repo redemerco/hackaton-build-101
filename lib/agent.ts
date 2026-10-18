@@ -34,6 +34,7 @@ import {
   type PromisedIssue,
 } from "@/lib/agent-rules";
 import { claimRun, doneRuns, finishRun, releaseRun } from "@/lib/agent-runs";
+import { CAL_EVENTS, insertOrRevive } from "@/lib/calendar-insert";
 
 // Agente: evalúa cómo venís (trabajo: avance de la semana vs lo prometido; salud: estrés, sueño, entrenamiento, comida,
 // ánimo), de los flags saca acciones candidatas y la IA elige y redacta el porqué. Nada se ejecuta sin Confirmar.
@@ -439,7 +440,6 @@ const span = (a: AgentAction) =>
       : `de ${hhmm.format(new Date(a.to!))} a ${hhmm.format(new Date(Date.parse(a.to!) + (a.minutes ?? 0) * MIN))}`;
 
 type GoogleTime = { dateTime?: string; date?: string; timeZone?: string };
-const CAL_EVENTS = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
 /** Qué evento crea cada tipo y con qué clave de idempotencia. */
 function eventSpec(userId: string, a: AgentAction) {
@@ -459,7 +459,7 @@ function eventSpec(userId: string, a: AgentAction) {
   }
 }
 
-/** events.insert con id determinístico: si ya existe (409), es que ya se creó: no se duplica. */
+/** events.insert con id determinístico: si ya existe (409) no se duplica; si lo habían borrado, se recrea (lib/calendar-insert.ts). */
 async function insertCalendarEvent(userId: string, a: AgentAction): Promise<{ result: RunResult; eventId?: string }> {
   const conn = getConnection(userId, "calendar");
   if (!conn) return { result: { status: "error", message: "Calendar no está conectado" } };
@@ -478,21 +478,11 @@ async function insertCalendarEvent(userId: string, a: AgentAction): Promise<{ re
   try {
     const token = await freshToken(conn);
     const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    const res = await fetch(CAL_EVENTS, { method: "POST", headers, body: JSON.stringify(body) });
-    let link: string | undefined;
-    let message = `${spec.summary} ${span(a)} agendado`;
-    if (res.status === 409) {
-      const got = await fetch(`${CAL_EVENTS}/${spec.id}`, { headers, cache: "no-store" });
-      const ev = got.ok ? ((await got.json()) as { htmlLink?: string; status?: string }) : null;
-      link = ev?.htmlLink;
-      message = ev?.status === "cancelled" ? `${spec.summary} ya se había creado y lo borraste: no lo vuelvo a crear` : `${spec.summary} ${span(a)} ya estaba en tu Calendar`;
-    } else if (!res.ok) {
-      throw new Error(`calendar insert ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    } else {
-      link = ((await res.json()) as { htmlLink?: string }).htmlLink;
-    }
+    const { outcome, eventId, link } = await insertOrRevive(fetch, headers, body);
+    const message =
+      outcome === "existed" ? `${spec.summary} ${span(a)} ya estaba en tu Calendar` : `${spec.summary} ${span(a)} ${outcome === "revived" ? "agendado de nuevo" : "agendado"}`;
     await syncCalendarUser(userId).catch((error) => console.error("[agent] re-sync calendar", error));
-    return { result: { status: "done", message, url: link ?? calendarDayUrl(a.to) }, eventId: spec.id };
+    return { result: { status: "done", message, url: link ?? calendarDayUrl(a.to) }, eventId };
   } catch (error) {
     console.error(`[agent] ${a.type} falló`, error);
     return { result: { status: "error", message: "Google Calendar no respondió: no se creó nada" } };
