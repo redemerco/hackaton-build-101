@@ -7,5 +7,5 @@ const instance = (g.__db ??= createDb("data/pulso.db"));
 
 export const db = instance.db;
 export const insertRawEvents = instance.insertRawEvents;
-export { rawEvents, pushSubscriptions } from "@/lib/db-core";
+export { rawEvents, pushSubscriptions, agentRuns } from "@/lib/db-core";
 export type { RawEventInput } from "@/lib/db-core";

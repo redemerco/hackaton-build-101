@@ -28,6 +28,18 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
   createdAt: text("created_at").notNull(),
 });
 
+// Acciones del agente ya ejecutadas (o ejecutándose): la PK por action_id es el candado contra doble Confirmar.
+export const agentRuns = sqliteTable("agent_runs", {
+  actionId: text("action_id").primaryKey(),
+  userId: text("user_id").notNull(),
+  type: text("type").notNull(),
+  status: text("status").notNull(), // "running" | "done"
+  message: text("message"),
+  url: text("url"),
+  eventId: text("event_id"), // id del evento de Calendar creado/movido
+  createdAt: text("created_at").notNull(),
+});
+
 // ponytail: schema creado a mano con IF NOT EXISTS, sin drizzle-kit; migrar a drizzle-kit si el schema empieza a cambiar.
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS raw_events (
@@ -44,6 +56,16 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   endpoint TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS agent_runs (
+  action_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  message TEXT,
+  url TEXT,
+  event_id TEXT,
   created_at TEXT NOT NULL
 );
 `;
