@@ -81,14 +81,19 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     if (nights.length < MIN_BASE_NIGHTS) pending.push({ id: "deuda", question, need: `faltan ${MIN_BASE_NIGHTS - nights.length} noches` });
     else {
       const week = nums(last(7).map((d) => d.sleepMin));
-      const debt = week.reduce((sum, n) => sum + Math.max(0, baseSleep - n), 0);
+      // la base son las noches ANTERIORES a esta semana (si alcanzan): comparar la semana contra sí misma la diluye
+      const prior = nums(series.slice(0, -7).map((d) => d.sleepMin));
+      const base = prior.length >= 7 ? mean(prior) : baseSleep;
+      const baseNights = prior.length >= 7 ? prior.length : nights.length;
+      // deuda NETA: las noches largas compensan a las cortas (si no, el número contradice la media de la semana)
+      const debt = week.reduce((sum, n) => sum + (base - n), 0);
       if (debt >= 60)
         ready.push({
           id: "deuda",
-        tryThis: "Probá acostarte 30 min antes 5 noches seguidas y mirá si la deuda baja.",
+          tryThis: "Probá acostarte 30 min antes 5 noches seguidas y mirá si la deuda baja.",
           question,
-          text: `Esta semana dormiste ${fmtMin(debt)} menos que tu media de 6 semanas (${fmtMin(baseSleep)}). Con varios días recortados el rendimiento cae aunque uno no se sienta peor.`,
-          basis: `${week.length} noches vs tu media de ${nights.length}`,
+          text: `En estas ${week.length} noches dormiste ${fmtMin(debt)} menos que tu media de antes (${fmtMin(base)} por noche). Con varios días recortados el rendimiento cae aunque uno no se sienta peor.`,
+          basis: `${week.length} noches vs tu media de ${baseNights}`,
           evidence: "Van Dongen et al. 2003, Sleep",
           isHypothesis: false,
           weight: debt / 60,

@@ -54,12 +54,16 @@ export async function createPreview(userId: string, rawNote: unknown, rawInclude
   const note = typeof rawNote === "string" ? rawNote.trim().slice(0, NOTE_MAX) : "";
   if (!process.env.GEMINI_API_KEY) throw new ReportError(`Este reporte necesita la IA: ${aiErrorReason(new Error("GEMINI_API_KEY"))}`, 503);
   // Salud y ánimo solo entran si la persona los prendió ANTES de generar: si la IA no los ve, no los puede escribir.
-  const inc = (rawInclude ?? {}) as { salud?: unknown; animo?: unknown };
-  const allowed = (m: Metric) => m.kind === "trabajo" || (m.kind === "salud" && inc.salud === true) || (m.kind === "ánimo" && inc.animo === true);
+  const inc = (rawInclude ?? {}) as { salud?: unknown; animo?: unknown; exclude?: unknown };
+  // fichas que la persona apagó en una vista previa anterior: no vuelven a la IA
+  const exclude = new Set(Array.isArray(inc.exclude) ? inc.exclude.filter((k): k is string => typeof k === "string") : []);
+  const allowed = (m: Metric) =>
+    !exclude.has(m.key) && (m.kind === "trabajo" || (m.kind === "salud" && inc.salud === true) || (m.kind === "ánimo" && inc.animo === true));
   const all = reportMetrics(userId);
   const metrics = all.metrics.filter(allowed);
   // los cruces de las últimas semanas hablan de sueño y ánimo: solo van si se compartió salud
-  const crosses = inc.salud === true ? all.crosses : [];
+  // (y los que nombran el ánimo, solo si también se compartió el ánimo)
+  const crosses = inc.salud === true ? all.crosses.filter((c) => inc.animo === true || !/ánimo/i.test(c)) : [];
   let raw: unknown;
   try {
     raw = await generateJson<unknown>({ contents: buildReportPrompt(note, metrics, crosses), config: { systemInstruction: REPORT_SYSTEM } });

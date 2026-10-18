@@ -36,6 +36,8 @@ function SlackPreview({ name, preview, shared, withNote, onToggle, onToggleNote 
 }) {
   const { report, metrics, note } = preview;
   const risk = RISK_STYLE[report.riesgo];
+  // si apagás una ficha que el texto de la IA ya cita, el dato sigue en la frase: se avisa en vez de esconderlo
+  const citedButOff = metrics.filter((m) => report.metricsUsed.includes(m.key) && !shared.has(m.key));
   return (
     <div className="grid gap-2.5 rounded-xl border border-white/10 bg-[#1a1d21] p-3.5 text-[14px] leading-snug text-[#d1d2d3]">
       <p className="flex items-center gap-2 text-[13px]">
@@ -80,6 +82,11 @@ function SlackPreview({ name, preview, shared, withNote, onToggle, onToggleNote 
           })}
         </div>
       )}
+      {citedButOff.length > 0 && (
+        <p role="status" className="rounded-lg bg-food/15 px-2.5 py-2 text-[12px] text-food">
+          El texto ya menciona {citedButOff.map((m) => m.label.toLowerCase()).join(" y ")}. Si no querés que vaya, tocá «← Editar» y volvé a armarlo: la IA ya no lo va a ver.
+        </p>
+      )}
       <p className="text-[11px] text-[#ababad]">build101 · generado con IA (Gemini) a partir de tus métricas · vos elegís qué se comparte</p>
     </div>
   );
@@ -101,7 +108,9 @@ export function SlackReport({ name, canSend }: { name: string; canSend: boolean 
     setPhase("thinking");
     setError(null);
     try {
-      const p = await postJson<Preview>("/api/report", { note, include });
+      // lo que se apagó en la vista previa anterior no vuelve a entrar a la IA
+      const exclude = preview ? preview.metrics.filter((m) => !shared.has(m.key)).map((m) => m.key) : [];
+      const p = await postJson<Preview>("/api/report", { note, include: { ...include, exclude } });
       setPreview(p);
       setShared(new Set(p.metrics.map((m) => m.key)));
       setWithNote(Boolean(p.note));
