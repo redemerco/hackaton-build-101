@@ -11,6 +11,7 @@ import { projectsOf, stressMap, type ProjectShare, type StressMap } from "@/lib/
 const HISTORY_DAYS = 42;
 const DAY_MS = 86400_000;
 const PR_DAYS = 30; // "dónde se fue tu semana": solo repos con un PR tuyo en el último mes
+const MAX_PROJECTS = 5; // repos que se nombran; el resto va a "otros"
 // lo que la app escribe sobre sí misma no es un dato del usuario
 const NOT_DATA = ["summary", "digest", "agent", "report"];
 
@@ -76,7 +77,7 @@ export function getCross(userId: string, now = Date.now()): Cross {
     insights: ready,
     pending,
     stress: stressMap(series, last24h(rows, series, now)),
-    projects: projectsOf(rows, new Date(now - 7 * DAY_MS).toISOString(), new Date(now - PR_DAYS * DAY_MS).toISOString()),
+    projects: projectsOf(rows, new Date(now - 7 * DAY_MS).toISOString(), new Date(now - PR_DAYS * DAY_MS).toISOString(), MAX_PROJECTS),
   };
 }
 
