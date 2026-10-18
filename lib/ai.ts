@@ -3,6 +3,7 @@ import { GoogleGenAI, type GenerateContentParameters } from "@google/genai";
 
 // Alias que Google mantiene apuntando al Flash vigente (tier gratis).
 export const MODEL = "gemini-flash-latest";
+const AI_TIMEOUT_MS = 30_000;
 
 let client: GoogleGenAI | undefined;
 
@@ -11,7 +12,8 @@ export function getAI(): GoogleGenAI {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Falta GEMINI_API_KEY en .env.local");
   }
-  return (client ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }));
+  // timeout: si la red o Gemini se cuelgan (en vez de fallar), cortamos y cae al respaldo rotulado; sin esto el spinner gira para siempre
+  return (client ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { timeout: AI_TIMEOUT_MS } }));
 }
 
 export type StreamTextParams = Omit<GenerateContentParameters, "model"> & { model?: string };
@@ -111,6 +113,7 @@ export function aiErrorReason(error: unknown): string {
   if (/API key not valid|API_KEY_INVALID|PERMISSION_DENIED|403/.test(msg)) return "la GEMINI_API_KEY es inválida o no tiene permiso";
   if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) return "se agotó la cuota de Gemini (429)";
   if (/503|UNAVAILABLE|overloaded/i.test(msg)) return "Gemini está saturado (503), reintentá";
+  if (/abort|timed? ?out|timeout/i.test(msg)) return "Gemini tardó demasiado (más de 30 s)";
   if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN/.test(msg)) return "el servidor no llega a Google (red/DNS)";
   return msg.slice(0, 160);
 }
