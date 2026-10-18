@@ -172,7 +172,7 @@ function validate(raw: unknown, inp: Inputs): AgentAction[] {
 }
 
 const SYSTEM = `Sos el agente de build101: mirás el cuerpo (sueño, pulso) y el trabajo (commits por hora, reuniones) de una persona y proponés acciones concretas para su día.
-Devolvés SOLO un array JSON con COMO MÁXIMO 2 acciones. Cada acción es uno de:
+Devolvés SOLO un objeto JSON {"actions":[...]} con COMO MÁXIMO 2 acciones. Cada acción es uno de:
 - {"type":"move_meeting","eventId":"<id de la lista>","to":"<ISO 8601 con offset -03:00, hoy>","reason":"..."}
 - {"type":"block_focus","to":"<ISO 8601 con offset -03:00, hoy>","minutes":<15-180>,"reason":"..."}
 - {"type":"send_nudge","reason":"..."}  (solo si hay un nudge disponible)
@@ -181,7 +181,9 @@ Reglas:
 - "to" tiene que ser hoy, en el futuro, antes de las 20:00, y la reunión movida no puede pisar otra reunión.
 - Mover una reunión tiene sentido si cae en el pico de commits o si dormiste poco y conviene liberar la mañana o la hora pico.
 - "reason": UNA oración en español rioplatense que cite un dato de los números ("dormiste 4h10 y tu pico de commits es 15–17"). Correlación, no causa. Sin emojis.
-- Si nada amerita una acción, devolvé [].`;
+- Si nada amerita una acción, devolvé {"actions":[]}.`;
+
+const ACTIONS_SCHEMA = { type: "object", required: ["actions"], properties: { actions: { type: "array" } } };
 
 function buildPrompt(inp: Inputs): string {
   const lines = [
@@ -239,8 +241,10 @@ function cachedProposal(userId: string, inp: Inputs): AgentAction[] | null {
 export async function proposeActions(userId: string, now = Date.now()): Promise<Proposal> {
   const inp = gatherInputs(userId, now);
   try {
-    const raw = await generateJson<unknown>({ contents: buildPrompt(inp), config: { systemInstruction: SYSTEM } });
-    return { actions: validate(raw, inp), origin: "ia" };
+    // Objeto y no array: json_object no admite arrays (ai-service lo rechaza y cae a Groq).
+    const raw = await generateJson<unknown>({ contents: buildPrompt(inp), config: { systemInstruction: SYSTEM, responseJsonSchema: ACTIONS_SCHEMA } });
+    const list = Array.isArray(raw) ? raw : (raw as { actions?: unknown } | null)?.actions;
+    return { actions: validate(list, inp), origin: "ia" };
   } catch (error) {
     console.error("[agent] la IA no propuso, cae a cache/ejemplo", error);
   }
