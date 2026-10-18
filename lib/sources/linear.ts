@@ -94,6 +94,9 @@ export async function syncLinearWorkspace(): Promise<number> {
 
 /** Todo: cada usuario conectado + el respaldo del workspace. */
 export async function syncLinear(): Promise<number> {
-  const counts = await Promise.all([syncLinearWorkspace(), ...listConnections("linear").map((c) => syncLinearUser(c.userId))]);
+  const results = await Promise.allSettled([syncLinearWorkspace(), ...listConnections("linear").map((c) => syncLinearUser(c.userId))]);
+  // un token vencido de un usuario no frena la sincronización del resto
+  results.forEach((r) => r.status === "rejected" && console.error("[sync/linear]", r.reason));
+  const counts = results.map((r) => (r.status === "fulfilled" ? r.value : 0));
   return counts.reduce((a, b) => a + b, 0);
 }

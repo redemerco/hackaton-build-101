@@ -46,6 +46,9 @@ export async function syncSlackUser(userId: string): Promise<number> {
 
 /** Todos los usuarios conectados. */
 export async function syncSlack(): Promise<number> {
-  const counts = await Promise.all(listConnections("slack").map((c) => syncSlackUser(c.userId)));
+  const results = await Promise.allSettled(listConnections("slack").map((c) => syncSlackUser(c.userId)));
+  // un token vencido de un usuario no frena la sincronización del resto
+  results.forEach((r) => r.status === "rejected" && console.error("[sync/slack]", r.reason));
+  const counts = results.map((r) => (r.status === "fulfilled" ? r.value : 0));
   return counts.reduce((a, b) => a + b, 0);
 }

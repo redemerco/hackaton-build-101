@@ -92,6 +92,9 @@ export async function syncGithubRepo(): Promise<number> {
 
 /** Todo: cada usuario conectado + el respaldo del repo. */
 export async function syncGithub(): Promise<number> {
-  const counts = await Promise.all([syncGithubRepo(), ...listConnections("github").map((c) => syncGithubUser(c.userId))]);
+  const results = await Promise.allSettled([syncGithubRepo(), ...listConnections("github").map((c) => syncGithubUser(c.userId))]);
+  // un token vencido de un usuario no frena la sincronización del resto
+  results.forEach((r) => r.status === "rejected" && console.error("[sync/github]", r.reason));
+  const counts = results.map((r) => (r.status === "fulfilled" ? r.value : 0));
   return counts.reduce((a, b) => a + b, 0);
 }
