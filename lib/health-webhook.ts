@@ -6,6 +6,7 @@ import { freshToken } from "@/lib/oauth";
 import { sendPush } from "@/lib/push";
 import { syncGoogleUser } from "@/lib/sources/google";
 import { emitUserEvent } from "@/lib/live-events";
+import { healthApiBase, healthSleepFreshMs, healthWebhookDebounceMs } from "@/lib/config";
 
 // Webhook de Google Health → sync del usuario → aviso a la PWA (SSE si está abierta, push si llegó un sueño nuevo).
 
@@ -15,14 +16,12 @@ import { emitUserEvent } from "@/lib/live-events";
 const hasColumn = (db.all(sql`PRAGMA table_info(connections)`) as { name: string }[]).some((c) => c.name === "health_user_id");
 if (!hasColumn) db.run(sql`ALTER TABLE connections ADD COLUMN health_user_id TEXT`);
 
-const IDENTITY_URL = "https://health.googleapis.com/v4/users/me/identity";
-
 /** Pide `users/me/identity` con el token google del usuario y guarda su healthUserId. Alcanzan los scopes readonly de Health. */
 export async function resolveHealthUserId(userId: string): Promise<string | null> {
   const conn = getConnection(userId, "google");
   if (!conn) return null;
   const token = await freshToken(conn);
-  const res = await fetch(IDENTITY_URL, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, cache: "no-store" });
+  const res = await fetch(`${healthApiBase()}/users/me/identity`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, cache: "no-store" });
   if (!res.ok) throw new Error(`identity ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const { healthUserId } = (await res.json()) as { healthUserId?: string };
   if (!healthUserId) return null;
@@ -64,7 +63,7 @@ export function parseNotifications(body: unknown): HealthNotification[] {
 
 // Debounce por usuario: el primer aviso agenda un sync a DEBOUNCE_MS; los que llegan mientras tanto
 // (lotes, reintentos duplicados de Google) se suman a ese mismo sync. Estado en globalThis (un proceso PM2).
-const DEBOUNCE_MS = Number(process.env.HEALTH_WEBHOOK_DEBOUNCE_MS ?? 60_000);
+const DEBOUNCE_MS = healthWebhookDebounceMs();
 type Pending = { timer: ReturnType<typeof setTimeout>; sleepUpsert: boolean; types: Set<string> };
 const g = globalThis as unknown as { __healthWebhook?: { pending: Map<string, Pending>; running: Set<string> } };
 const state = (g.__healthWebhook ??= { pending: new Map(), running: new Set() });
@@ -102,8 +101,8 @@ async function fire(userId: string): Promise<void> {
     if (inserted > 0) emitUserEvent(userId, { type: "health-updated", at: new Date().toISOString(), inserted });
 
     // Push SOLO por un sueño nuevo (no por cada lote): aviso de sleep UPSERT + filas de sueño nuevas,
-    // y que la noche más reciente sea nueva y de las últimas 36 h (un backfill de noches viejas no avisa).
-    const newestIsNew = after.last && after.last !== before.last && Date.now() - Date.parse(after.last) < 36 * 3600_000;
+    // y que la noche más reciente sea nueva y de las últimas HEALTH_SLEEP_FRESH_MS (36 h por defecto) (un backfill de noches viejas no avisa).
+    const newestIsNew = after.last && after.last !== before.last && Date.now() - Date.parse(after.last) < healthSleepFreshMs();
     if (p.sleepUpsert && after.n > before.n && newestIsNew) {
       await sendPush(userId, { title: "build101", body: "Llegó tu sueño de anoche", url: "/salud" })
         .then((r) => console.log(`[webhook/health] push sueño user=${userId} sent=${r.sent}`))

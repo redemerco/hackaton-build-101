@@ -7,8 +7,8 @@
 //   keyset público (formato JSON de Tink) en gstatic; las claves rotan cada 30 días.
 // Hacemos a mano lo que haría Tink PublicKeyVerify: parsear el EcdsaPublicKey (protobuf) y verificar con node:crypto.
 import { createPublicKey, verify, type KeyObject } from "node:crypto";
+import { healthKeysetTtlMs, healthKeysetUrl } from "./config.ts";
 
-export const KEYSET_URL = "https://www.gstatic.com/googlehealthapi/webhooks/webhooks_public_keyset.json";
 const ECDSA_TYPE_URL = "type.googleapis.com/google.crypto.tink.EcdsaPublicKey";
 
 export type TinkKeyset = {
@@ -99,13 +99,12 @@ export function signatureKeyId(signatureB64: string): number | null {
   return sig.length >= 5 && sig[0] === 0x01 ? sig.readUInt32BE(1) : null;
 }
 
-// Caché del keyset en memoria: 6 h, y re-fetch (máx. 1/min) si llega un keyId que no conocemos (rotación).
-const KEYSET_TTL_MS = 6 * 3600_000;
+// Caché del keyset en memoria: HEALTH_KEYSET_TTL_MS (6 h por defecto), y re-fetch (máx. 1/min) si llega un keyId que no conocemos (rotación).
 const REFETCH_MIN_MS = 60_000;
 let cached: { keyset: TinkKeyset; at: number } | null = null;
 
 async function fetchKeyset(): Promise<TinkKeyset> {
-  const res = await fetch(KEYSET_URL, { cache: "no-store" });
+  const res = await fetch(healthKeysetUrl(), { cache: "no-store" });
   if (!res.ok) throw new Error(`keyset ${res.status}`);
   const keyset = (await res.json()) as TinkKeyset;
   if (!Array.isArray(keyset.key)) throw new Error("keyset sin key[]");
@@ -117,7 +116,7 @@ async function fetchKeyset(): Promise<TinkKeyset> {
 export async function getKeyset(wantKeyId?: number | null): Promise<TinkKeyset> {
   const age = cached ? Date.now() - cached.at : Infinity;
   const known = wantKeyId == null || cached?.keyset.key.some((k) => k.keyId === wantKeyId);
-  if (cached && age < KEYSET_TTL_MS && (known || age < REFETCH_MIN_MS)) return cached.keyset;
+  if (cached && age < healthKeysetTtlMs() && (known || age < REFETCH_MIN_MS)) return cached.keyset;
   try {
     return await fetchKeyset();
   } catch (error) {

@@ -1,6 +1,7 @@
 import { getConnection, listConnections } from "@/lib/connections";
 import { insertRawEvents, type RawEventInput } from "@/lib/db";
 import { freshToken } from "@/lib/oauth";
+import { healthApiBase } from "@/lib/config";
 
 // Ingest de Google Health (Fitbit) → raw_events (source "google").
 // Forma real del sueño (verificado contra la API con la cuenta de Santi):
@@ -12,7 +13,7 @@ import { freshToken } from "@/lib/oauth";
 //   activeZoneMinutes:{interval:{startTime}, heartRateZone, activeZoneMinutes}
 const SLEEP_DAYS = 90;
 const DAILY_DAYS = 35; // el último mes (cruces de Yo, Wrapped) + margen; el ranking usa 7 + 14 de base
-const BASE = "https://health.googleapis.com/v4/users/me";
+const base = () => `${healthApiBase()}/users/me`; // HEALTH_API_BASE (default la v4 pública de Google)
 const MAX_PAGES = 50; // AZM viene por minuto: un mes son varias páginas de 100 (4 tipos × 50 sigue bajo 300 req/min)
 
 type Point = Record<string, unknown>;
@@ -62,7 +63,7 @@ const TYPES: { type: string; days: number; pick: Pick }[] = [
 async function fetchType(hdr: HeadersInit, userId: string, { type, days, pick }: (typeof TYPES)[number]): Promise<RawEventInput[]> {
   const since = Date.now() - days * 86400_000;
   const rows: RawEventInput[] = [];
-  const url = (tok?: string) => `${BASE}/dataTypes/${type}/dataPoints?page_size=100${tok ? `&page_token=${tok}` : ""}`;
+  const url = (tok?: string) => `${base()}/dataTypes/${type}/dataPoints?page_size=100${tok ? `&page_token=${tok}` : ""}`;
   let next: string | undefined = url();
   let guard = 0;
   while (next && guard++ < MAX_PAGES) {

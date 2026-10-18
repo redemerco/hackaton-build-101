@@ -1,13 +1,14 @@
 import { getConnection } from "@/lib/connections";
 import { onUserEvent } from "@/lib/live-events";
 import { getCurrentUser } from "@/lib/users";
+import { sseHeartbeatMs, sseRetryMs } from "@/lib/config";
 
 // GET /api/events → SSE del usuario logueado (cookie). Hoy un solo evento: `health-updated`
 // (lo emite el webhook de Google Health después de sincronizar). Lo consume components/live-refresh.tsx.
 // Bus en memoria (lib/live-events.ts): vale porque hay un solo proceso PM2.
 export const dynamic = "force-dynamic";
 
-const HEARTBEAT_MS = 25_000; // cloudflared corta conexiones ociosas; un comentario SSE cada 25 s la mantiene viva
+// cloudflared corta conexiones ociosas: un comentario SSE cada SSE_HEARTBEAT_MS (25 s) la mantiene viva
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
@@ -24,9 +25,9 @@ export async function GET(req: Request) {
           cleanup();
         }
       };
-      send("retry: 5000\n: conectado\n\n");
+      send(`retry: ${sseRetryMs()}\n: conectado\n\n`);
       const off = onUserEvent(user.id, (e) => send(`event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`));
-      const beat = setInterval(() => send(": ping\n\n"), HEARTBEAT_MS);
+      const beat = setInterval(() => send(": ping\n\n"), sseHeartbeatMs());
       cleanup = () => {
         off();
         clearInterval(beat);
