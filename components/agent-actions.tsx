@@ -9,8 +9,16 @@ const hhmm = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Montevideo", 
 const fmt = (iso: string) => hhmm.format(new Date(iso));
 const plus = (iso: string, minutes = 0) => new Date(Date.parse(iso) + minutes * 60_000).toISOString();
 
+// Mismos rótulos que lib/agent-work.ts (no se importa: trae node:crypto al bundle del cliente).
+const PRIORITY: Record<number, string> = { 0: "sin prioridad", 1: "urgente", 2: "alta", 3: "media", 4: "baja" };
+const RECONNECT_LABEL = { slack: "Reconectar Slack para habilitar", linear: "Reconectar Linear para habilitar" } as const;
+
 /** "de 15:00 a 12:00" (reunión: de dónde a dónde), "de 15:00 a 16:30" (bloque) o "a las 23:00" (a dormir). */
 function spanOf(a: AgentAction): string | null {
+  if (a.type === "linear_create_issue" && a.title) return `"${a.title}" · team ${a.team}`;
+  if (a.type === "linear_lower_priority" && a.issueId) {
+    return `${a.issueId}${a.issueTitle ? ` ${a.issueTitle}` : ""} · prioridad ${PRIORITY[a.priorityFrom!] ?? a.priorityFrom} → ${PRIORITY[a.priorityTo!] ?? a.priorityTo}`;
+  }
   if (a.type === "move_meeting" && a.from && a.to) return `de ${fmt(a.from)} a ${fmt(a.to)}`;
   if (a.type === "bedtime" && a.to) return `a las ${fmt(a.to)}`;
   if (a.to) return `de ${fmt(a.to)} a ${fmt(plus(a.to, a.minutes))}`;
@@ -25,7 +33,13 @@ const TITLE: Record<AgentAction["type"], string> = {
   bedtime: "a dormir",
   log_prompt: "recordatorio para registrar",
   send_nudge: "mandarte el nudge",
+  slack_focus: "Slack en foco",
+  linear_create_issue: "crear issue en Linear",
+  linear_lower_priority: "bajar prioridad en Linear",
 };
+
+/** Detalle exacto de lo que pasa en Slack, así se ve antes de confirmar. */
+const slackDetail = (a: AgentAction) => (a.type === "slack_focus" && a.to ? `estado ":headphones: En foco con Pulso" y no molestar hasta las ${fmt(plus(a.to, a.minutes))}` : null);
 
 const LEVEL_TONE: Record<string, string> = { bien: "text-work", regular: "text-mood", mal: "text-heart", "sin dato": "text-dim" };
 
@@ -34,6 +48,7 @@ function ActionCard({ action }: { action: AgentAction }) {
     action.done ? { status: "done", message: action.done.message ?? "ya se ejecutó", ...(action.done.url && { url: action.done.url }) } : null,
   );
   const span = spanOf(action);
+  const detail = slackDetail(action);
 
   async function confirm() {
     setResult("running");
@@ -54,8 +69,14 @@ function ActionCard({ action }: { action: AgentAction }) {
         {action.isSimulated && <span className="text-mood">[simulado]</span>}
         {action.tag && <span className="text-dim">[{action.tag}]</span>}
       </p>
+      {detail && <p className="font-mono text-[12px] text-dim text-pretty">{detail}</p>}
       <p className="text-[15px] leading-snug text-pretty">{action.reason}</p>
-      {result === null || result === "running" ? (
+      {action.reconnect && !action.done ? (
+        // Sin el permiso de escritura no hay Confirmar: lleva al OAuth con los scopes nuevos y vuelve a esta propuesta.
+        <a href={`/api/connect/${action.reconnect}`} className="press justify-self-start rounded-full bg-white/10 px-4 py-2 font-mono text-[13px]">
+          {RECONNECT_LABEL[action.reconnect]}
+        </a>
+      ) : result === null || result === "running" ? (
         <button
           type="button"
           onClick={confirm}
@@ -74,7 +95,15 @@ function ActionCard({ action }: { action: AgentAction }) {
             <>
               {" · "}
               <a href={result.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                {!isCalendarLink(result.url) ? "abrir" : result.status === "done" ? "ver en Google Calendar" : "abrir Google Calendar"}
+                {result.url.startsWith("/api/connect/")
+                  ? "reconectar"
+                  : result.url.includes("linear.app")
+                    ? "ver en Linear"
+                    : !isCalendarLink(result.url)
+                      ? "abrir"
+                      : result.status === "done"
+                        ? "ver en Google Calendar"
+                        : "abrir Google Calendar"}
               </a>
             </>
           )}
