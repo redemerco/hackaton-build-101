@@ -1,4 +1,4 @@
-import { getAI, MODEL } from "@/lib/ai";
+import { aiErrorReason, getAI, MODEL } from "@/lib/ai";
 import type { MealAnalysis } from "@/lib/meals";
 
 export const maxDuration = 30;
@@ -46,7 +46,8 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ items, comment } satisfies MealAnalysis);
   } catch (error) {
     console.error("[comer/analizar]", error);
-    return Response.json({ error: "No se pudo analizar la foto" }, { status: 502 });
+    // 503 y no 502: detrás de Cloudflare un 502 pierde el cuerpo y no se ve el motivo
+    return Response.json({ error: "No se pudo analizar la foto", reason: aiErrorReason(error) }, { status: 503 });
   }
 }
 

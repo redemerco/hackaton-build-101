@@ -1,24 +1,52 @@
-import { streamText } from "@/lib/ai";
+import { aiErrorReason, streamText } from "@/lib/ai";
 import { DIGEST_SYSTEM, buildDigestPrompt, getCachedDigest, saveDigest } from "@/lib/digest";
 import { getCurrentUser } from "@/lib/users";
 
 const WORD_MS = 45;
+const CACHE_PREFIX = "[cache · IA no disponible] ";
+const TEXT = { "Content-Type": "text/plain; charset=utf-8" };
+
+function replay(text: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    async start(controller) {
+      controller.enqueue(encoder.encode(CACHE_PREFIX));
+      for (const word of text.split(/(?<=\s)/)) {
+        controller.enqueue(encoder.encode(word));
+        await new Promise((r) => setTimeout(r, WORD_MS));
+      }
+      controller.close();
+    },
+  });
+}
 
 // POST /api/digest → digest en streaming (lo consume <StreamText src> de components/digest.tsx).
-// Si la IA se cae antes de mandar algo, re-tipea el último digest real guardado; si no hay ninguno,
-// responde error y el cliente tipea su respaldo de ejemplo.
+// Espera el primer pedazo de Gemini antes de responder: si la IA falla re-tipea el último digest guardado,
+// o responde 503 con el motivo (el cliente tipea su respaldo). Nunca un 200 cortado (detrás del proxy = 502).
 export async function POST() {
   const user = await getCurrentUser();
   const cached = getCachedDigest(user.id);
-  const source = streamText({
-    contents: buildDigestPrompt(user.id),
-    config: { systemInstruction: DIGEST_SYSTEM },
-  }).getReader();
+  const fail = (error: unknown) => {
+    console.error("[digest] IA no disponible", error);
+    return cached ? new Response(replay(cached), { headers: TEXT }) : new Response(`IA no disponible: ${aiErrorReason(error)}`, { status: 503, headers: TEXT });
+  };
+  if (!process.env.GEMINI_API_KEY) return fail(new Error("Falta GEMINI_API_KEY"));
+
+  const source = streamText({ contents: buildDigestPrompt(user.id), config: { systemInstruction: DIGEST_SYSTEM } }).getReader();
+  let first: ReadableStreamReadResult<Uint8Array>;
+  try {
+    first = await source.read();
+  } catch (error) {
+    return fail(error);
+  }
+  if (first.done) return fail(new Error("respuesta vacía"));
   const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let text = "";
+  let text = decoder.decode(first.value, { stream: true });
 
   const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(first.value);
+    },
     async pull(controller) {
       try {
         const { done, value } = await source.read();
@@ -29,17 +57,10 @@ export async function POST() {
         text += decoder.decode(value, { stream: true });
         controller.enqueue(value);
       } catch (error) {
-        if (text || !cached) return controller.error(error);
-        console.error("[digest] IA caída, re-tipeo el último digest guardado", error);
-        controller.enqueue(encoder.encode("[cache · IA no disponible] "));
-        for (const word of cached.split(/(?<=\s)/)) {
-          controller.enqueue(encoder.encode(word));
-          await new Promise((r) => setTimeout(r, WORD_MS));
-        }
+        console.error("[digest] stream cortado a mitad", error);
         controller.close();
       }
     },
   });
-
-  return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  return new Response(body, { headers: TEXT });
 }

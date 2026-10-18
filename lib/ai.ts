@@ -103,3 +103,14 @@ async function callService({ contents, config }: Omit<StreamTextParams, "model">
   if (!res.ok || typeof data.digest !== "string") throw new Error(`[ai] servicio IA ${res.status}: ${String(data.error ?? "respuesta inválida")}`);
   return data.digest;
 }
+
+/** Motivo corto y sin secretos de una falla de Gemini (para logs, /api/ai-status y el 503). */
+export function aiErrorReason(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  if (/GEMINI_API_KEY/.test(msg)) return "falta GEMINI_API_KEY en el servidor";
+  if (/API key not valid|API_KEY_INVALID|PERMISSION_DENIED|403/.test(msg)) return "la GEMINI_API_KEY es inválida o no tiene permiso";
+  if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) return "se agotó la cuota de Gemini (429)";
+  if (/503|UNAVAILABLE|overloaded/i.test(msg)) return "Gemini está saturado (503), reintentá";
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN/.test(msg)) return "el servidor no llega a Google (red/DNS)";
+  return msg.slice(0, 160);
+}
