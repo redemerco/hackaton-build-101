@@ -161,7 +161,7 @@ export default async function TrabajoPage() {
       <Summary label="hoy, en trabajo" src="/api/summary/work" fallback={EXAMPLE_WORK_SUMMARY} counts={counts} />
 
       {day && (
-        <Panel label="git log · hoy" meta={`${day.commits} commits`}>
+        <Panel label="git log · recientes" meta={`${day.commits} hoy`}>
           <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-xs leading-[1.7]">
             {day.log.map((entry, i) => (
               <span key={i}><LogLine entry={entry} />{"\n"}</span>

@@ -22,6 +22,7 @@ export const MEETING_SLOTS_PER_DAY = 27; // 09 → 18 en franjas de 20 min
 const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }); // YYYY-MM-DD local
 const hhmm = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const weekdayShort = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, weekday: "short" });
 const LOG_MAX = 8;
 
 // Commits y PRs reales de raw_events. Sin datos de GitHub devuelve null → la página muestra estado vacío.
@@ -41,7 +42,10 @@ export function getWorkDay(userId: string): WorkDay | null {
     const d = JSON.parse(r.json);
     if (r.kind === "commit") {
       const message = d.commit?.message?.split("\n")[0] ?? "";
-      log.push({ type: "commit", time: hhmm.format(new Date(r.ts)), message, additions: 0, deletions: 0 });
+      // los que no son de hoy llevan el día adelante: el log mezcla la semana, no solo hoy
+      const isToday = dayKey.format(new Date(r.ts)) === dayKey.format(new Date());
+      const time = isToday ? hhmm.format(new Date(r.ts)) : `${weekdayShort.format(new Date(r.ts)).replace(".", "")} ${hhmm.format(new Date(r.ts))}`;
+      log.push({ type: "commit", time, message, additions: 0, deletions: 0 });
     } else if (r.kind === "pr") {
       log.push({ type: "pr", title: `PR #${d.number} ${(d.merged_at ?? d.pull_request?.merged_at) ? "mergeado" : d.state}` });
     }
