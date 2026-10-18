@@ -69,7 +69,7 @@ function Stat({ big, small, color }: { big: string; small: string; color: string
   return (
     <div className="grid min-w-0 gap-0.5">
       <span className="font-mono text-[22px] font-semibold leading-none tabular-nums" style={{ color }}>{big}</span>
-      <span className="truncate text-[11px] text-dim">{small}</span>
+      <span className="truncate text-[12px] text-dim">{small}</span>
     </div>
   );
 }
@@ -129,7 +129,7 @@ export function CrossChart({ day, nowHour }: { day: Hourly; nowHour: number }) {
         </div>
       </div>
 
-      <ul className="flex flex-wrap gap-x-3.5 gap-y-1.5 text-[11px] text-dim" aria-label="Referencias">
+      <ul className="flex flex-wrap gap-x-3.5 gap-y-1.5 text-[12px] text-dim" aria-label="Referencias">
         {LEGEND.map((l) => (
           <li key={l.label} className="flex items-center gap-1.5">
             <span

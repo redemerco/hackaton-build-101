@@ -69,7 +69,7 @@ function InsightRow({ i }: { i: Insight }) {
       <p className="text-[13px] font-medium text-dim">{i.question}</p>
       <p className="text-[15px] leading-relaxed text-pretty">{i.text}</p>
       <p className="text-[13px] leading-snug text-mood/90">→ {i.tryThis}</p>
-      <p className="font-mono text-[11px] text-faint">
+      <p className="font-mono text-[12px] text-faint">
         {i.basis} · {i.isHypothesis ? <span className="text-mood">{i.evidence}</span> : i.evidence}
       </p>
       {i.detail && <DetailRows d={i.detail} />}
@@ -81,7 +81,7 @@ function PendingRow({ p }: { p: Pending }) {
   return (
     <li className="grid gap-0.5">
       <span className="text-[13px] text-dim">{p.question}</span>
-      <span className="font-mono text-[11px] text-faint">{p.need}</span>
+      <span className="font-mono text-[12px] text-faint">{p.need}</span>
     </li>
   );
 }
@@ -173,7 +173,7 @@ export default async function Yo() {
         )}
         {cross.pending.length > 0 && (
           <ul className="grid gap-1.5 border-t border-white/10 pt-3" aria-label="Lo demás que miramos">
-            <li className="font-mono text-[11px] uppercase tracking-[0.08em] text-faint">lo demás que miramos</li>
+            <li className="font-mono text-[12px] uppercase tracking-[0.08em] text-faint">lo demás que miramos</li>
             {cross.pending.slice(0, MAX_PENDING).map((p) => <PendingRow key={p.id} p={p} />)}
           </ul>
         )}

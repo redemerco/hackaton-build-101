@@ -63,8 +63,8 @@
   color-scheme: dark;
   --ink: #0a0c12;
   --ink-2: #121520;
-  --dim: #9097aa;
-  --faint: #8088a0; /* ~4.6:1 sobre panel: alcanza AA para texto chico */
+  --dim: #a9afc1; /* más claro: se tiene que leer proyectado */
+  --faint: #959cb2; /* ~5.6:1 sobre panel: AA holgado para texto chico y proyector */
   /* un color por dominio de datos (nunca se mezclan) */
   --sleep: #a7acff;
   --heart: #ff6b5e;
@@ -75,7 +75,7 @@
   --glass-ctrl: rgb(255 255 255 / 0.1);
   --glass-panel: rgb(16 19 28 / 0.8);
   --glass-blur: blur(18px) saturate(170%);
-  --field-alpha: 0.5;
+  --field-alpha: 0.38; /* el fondo ASCII acompaña, no compite con el texto */
   --spring: cubic-bezier(0.34, 1.56, 0.5, 1);
 
   /* tokens de shadcn mapeados a la paleta */

@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="grid gap-2">
-      <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-dim">{title}</h3>
+      <h3 className="font-mono text-[12px] font-medium uppercase tracking-[0.08em] text-dim">{title}</h3>
       {children}
     </section>
   );
