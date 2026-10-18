@@ -4,6 +4,7 @@ import { syncGithubUser } from "@/lib/sources/github";
 import { syncLinearUser } from "@/lib/sources/linear";
 import { syncSlackUser } from "@/lib/sources/slack";
 import { syncGoogleUser } from "@/lib/sources/google";
+import { resolveHealthUserId } from "@/lib/health-webhook";
 import { syncCalendarUser } from "@/lib/sources/calendar";
 import { getCurrentUser, upsertUser } from "@/lib/users";
 import { USER_COOKIE } from "@/lib/user-list";
@@ -56,6 +57,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   await FIRST_SYNC[provider]?.(userId).catch((error) =>
     console.error(`[connect/${provider}] primer sync`, error),
   );
+  // healthUserId de Google Health (users/me/identity): mapea los avisos del webhook a este usuario.
+  if (provider === "google") await resolveHealthUserId(userId).catch((error) => console.error("[connect/google] identity", error));
   back.searchParams.set("conexion", `${provider}-ok`);
   return Response.redirect(back, 302);
 }
