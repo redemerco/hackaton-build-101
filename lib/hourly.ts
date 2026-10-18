@@ -22,6 +22,13 @@ export type Hour = { hour: number; commits: number; messages: number; meetingMin
 export type Hourly = { day: string; hours: Hour[]; mood: number | null };
 
 type Json = Record<string, unknown>;
+/** Minutos de un registro de AZM: lo que diga la API (0 incluido); si no viene el campo, 1 (un registro = un minuto). */
+const azmOf = (data: Json) => {
+  const n = Number(((data.activeZoneMinutes ?? {}) as Json).activeZoneMinutes);
+  return Number.isFinite(n) ? n : 1;
+};
+const isAwake = (type: unknown) => /^(awake|wake)$/i.test(String(type));
+
 const parse = (json: string): Json => {
   try {
     return JSON.parse(json) as Json;
@@ -65,7 +72,7 @@ export function hourlyFor(rows: RawRow[], day: string): Hourly {
     const h = hours[Math.floor(at.minute / 60)];
     if (r.source === "github" && r.kind === "commit") h.commits++;
     else if (r.source === "slack") h.messages++;
-    else if (r.source === "google" && r.kind === "azm") h.azm += Number(((parse(r.json).activeZoneMinutes ?? {}) as Json).activeZoneMinutes) || 1;
+    else if (r.source === "google" && r.kind === "azm") h.azm += azmOf(parse(r.json));
     else if (r.source === "meal") h.meals++;
     else if (r.source === "mood") {
       const m = parse(r.json).mood;
@@ -119,7 +126,7 @@ export function dailySeries(rows: RawRow[], days: string[], hasCalendar: boolean
       if (!night) continue;
       const summary = (((sleep.summary ?? {}) as Json).stagesSummary ?? []) as Array<Record<string, string>>;
       const asleep = summary.length
-        ? summary.filter((s) => s.type !== "AWAKE").reduce((n, s) => n + (parseInt(s.minutes, 10) || 0), 0)
+        ? summary.filter((s) => !isAwake(s.type)).reduce((n, s) => n + (parseInt(s.minutes, 10) || 0), 0)
         : (Date.parse(interval.endTime) - Date.parse(interval.startTime)) / MIN;
       night.sleepMin = Math.round((night.sleepMin ?? 0) + asleep);
       const bed = (Date.parse(interval.startTime) - (dayStartMs(end.day) - 6 * 60 * MIN)) / MIN; // desde las 18:00 de la víspera
@@ -140,7 +147,7 @@ export function dailySeries(rows: RawRow[], days: string[], hasCalendar: boolean
     } else if (r.source === "slack") {
       // solo cuenta para lastWorkMinute (arriba)
     } else if (r.source === "mood" && typeof data.mood === "number") d.mood = data.mood;
-    else if (r.source === "google" && r.kind === "azm") d.azm = (d.azm ?? 0) + (Number(((data.activeZoneMinutes ?? {}) as Json).activeZoneMinutes) || 1);
+    else if (r.source === "google" && r.kind === "azm") d.azm = (d.azm ?? 0) + azmOf(data);
     else if (r.source === "google" && r.kind === "resting_hr") {
       const bpm = parseInt(String((data.dailyRestingHeartRate as Json | undefined)?.beatsPerMinute), 10);
       const day = at(r.ts.slice(0, 10));

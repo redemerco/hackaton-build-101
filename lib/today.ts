@@ -22,7 +22,7 @@ export type Today = {
 
 export { moodFace } from "@/lib/ascii";
 
-const TZ = "America/Argentina/Buenos_Aires";
+const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -34,7 +34,8 @@ function todaysMood(userId: UserId): number | null {
     .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "mood")))
     .orderBy(desc(rawEvents.ts))
     .get();
-  if (!row || new Date(row.ts).toDateString() !== new Date().toDateString()) return null;
+  // "hoy" en Montevideo, no en la zona del server (el NAS puede estar en UTC)
+  if (!row || dayKey.format(new Date(row.ts)) !== dayKey.format(new Date())) return null;
   const mood = (JSON.parse(row.json) as { mood?: unknown }).mood;
   return typeof mood === "number" ? mood : null;
 }
