@@ -30,7 +30,7 @@ async function saveOnServer(sub: PushSubscription) {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
-// Registra /sw.js, suscribe al push y permite mandar uno de prueba. En iOS requiere la PWA instalada.
+// Registra /sw.js y suscribe al push. En iOS requiere la PWA instalada.
 export function PushToggle() {
   const [status, setStatus] = useState<Status>("loading");
 
@@ -73,21 +73,12 @@ export function PushToggle() {
     }
   }
 
-  async function sendTest() {
-    const res = await fetch("/api/push/test", { method: "POST" });
-    const body = (await res.json()) as { sent?: number; error?: string };
-    if (!res.ok) return toast.error(body.error ?? "Falló el envío");
-    toast(body.sent ? `Push enviado a ${body.sent} dispositivo(s)` : "No hay dispositivos suscritos");
-  }
-
   if (status === "loading") return null;
   if (status === "unsupported") {
     return <p className="text-sm text-muted-foreground">Push no disponible acá. En iPhone: Compartir → Agregar a inicio.</p>;
   }
   return status === "on" ? (
-    <Button variant="outline" onClick={sendTest}>
-      Enviar push de prueba
-    </Button>
+    <p className="text-sm text-muted-foreground">Notificaciones activadas</p>
   ) : (
     <Button onClick={subscribe}>Activar notificaciones</Button>
   );
