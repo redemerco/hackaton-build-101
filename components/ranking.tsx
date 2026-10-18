@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Daemon } from "@/components/daemon/daemon";
 import { Panel } from "@/components/glass/panel";
+import { ShareScoreToggle } from "@/components/share-score-toggle";
 import type { BuddyId, DaemonState } from "@/lib/daemon";
 import type { TintId } from "@/lib/tints";
 import { cn } from "@/lib/utils";
@@ -96,8 +97,9 @@ export function Ranking({ team, today, week, isExample, isSimulated }: RankingPr
 
       <p className="text-xs leading-relaxed text-dim">
         0–100 con tu sueño (50), tu HRV y pulso en reposo contra tu propia media (35) y minutos en zona activa (15). Lo calculamos nosotros: no es el score de Fitbit.
-        {hasPartial && " “parcial” = todavía no hay HRV, pulso o línea base: se puntúa sobre lo que hay."} Con tu equipo solo se comparte el puntaje.
+        {hasPartial && " “parcial” = todavía no hay HRV, pulso o línea base: se puntúa sobre lo que hay."} Aparece solo quien eligió entrar, y se comparte solo el puntaje.
       </p>
+      <ShareScoreToggle isOn className="justify-self-start" />
     </Panel>
   );
 }

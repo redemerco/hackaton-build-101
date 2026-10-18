@@ -28,6 +28,7 @@ export type RankRow = {
 };
 
 export type Ranking = {
+  meShares: boolean; // si el usuario actual eligió entrar al ranking
   team: string | null; // nombre del workspace; null = el usuario actual no tiene Slack
   rows: RankRow[];
   isExample: boolean;
@@ -138,8 +139,10 @@ const byScore = (pick: (r: RankRow) => number | undefined) => (a: RankRow, b: Ra
 /** Ranking del workspace de Slack del usuario actual. */
 export function getRanking(me: UserId, now = Date.now()): Ranking {
   const team = teamOf(me);
-  if (!team) return { team: null, rows: [], isExample: false };
-  const members = allUsers().filter((u) => teamOf(u.id) === team);
+  const meShares = getLook(me).shareScore;
+  if (!team) return { team: null, rows: [], isExample: false, meShares };
+  // opt-in: solo aparece quien eligió compartir su puntaje (y vos, para verte, solo si también compartís)
+  const members = allUsers().filter((u) => teamOf(u.id) === team && getLook(u.id).shareScore);
   const rows: RankRow[] = members.map((u) => ({
     userId: u.id,
     name: u.name,
@@ -148,8 +151,8 @@ export function getRanking(me: UserId, now = Date.now()): Ranking {
     ...scoresFor(u.id, now),
   }));
   // Sin ningún puntaje real: ranking vacío honesto (nunca puntajes inventados).
-  if (!rows.some((r) => r.today || r.week)) return { team, rows: [], isExample: false };
-  return { team, rows, isExample: false };
+  if (!meShares || !rows.some((r) => r.today || r.week)) return { team, rows: [], isExample: false, meShares };
+  return { team, rows, isExample: false, meShares };
 }
 
 export const sortToday = (rows: RankRow[]) => [...rows].sort(byScore((r) => r.today?.score));

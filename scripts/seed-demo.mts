@@ -24,7 +24,7 @@ const sqlite = new Database(DB_PATH);
 sqlite.exec(`
 CREATE TABLE IF NOT EXISTS connections (user_id TEXT NOT NULL, provider TEXT NOT NULL, account TEXT NOT NULL, token TEXT NOT NULL,
   refresh_token TEXT, expires_at TEXT, created_at TEXT NOT NULL, PRIMARY KEY (user_id, provider));
-CREATE TABLE IF NOT EXISTS profiles (user_id TEXT PRIMARY KEY, buddy TEXT NOT NULL, tint TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS profiles (user_id TEXT PRIMARY KEY, buddy TEXT NOT NULL, tint TEXT NOT NULL, share_score INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT NOT NULL, has_wearable INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
 `);
 
@@ -62,7 +62,13 @@ for (const p of PEOPLE) {
   // usuario simulado (el login real crea el suyo con el id de Google; este no lo pisa)
   sqlite.prepare(`INSERT OR IGNORE INTO users (id, email, name, has_wearable, created_at) VALUES (?, ?, ?, 1, ?)`).run(p.id, `${p.id}@demo.build101`, NAMES[p.id], now.toISOString());
   // el personaje solo si la persona todavía no eligió uno
-  sqlite.prepare(`INSERT OR IGNORE INTO profiles (user_id, buddy, tint, updated_at) VALUES (?, ?, ?, ?)`).run(p.id, p.buddy, p.tint, now.toISOString());
+  try {
+    sqlite.exec(`ALTER TABLE profiles ADD COLUMN share_score INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    // ya existe
+  }
+  // los simulados entran al ranking (opt-in) para que la demo lo muestre
+  sqlite.prepare(`INSERT OR IGNORE INTO profiles (user_id, buddy, tint, share_score, updated_at) VALUES (?, ?, ?, 1, ?)`).run(p.id, p.buddy, p.tint, now.toISOString());
 
   if (hasReal.get(p.id)) {
     console.log(`${p.id}: tiene datos reales de Google Health, no se simula`);

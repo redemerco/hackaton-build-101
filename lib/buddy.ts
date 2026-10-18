@@ -14,7 +14,7 @@ export async function getCurrentLook(): Promise<Look> {
   const saved = findLook(id);
   if (saved) return saved;
   const legacy = (await cookies()).get(LEGACY_BUDDY_COOKIE)?.value;
-  return isBuddyId(legacy) ? { buddy: legacy, tint: DEFAULT_TINT } : getLook(id);
+  return isBuddyId(legacy) ? { buddy: legacy, tint: DEFAULT_TINT, shareScore: false } : getLook(id);
 }
 
 /** Solo el personaje del usuario actual (para las pantallas que no necesitan el color). */

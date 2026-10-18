@@ -17,3 +17,10 @@ export async function setTint(id: string): Promise<void> {
   saveLook((await getCurrentUser()).id, { tint: id });
   revalidatePath("/", "layout");
 }
+
+/** Opt-in del ranking del equipo: solo el puntaje build101 (0–100), nunca los datos crudos. */
+export async function setShareScore(share: boolean): Promise<void> {
+  if (typeof share !== "boolean") throw new Error("Valor inválido");
+  saveLook((await getCurrentUser()).id, { shareScore: share });
+  revalidatePath("/", "layout");
+}

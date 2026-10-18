@@ -4,6 +4,7 @@ import { Panel } from "@/components/glass/panel";
 import { PageHeader } from "@/components/page-header";
 import { Ranking, type RankingEntry } from "@/components/ranking";
 import { Screen } from "@/components/screen";
+import { ShareScoreToggle } from "@/components/share-score-toggle";
 import { ToolsProbe } from "./tools-probe";
 import { getRanking, sortToday, sortWeek, type RankRow } from "@/lib/ranking";
 import { getCurrentUser } from "@/lib/users";
@@ -23,7 +24,14 @@ export default async function SemanaPage() {
       <Pulse bpm={60} stress={0.3} />
       <PageHeader title="Semana" subtitle="Lo que tu semana de trabajo le hizo a tu cuerpo." />
       <Digest fallback={DIGEST_FALLBACK} src="/api/digest" isExample={false} />
-      {ranking.team ? (
+      {ranking.team && !ranking.meShares ? (
+        <Panel label={`ranking · ${ranking.team}`} meta="opt-in">
+          <p className="text-[15px] leading-relaxed text-foreground/90">
+            Compará tu puntaje build101 con los de tu workspace que también eligieron entrar. Se comparte solo el número (0–100), nunca tu sueño, tu pulso ni tu trabajo.
+          </p>
+          <ShareScoreToggle isOn={false} className="w-full" />
+        </Panel>
+      ) : ranking.team ? (
         ranking.rows.length > 0 ? (
           <Ranking
             team={ranking.team}
