@@ -1,17 +1,15 @@
 import "server-only";
 import { and, eq, gte } from "drizzle-orm";
-import type { StreamPart } from "@/components/ascii/stream-text";
 import { formatDuration } from "@/lib/ascii";
 import { getLastNight, getMealsToday, minutesByStage } from "@/lib/body";
 import { db, rawEvents } from "@/lib/db";
 import { formatRange } from "@/lib/meals";
 import { dayInputs, scoresFor } from "@/lib/ranking";
 import { mean } from "@/lib/score";
+import type { SummaryCount } from "@/lib/summary";
 
 // Resumen daily de salud (IA): "cómo venís hoy de cuerpo". Solo datos reales de HOY (día local Montevideo);
 // lo simulado (scripts/seed-demo.mts) se rotula en el prompt. Lo consume /api/summary/health vía streamSummary.
-
-export type Count = { label: string; n: number };
 
 const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
@@ -29,7 +27,7 @@ Escribí en español rioplatense, cálido y directo, en 3 o 4 oraciones de texto
 - Si hay varios check-ins de ánimo, contá cómo cambió durante el día.
 - Cerrá con una sugerencia chica y concreta para lo que queda del día.`;
 
-export function buildHealthPrompt(userId: string, now = Date.now()): { system: string; prompt: string; counts: Count[] } {
+export function buildHealthPrompt(userId: string, now = Date.now()): { system: string; prompt: string; counts: SummaryCount[] } {
   const today = dayKey.format(now);
   const lines: string[] = [];
 
@@ -83,23 +81,14 @@ export function buildHealthPrompt(userId: string, now = Date.now()): { system: s
     system: HEALTH_SYSTEM,
     prompt,
     counts: [
-      { label: "noche", n: hasNight ? 1 : 0 },
-      { label: "días con pulso/HRV", n: heartDays },
-      { label: "comidas hoy", n: meals.length },
-      { label: "check-ins hoy", n: moods.length },
-      { label: "puntaje build101", n: score ? 1 : 0 },
+      { label: "noche", value: hasNight ? 1 : 0 },
+      { label: "días con pulso/HRV", value: heartDays },
+      { label: "comidas hoy", value: meals.length },
+      { label: "check-ins hoy", value: moods.length },
+      { label: "puntaje build101", value: score ? 1 : 0 },
     ],
   };
 }
 
-export const EXAMPLE_HEALTH_SUMMARY: readonly StreamPart[] = [
-  "Dormiste ",
-  { chip: "6h40", kind: "sleep" },
-  " y el pulso en reposo está en ",
-  { chip: "61 lpm", kind: "heart" },
-  ", dos arriba de tu típico. Llevás ",
-  { chip: "2 comidas", kind: "food" },
-  " y el ánimo pasó de ",
-  { chip: "3 a 4", kind: "mood" },
-  " después de almorzar. Correlación, no causa: aprovechá para caminar 10 minutos antes de la próxima reunión.",
-];
+export const EXAMPLE_HEALTH_SUMMARY =
+  "[ejemplo] Dormiste 6h40 y el pulso en reposo está en 61 lpm, dos arriba de tu típico. Llevás 2 comidas y el ánimo pasó de 3 a 4 después de almorzar. Correlación, no causa: aprovechá para caminar 10 minutos antes de la próxima reunión.";

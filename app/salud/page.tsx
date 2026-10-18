@@ -5,10 +5,12 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Panel } from "@/components/glass/panel";
 import { Screen } from "@/components/screen";
+import { Summary } from "@/components/summary";
 import { MealCamera } from "@/components/meal-camera";
 import { asciiLine, fitMonoFontSize, formatDuration, sparkline } from "@/lib/ascii";
 import { getLastNight, getMealsToday, minutesByStage } from "@/lib/body";
 import { formatRange, totalKcal } from "@/lib/meals";
+import { EXAMPLE_HEALTH_SUMMARY, buildHealthPrompt } from "@/lib/summary-health";
 import { getCurrentUser } from "@/lib/users";
 
 const STEPS_TRACKING_EM = 0.35;
@@ -33,12 +35,19 @@ function FoodPanels({ userId }: { userId: string }) {
   );
 }
 
+/** Resumen daily de salud (IA) con los "datos usados" de hoy. */
+function HealthSummary({ userId }: { userId: string }) {
+  const { counts } = buildHealthPrompt(userId);
+  return <Summary label="hoy, en el cuerpo" src="/api/summary/health" counts={counts} fallback={EXAMPLE_HEALTH_SUMMARY} />;
+}
+
 export default async function SaludPage() {
   const user = await getCurrentUser();
   if (!user.hasWearable) {
     return (
       <Screen>
         <PageHeader title="Salud" subtitle="Funciona sin wearable." action={<MealCamera />} />
+        <HealthSummary userId={user.id} />
         <FoodPanels userId={user.id} />
         <EmptyState
           art="(•_•)"
@@ -54,6 +63,7 @@ export default async function SaludPage() {
     return (
       <Screen>
         <PageHeader title="Salud" subtitle="Conectá tu wearable para ver tu sueño." action={<MealCamera />} />
+        <HealthSummary userId={user.id} />
         <FoodPanels userId={user.id} />
         <EmptyState
           art="(-_-) zzz"
@@ -77,6 +87,9 @@ export default async function SaludPage() {
     <Screen>
       <Pulse bpm={night.restingBpm ?? 60} stress={0.2} />
       <PageHeader title="Salud" subtitle={night.isSimulated ? "[datos simulados]" : "Google Health"} action={<MealCamera />} />
+      <HealthSummary userId={user.id} />
+
+      <FoodPanels userId={user.id} />
 
       <Panel label="sueño · anoche" meta={`${night.start} → ${night.end}`}>
         <p className="font-mono text-[28px] font-semibold leading-none tracking-tight">
@@ -92,7 +105,6 @@ export default async function SaludPage() {
         </p>
       </Panel>
 
-      <FoodPanels userId={user.id} />
 
       {hasHr && night.restingBpm !== null ? (
         <Panel
