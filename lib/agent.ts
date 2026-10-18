@@ -35,12 +35,24 @@ import {
 } from "@/lib/agent-rules";
 import { claimRun, doneRuns, finishRun, releaseRun } from "@/lib/agent-runs";
 import { CAL_EVENTS, insertOrRevive } from "@/lib/calendar-insert";
+import { gateFor, isWorkAction, linearCreateIssue, linearLowerPriority, PRIORITY_LABEL, slackFocus, teamKeyOf, WORK_ACTIONS, type WorkActionType } from "@/lib/agent-work";
+import { getSlackToday } from "@/lib/work-signals";
 
 // Agente: evalúa cómo venís (trabajo: avance de la semana vs lo prometido; salud: estrés, sueño, entrenamiento, comida,
 // ánimo), de los flags saca acciones candidatas y la IA elige y redacta el porqué. Nada se ejecuta sin Confirmar.
 // La IA elige; el código valida (eventos que existen, horarios del mismo día, sin pisar reuniones) y fija los horarios.
 
-export type AgentActionType = "move_meeting" | "block_focus" | "block_training" | "block_rest" | "bedtime" | "log_prompt" | "send_nudge";
+export type AgentActionType =
+  | "move_meeting"
+  | "block_focus"
+  | "block_training"
+  | "block_rest"
+  | "bedtime"
+  | "log_prompt"
+  | "send_nudge"
+  | "slack_focus"
+  | "linear_create_issue"
+  | "linear_lower_priority";
 
 export type AgentAction = {
   id: string;
@@ -51,6 +63,14 @@ export type AgentAction = {
   minutes?: number; // duración del bloque
   target?: "mood" | "meals" | "both"; // log_prompt: qué falta registrar
   url?: string; // log_prompt: a dónde lleva el push
+  title?: string; // linear_create_issue: título exacto del issue
+  team?: string; // linear_create_issue: key del team
+  issueId?: string; // linear_lower_priority: issue ("PUL-3")
+  issueTitle?: string;
+  priorityFrom?: number; // linear_lower_priority: prioridad actual → nueva (2 alta, 3 media, 4 baja)
+  priorityTo?: number;
+  /** Falta el scope en la conexión: la tarjeta es [simulado] y ofrece "Reconectar" en vez de Confirmar. */
+  reconnect?: "slack" | "linear";
   reason: string;
   isSimulated: boolean; // no se ejecuta: la tarjeta dice [simulado] y deja el link para hacerlo a mano
   /** Rótulo honesto del origen: "ejemplo" = regla fija sin IA; "cache" = última propuesta de la IA (sin wifi). */
@@ -143,7 +163,7 @@ function promisedIssues(userId: string, weekStart: number): PromisedIssue[] {
     .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "linear"), gte(rawEvents.ts, new Date(weekStart - 30 * DAY_MS).toISOString())))
     .orderBy(rawEvents.id)
     .all();
-  type Issue = { identifier?: string; title?: string; estimate?: number | null; completedAt?: string | null; canceledAt?: string | null; state?: { type?: string }; assignee?: { email?: string } | null };
+  type Issue = { identifier?: string; title?: string; priority?: number | null; estimate?: number | null; completedAt?: string | null; canceledAt?: string | null; state?: { type?: string }; assignee?: { email?: string } | null };
   const latest = new Map<string, Issue>();
   for (const r of rows) {
     const d = JSON.parse(r.json) as Issue;
@@ -155,7 +175,7 @@ function promisedIssues(userId: string, weekStart: number): PromisedIssue[] {
     if (me && i.assignee?.email && i.assignee.email.toLowerCase() !== me) continue;
     const done = Boolean(i.completedAt) || i.state?.type === "completed";
     if (done ? Date.parse(i.completedAt ?? "") >= weekStart : i.state?.type === "started" || i.state?.type === "unstarted") {
-      out.push({ id: i.identifier!, title: i.title ?? "", done, weight: i.estimate && i.estimate > 0 ? i.estimate : 1 });
+      out.push({ id: i.identifier!, title: i.title ?? "", done, weight: i.estimate && i.estimate > 0 ? i.estimate : 1, priority: i.priority ?? null });
     }
   }
   return out;
@@ -183,6 +203,7 @@ type Inputs = {
   peak: { from: number; to: number } | null;
   hours: number[];
   nudge: ReturnType<typeof getNudge>;
+  linearTeams: string[]; // keys de los teams de tus issues: linear_create_issue solo puede ir a uno de estos
   assessment: Assessment;
   candidates: Candidate[];
 };
@@ -209,12 +230,13 @@ function gatherInputs(userId: string, now: number): Inputs {
   const typicalStart = weekStart - TYPICAL_WEEKS * 7 * DAY_MS;
   const typicalCommits = (countGithub(userId, "commit", typicalStart, weekStart) + 3 * countGithub(userId, "pr", typicalStart, weekStart)) / TYPICAL_WEEKS;
   const night = getLastNight(userId);
+  const issues = promisedIssues(userId, weekStart);
 
   const assessment = assess(
     {
       now,
       work: {
-        issues: promisedIssues(userId, weekStart),
+        issues,
         commitsWeek,
         prsWeek,
         typicalCommitsWeek: typicalCommits > 0 ? typicalCommits : null,
@@ -235,7 +257,21 @@ function gatherInputs(userId: string, now: number): Inputs {
     },
     cfg,
   );
-  const candidates = candidatesFor(assessment, { now, busy: meetings, peakFromHour: peak?.from ?? null, wakeHHMM: night?.end ?? null }, cfg);
+  // Slack y Linear: solo si están conectados; sin el scope de escritura se proponen simuladas con "Reconectar".
+  const slackConn = getConnection(userId, "slack");
+  const linearConn = getConnection(userId, "linear");
+  const candidates = candidatesFor(
+    assessment,
+    {
+      now,
+      busy: meetings,
+      peakFromHour: peak?.from ?? null,
+      wakeHHMM: night?.end ?? null,
+      slack: { gate: gateFor("slack_focus", slackConn), messagesToday: slackConn ? getSlackToday(userId, new Date(now)).messages : 0 },
+      linear: { gate: gateFor("linear_create_issue", linearConn), issues },
+    },
+    cfg,
+  );
 
   return {
     now,
@@ -248,6 +284,7 @@ function gatherInputs(userId: string, now: number): Inputs {
     peak,
     hours,
     nudge: getNudge(userId, new Date(now)),
+    linearTeams: [...new Set(issues.map((i) => teamKeyOf(i.id)).filter((k): k is string => Boolean(k)))],
     assessment,
     candidates,
   };
@@ -265,8 +302,13 @@ function fromCandidate(c: Candidate, reason: string, tag?: AgentAction["tag"]): 
     ...(c.minutes && { minutes: c.minutes }),
     ...(c.target && { target: c.target }),
     ...(c.url && { url: c.url }),
+    ...(c.title && { title: c.title }),
+    ...(c.team && { team: c.team }),
+    ...(c.issueId && { issueId: c.issueId, issueTitle: c.issueTitle, priorityFrom: c.priorityFrom, priorityTo: c.priorityTo }),
+    ...(c.reconnect && { reconnect: c.reconnect }),
     reason,
-    isSimulated: c.type === "log_prompt" ? false : !isCalendarWriteOk(),
+    // Slack/Linear no dependen de CALENDAR_WRITE_OK: solo de que la conexión tenga el scope.
+    isSimulated: c.type === "log_prompt" ? false : isWorkAction(c.type) ? Boolean(c.reconnect) : !isCalendarWriteOk(),
     ...(tag && { tag }),
   };
 }
@@ -301,6 +343,13 @@ function validate(raw: unknown, inp: Inputs): AgentAction[] {
       const end = to + minutes * MIN;
       if (to <= inp.now || localDayKey(to) !== inp.today || end > dayEnd || overlaps(to, end, inp.meetings)) continue;
       out.push({ ...base, type: "block_focus", to: new Date(to).toISOString(), minutes, isSimulated: !isCalendarWriteOk() });
+    } else if (a.type === "linear_create_issue") {
+      // La IA puede redactar el título y elegir el team, pero solo entre los teams de tus issues; si no, va el de la candidata.
+      const c = inp.candidates.find((x) => x.type === "linear_create_issue");
+      if (!c || out.some((x) => x.type === c.type)) continue;
+      const title = typeof a.title === "string" ? a.title.replace(/\s+/g, " ").trim().slice(0, 120) : "";
+      const team = typeof a.team === "string" ? a.team.trim().toUpperCase() : "";
+      out.push({ ...fromCandidate(c, reason), ...(title.length >= 3 && { title }), ...(inp.linearTeams.includes(team) && { team }) });
     } else if (a.type === "send_nudge") {
       if (!inp.nudge || out.some((x) => x.type === "send_nudge")) continue;
       out.push({ ...base, type: "send_nudge", isSimulated: false });
@@ -311,6 +360,9 @@ function validate(raw: unknown, inp: Inputs): AgentAction[] {
       out.push(fromCandidate(c, reason));
     }
   }
+  // slack_focus acompaña al bloque de foco: si la IA lo puso en otro horario, el estado y el DND van con ese horario.
+  const focus = out.find((x) => x.type === "block_focus" && x.to);
+  for (const x of out) if (x.type === "slack_focus" && focus) Object.assign(x, { to: focus.to, minutes: focus.minutes });
   return out;
 }
 
@@ -324,9 +376,13 @@ Devolvés SOLO un objeto JSON {"actions":[...]} con COMO MÁXIMO ${MAX_ACTIONS} 
 - {"type":"bedtime","reason":"..."}  (solo si es candidata: evento "A dormir HH:MM" con aviso)
 - {"type":"log_prompt","reason":"..."}  (solo si es candidata: push para registrar ánimo o comidas)
 - {"type":"send_nudge","reason":"..."}  (solo si hay un nudge disponible)
+- {"type":"slack_focus","reason":"..."}  (solo si es candidata: estado "En foco" y no molestar en Slack mientras dura el bloque de foco; va junto con block_focus)
+- {"type":"linear_create_issue","title":"<título corto>","team":"<key del team de la candidata>","reason":"..."}  (solo si es candidata: crea UN issue de seguimiento en Linear; sin title/team usa los de la candidata)
+- {"type":"linear_lower_priority","reason":"..."}  (solo si es candidata: baja un escalón la prioridad de UN issue no urgente; el issue y la prioridad los fija el código)
 Reglas:
 - Elegí primero lo que más pesa en la evaluación (atraso grande, poco sueño o estrés). Si dos cosas chocan, preferí la salud.
 - Para las candidatas no cambies el horario: lo fija el código. Solo podés mover reuniones de la lista, por su "id" exacto. Nunca inventes un evento.
+- Slack y Linear: solo las candidatas. Si una candidata dice "simulada", igual podés proponerla: la persona ve que falta reconectar.
 - "to" tiene que ser hoy, en el futuro, antes de las 20:00, y no puede pisar otra reunión.
 - "reason": UNA oración en español rioplatense que cite un dato de la evaluación ("vas 30% atrasado y tu pico de commits es 15–17", "dormiste 5h10 con el pulso 4 lpm arriba"). Correlación, no causa. Nunca diagnóstico médico. Sin emojis.
 - Si nada amerita una acción, devolvé {"actions":[]}.`;
@@ -347,7 +403,18 @@ function buildPrompt(inp: Inputs): string {
   return [
     `Ahora: ${localIso(inp.now)} (${TZ}).`,
     ...assessmentLines(inp.assessment),
-    `Candidatas (horario fijo): ${JSON.stringify(inp.candidates.map((c) => ({ type: c.type, ...(c.to && { at: localIso(Date.parse(c.to)) }), ...(c.minutes && { minutes: c.minutes }), ...(c.target && { target: c.target }), why: c.why })))}.`,
+    `Candidatas (horario fijo): ${JSON.stringify(
+      inp.candidates.map((c) => ({
+        type: c.type,
+        ...(c.to && { at: localIso(Date.parse(c.to)) }),
+        ...(c.minutes && { minutes: c.minutes }),
+        ...(c.target && { target: c.target }),
+        ...(c.title && { title: c.title, team: c.team }),
+        ...(c.issueId && { issue: `${c.issueId} ${c.issueTitle ?? ""}`.trim(), priority: `${PRIORITY_LABEL[c.priorityFrom!]} → ${PRIORITY_LABEL[c.priorityTo!]}` }),
+        ...(c.reconnect && { simulada: `falta permiso de escritura en ${c.reconnect}` }),
+        why: c.why,
+      })),
+    )}.`,
     `Sueño de anoche: ${inp.sleepMin === null ? "sin dato" : formatDuration(inp.sleepMin)}. Pulso en reposo hoy: ${inp.restingBpm ?? "sin dato"} bpm; típico (${BASELINE_DAYS} días): ${inp.typicalBpm ?? "sin dato"} bpm.`,
     `Pico de commits (ventana de 2 h, últimos ${BASELINE_DAYS} días): ${inp.peak ? `${inp.peak.from}–${inp.peak.to} h` : "sin commits"}. Commits por hora local (0-23): ${JSON.stringify(inp.hours)}.`,
     `Reuniones de hoy que todavía no empezaron (movibles): ${JSON.stringify(inp.upcoming.map((m) => ({ id: m.id, from: localIso(m.start), durationMin: m.durationMin })))}.`,
@@ -382,8 +449,18 @@ function recentProposals(userId: string, sinceIso: string): StoredProposal[] {
 function cachedProposal(userId: string, inp: Inputs): AgentAction[] | null {
   for (const p of recentProposals(userId, new Date(startOfLocalDay(inp.now)).toISOString())) {
     if (p.origin === "ejemplo") continue;
-    const actions = p.actions.filter((a) => (!a.to || Date.parse(a.to) > inp.now) && (a.type !== "move_meeting" || inp.upcoming.some((m) => m.id === a.eventId)));
-    return actions.map((a) => ({ ...a, id: crypto.randomUUID(), tag: "cache" as const, isSimulated: CALENDAR_TYPES.has(a.type) ? !isCalendarWriteOk() : a.isSimulated }));
+    const actions = p.actions.filter(
+      (a) =>
+        (!a.to || Date.parse(a.to) > inp.now) &&
+        (a.type !== "move_meeting" || inp.upcoming.some((m) => m.id === a.eventId)) &&
+        (!isWorkAction(a.type) || inp.candidates.some((c) => c.type === a.type)), // Slack/Linear: solo si el disparador sigue activo
+    );
+    return actions.map((a) => {
+      const base: AgentAction = { ...a, id: crypto.randomUUID(), tag: "cache", isSimulated: CALENDAR_TYPES.has(a.type) ? !isCalendarWriteOk() : a.isSimulated };
+      if (!isWorkAction(a.type)) return base;
+      const reconnect = inp.candidates.find((c) => c.type === a.type)?.reconnect;
+      return { ...withoutReconnect(base), isSimulated: Boolean(reconnect), ...(reconnect && { reconnect }) };
+    });
   }
   return null;
 }
@@ -423,7 +500,24 @@ export function pendingProposal(userId: string, now = Date.now()): Proposal | nu
   if (!latest || isExpired(latest, now, latest.ts)) return null;
   const done = doneRuns(db, latest.actions.map((a) => a.id));
   const { ts, ...p } = latest;
-  return { ...p, createdAt: p.createdAt ?? ts, actions: p.actions.map((a) => (done.has(a.id) ? { ...a, done: done.get(a.id) } : a)) };
+  return { ...p, createdAt: p.createdAt ?? ts, actions: p.actions.map((a) => regate(userId, done.has(a.id) ? { ...a, done: done.get(a.id) } : a)) };
+}
+
+function withoutReconnect(a: AgentAction): AgentAction {
+  const copy = { ...a };
+  delete copy.reconnect;
+  return copy;
+}
+
+/**
+ * Slack/Linear: el permiso se mira en vivo. Si la persona reconectó (vuelve del OAuth a la misma propuesta), la tarjeta
+ * deja de ser [simulado] y muestra Confirmar con el mismo detalle; si perdió el permiso, vuelve a pedir Reconectar.
+ */
+function regate(userId: string, a: AgentAction): AgentAction {
+  if (!isWorkAction(a.type) || a.done) return a;
+  const provider = WORK_ACTIONS[a.type].provider;
+  const ok = gateFor(a.type, getConnection(userId, provider)) === "ok";
+  return ok ? { ...withoutReconnect(a), isSimulated: false } : { ...a, isSimulated: true, reconnect: provider };
 }
 
 /** Link para hacerlo a mano en Google Calendar, en el día de la acción. */
@@ -433,7 +527,11 @@ export function calendarDayUrl(iso?: string): string {
 }
 
 const span = (a: AgentAction) =>
-  a.type === "move_meeting"
+  a.type === "linear_create_issue"
+    ? `"${a.title}" en ${a.team}`
+    : a.type === "linear_lower_priority"
+      ? `${a.issueId} de ${PRIORITY_LABEL[a.priorityFrom!]} a ${PRIORITY_LABEL[a.priorityTo!]}`
+      : a.type === "move_meeting"
     ? `de ${hhmm.format(new Date(a.from!))} a ${hhmm.format(new Date(a.to!))}`
     : a.type === "bedtime"
       ? `a las ${hhmm.format(new Date(a.to!))}`
@@ -533,7 +631,37 @@ const LOG_PROMPT: Record<NonNullable<AgentAction["target"]>, string> = {
   both: "Hoy no registraste ánimo ni comidas: un toque y listo.",
 };
 
+const PROVIDER_NAME = { slack: "Slack", linear: "Linear" } as const;
+
+/** Slack/Linear: el scope se chequea en vivo; sin él, simulada con el link para reconectar (nunca se presenta como hecha). */
+async function executeWork(userId: string, action: AgentAction, type: WorkActionType): Promise<{ result: RunResult }> {
+  const { provider } = WORK_ACTIONS[type];
+  const name = PROVIDER_NAME[provider];
+  const conn = getConnection(userId, provider);
+  if (!conn) return { result: { status: "error", message: `${name} no está conectado` } };
+  if (gateFor(type, conn) !== "ok") {
+    return { result: { status: "simulated", message: `${span(action)} · falta el permiso de escritura: reconectá ${name}`, url: `/api/connect/${provider}` } };
+  }
+  try {
+    const token = await freshToken(conn);
+    if (type === "slack_focus") {
+      if (!action.to) return { result: { status: "error", message: "el bloque de foco no tiene horario" } };
+      return { result: await slackFocus(token, { start: Date.parse(action.to), minutes: action.minutes ?? agentConfig().focusMin }) };
+    }
+    if (type === "linear_create_issue") {
+      if (!action.title || !action.team) return { result: { status: "error", message: "falta el título o el team" } };
+      return { result: await linearCreateIssue(token, { userId, team: action.team, title: action.title, description: `Creado por el agente de Pulso. ${action.reason}` }) };
+    }
+    if (!action.issueId || action.priorityFrom === undefined || action.priorityTo === undefined) return { result: { status: "error", message: "falta el issue o la prioridad" } };
+    return { result: await linearLowerPriority(token, { issueId: action.issueId, from: action.priorityFrom, to: action.priorityTo }) };
+  } catch (error) {
+    console.error(`[agent] ${type} falló`, error);
+    return { result: { status: "error", message: `${name} no respondió: no se cambió nada` } };
+  }
+}
+
 async function execute(userId: string, action: AgentAction): Promise<{ result: RunResult; eventId?: string }> {
+  if (isWorkAction(action.type)) return executeWork(userId, action, action.type);
   if (action.type === "send_nudge") {
     const nudge = getNudge(userId);
     if (!nudge) return { result: { status: "error", message: "sin datos para un nudge" } };

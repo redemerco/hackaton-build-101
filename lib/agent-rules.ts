@@ -2,6 +2,7 @@
 // e ids determinísticos de Calendar. Sin server-only ni alias "@/": lo importa también scripts/test-agent-rules.mts.
 import { createHash } from "node:crypto";
 import { scoreDay, type DayInput } from "./score.ts";
+import { PRIORITY_LABEL, pickLowerPriority, teamKeyOf, type WorkGate } from "./agent-work.ts";
 
 // Montevideo no tiene horario de verano desde 2015: el offset es fijo (-03:00).
 export const TZ = "America/Montevideo";
@@ -37,6 +38,7 @@ export function agentConfig() {
     restMin: envNum("AGENT_REST_MIN", 20),
     bedtimeReminderMin: envNum("AGENT_BEDTIME_REMINDER_MIN", 30),
     dayEndHour: envNum("AGENT_DAY_END_HOUR", 20), // nada se mueve ni se bloquea después (salvo "a dormir")
+    slackBusyMsgs: envNum("AGENT_SLACK_BUSY_MSGS", 25), // mensajes de Slack hoy para decir "mucho Slack"
   };
 }
 export type AgentConfig = ReturnType<typeof agentConfig>;
@@ -79,7 +81,7 @@ export function calendarEventId(userId: string, kind: string, key: string): stri
 export { isPulsoEvent, isPulsoEventId } from "./pulso-events.ts";
 
 // ── evaluación ──────────────────────────────────────────────────────────────
-export type PromisedIssue = { id: string; title: string; done: boolean; weight: number };
+export type PromisedIssue = { id: string; title: string; done: boolean; weight: number; priority?: number | null };
 export type Slot = { start: number; end: number };
 
 export type AssessInput = {
@@ -244,8 +246,23 @@ export function pushSummary(a: Assessment, n: number): string {
 }
 
 // ── flags → acciones candidatas ─────────────────────────────────────────────
-export type CandidateType = "block_focus" | "bedtime" | "block_training" | "block_rest" | "log_prompt";
-export type Candidate = { type: CandidateType; to?: string; minutes?: number; target?: "mood" | "meals" | "both"; url?: string; why: string };
+export type CandidateType = "block_focus" | "bedtime" | "block_training" | "block_rest" | "log_prompt" | "slack_focus" | "linear_create_issue" | "linear_lower_priority";
+export type Candidate = {
+  type: CandidateType;
+  to?: string;
+  minutes?: number;
+  target?: "mood" | "meals" | "both";
+  url?: string;
+  why: string;
+  title?: string; // linear_create_issue: título exacto
+  team?: string; // linear_create_issue: key del team ("PUL")
+  issueId?: string; // linear_lower_priority: "PUL-3"
+  issueTitle?: string;
+  priorityFrom?: number;
+  priorityTo?: number;
+  /** La conexión no tiene el scope: se propone simulada con "Reconectar" (nunca se ejecuta así). */
+  reconnect?: "slack" | "linear";
+};
 
 const overlaps = (start: number, end: number, busy: Slot[]) => busy.some((m) => start < m.end && end > m.start);
 
@@ -269,7 +286,16 @@ export function bedtimeFor(now: number, wakeHHMM: string | null, cfg = agentConf
   return at > now + 15 * MIN ? at : null;
 }
 
-export type CandidateCtx = { now: number; busy: Slot[]; peakFromHour: number | null; wakeHHMM: string | null };
+export type CandidateCtx = {
+  now: number;
+  busy: Slot[];
+  peakFromHour: number | null;
+  wakeHHMM: string | null;
+  /** Slack: estado de la conexión para slack_focus y mensajes de hoy (slack_hoy). Sin esto no se propone. */
+  slack?: { gate: WorkGate; messagesToday: number };
+  /** Linear: estado de la conexión para escribir e issues de la semana (con prioridad). Sin esto no se propone. */
+  linear?: { gate: WorkGate; issues: PromisedIssue[] };
+};
 
 /** Disparadores: atrasado → foco; estrés/poco sueño → descanso (antes de las 18) o "a dormir"; poco azm → entrenar; sin registro → log_prompt. */
 export function candidatesFor(a: Assessment, ctx: CandidateCtx, cfg = agentConfig()): Candidate[] {
@@ -289,6 +315,31 @@ export function candidatesFor(a: Assessment, ctx: CandidateCtx, cfg = agentConfi
     const preferred = ctx.peakFromHour !== null ? Math.max(now, atLocalMinute(key, ctx.peakFromHour * 60)) : now;
     const at = freeSlot(busy, preferred, cfg.focusMin, dayEnd) ?? freeSlot(busy, now, cfg.focusMin, dayEnd);
     if (at) out.push({ type: "block_focus", to: new Date(at).toISOString(), minutes: cfg.focusMin, why: text("work_behind") });
+  }
+  // Slack: compañera del bloque de foco (estado + no molestar mientras dura). Vas atrasado y con mucho Slack → lo dice.
+  const focus = out.find((c) => c.type === "block_focus");
+  if (focus && ctx.slack && ctx.slack.gate !== "missing") {
+    const busySlack = ctx.slack.messagesToday >= cfg.slackBusyMsgs;
+    const why = busySlack ? `${text("work_behind")} y llevás ${ctx.slack.messagesToday} mensajes de Slack hoy` : `${text("work_behind")}: que Slack no corte el bloque de foco`;
+    out.push({ type: "slack_focus", to: focus.to, minutes: focus.minutes, why, ...(ctx.slack.gate === "reconnect" && { reconnect: "slack" as const }) });
+  }
+  // Linear: muy atrasado (el doble del umbral) y con la salud mal → bajarle un escalón a 1 issue no urgente.
+  const healthBad = a.health.stress.level === "mal" || a.health.sleep.level === "mal" || (a.health.score !== null && a.health.score < 50);
+  const lin = ctx.linear && ctx.linear.gate !== "missing" ? ctx.linear : null;
+  if (lin && has("work_behind") && a.work.gap !== null && a.work.gap <= -2 * cfg.behindPct && healthBad) {
+    const pick = pickLowerPriority(lin.issues);
+    if (pick) {
+      const why = `${text("work_behind")} y ${a.health.sleep.level === "mal" ? text("sleep_short") || a.health.sleep.text : a.health.stress.level === "mal" ? a.health.stress.text : `tu puntaje está en ${a.health.score}`}`;
+      out.push({ type: "linear_lower_priority", issueId: pick.issue.id, issueTitle: pick.issue.title, priorityFrom: pick.from, priorityTo: pick.to, why, ...(lin.gate === "reconnect" && { reconnect: "linear" as const }) });
+    }
+  }
+  // Linear: atrasado con un issue empezado que sigue abierto → tarea de seguimiento para destrabarlo, en su mismo team.
+  if (lin && has("work_behind")) {
+    const open = lin.issues.filter((i) => !i.done && teamKeyOf(i.id)).sort((x, y) => x.id.localeCompare(y.id))[0];
+    if (open) {
+      const title = `Seguimiento: destrabar ${open.id}${open.title ? ` ${open.title}` : ""}`.slice(0, 120);
+      out.push({ type: "linear_create_issue", title, team: teamKeyOf(open.id)!, why: `${text("work_behind")} y ${open.id} sigue abierto`, ...(lin.gate === "reconnect" && { reconnect: "linear" as const }) });
+    }
   }
   if (has("no_training")) {
     const at = freeSlot(busy, Math.max(now, atLocalMinute(key, cfg.trainingHour * 60)), cfg.trainingMin, atLocalMinute(key, 22 * 60));
@@ -317,6 +368,9 @@ export function fallbackReason(c: Candidate): string {
     case "block_training": return `${cap(c.why)}: te reservo ${c.minutes} min para entrenar a las ${at}.`;
     case "block_rest": return `${cap(c.why)}: te reservo ${c.minutes} min de descanso a las ${at}.`;
     case "log_prompt": return `${cap(c.why)}: te mando un recordatorio para registrarlo.`;
+    case "slack_focus": return `${cap(c.why)}: te pongo "En foco" y no molestar en Slack de ${at} a ${hhmmOf(Date.parse(c.to!) + (c.minutes ?? 0) * MIN)}.`;
+    case "linear_lower_priority": return `${cap(c.why)}: le bajo la prioridad a ${c.issueId} de ${PRIORITY_LABEL[c.priorityFrom!]} a ${PRIORITY_LABEL[c.priorityTo!]}.`;
+    case "linear_create_issue": return `${cap(c.why)}: creo "${c.title}" en ${c.team}.`;
   }
 }
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
