@@ -84,6 +84,7 @@ Rúbrica: producto funcionando 35 % (todo real end-to-end), problema y valor 25 
 | IA andando | `GEMINI_API_KEY` en el entorno del NAS → abrir `/api/ai-status` → `"ok": true` | el campo `reason` dice qué arreglar |
 | Reporte a Slack | crear un Incoming Webhook (api.slack.com/apps → Incoming Webhooks) a un canal **privado** de la demo → `SLACK_WEBHOOK_URL` en el NAS | sin la variable, el botón dice "Falta configurar Slack" (no se rompe nada) |
 | Comprobación de calidad de IA | `npm run eval:ai` en el NAS (o donde esté la key) → imprime **N/6** | en el pitch se dice el N real, nunca uno supuesto |
+| Caché de la IA | con wifi bueno, abrir Yo, Salud, Trabajo y Semana una vez y tocar ↻ en cada resumen: queda guardado y si Gemini cae en vivo se re-tipea rotulado `[cache · IA caída]` | sin esto, sin IA se ve el respaldo `[sin IA]` |
 | Datos de la demo | `npm run seed:demo` (rotulado `[datos simulados]`) · borrar con `npm run seed:demo -- --clear` | — |
 
 Flujo estrella para el jurado: **Yo → "Contarle a mi equipo cómo vengo"** → el jurado escribe cómo se siente → la IA cruza la nota con las métricas (salud y ánimo solo si se prenden) → vista previa idéntica al mensaje → **Mandar a Slack**. Sin IA no hay reporte: es la parte donde la IA es indispensable.
