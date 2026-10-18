@@ -59,6 +59,13 @@ export async function getCurrentUser(): Promise<User> {
   return { id: value && isUserId(value) ? value : "guest", name: "Invitado", email: "", hasWearable: false };
 }
 
+/** Usuario de Pulso con ese email de Google (null si todavía no entró). Lo usan los respaldos de GitHub y Linear. */
+export function userIdByEmail(email: string | null | undefined): UserId | null {
+  if (!email) return null;
+  const row = db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${email.toLowerCase()}`).get();
+  return row?.id ?? null;
+}
+
 /** Todos los usuarios (para rankings/equipo). */
 export function allUsers(): User[] {
   return db.select().from(users).all().map((r) => ({ id: r.id, name: r.name, email: r.email, hasWearable: Boolean(r.hasWearable) }));

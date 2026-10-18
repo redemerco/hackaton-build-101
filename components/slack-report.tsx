@@ -33,9 +33,8 @@ const isQuoted = (text: string, value: string) => {
 };
 
 /** Vista previa con la misma forma que el mensaje de Slack: lo que ves es lo que llega. Las métricas se prenden y apagan acá. */
-function SlackPreview({ name, preview, shared, withNote, isSimulated, onToggle, onToggleNote }: {
+function SlackPreview({ name, preview, shared, withNote, onToggle, onToggleNote }: {
   name: string;
-  isSimulated: boolean;
   preview: Preview;
   shared: Set<string>;
   withNote: boolean;
@@ -97,13 +96,13 @@ function SlackPreview({ name, preview, shared, withNote, isSimulated, onToggle, 
           El texto ya menciona {citedButOff.map((m) => m.label.toLowerCase()).join(" y ")}. Si no querés que vaya, tocá «← Editar» y volvé a armarlo: la IA ya no lo va a ver.
         </p>
       )}
-      <p className="text-[11px] text-[#ababad]">build101 · generado con IA (Gemini) a partir de tus métricas · vos elegís qué se comparte{isSimulated && <b className="text-white"> · [datos simulados]</b>}</p>
+      <p className="text-[11px] text-[#ababad]">build101 · generado con IA (Gemini) a partir de tus métricas · vos elegís qué se comparte</p>
     </div>
   );
 }
 
 /** "Contar cómo vengo": escribís cómo te sentís, Gemini lo cruza con tus métricas y vos decidís qué llega a Slack. */
-export function SlackReport({ name, canSend, isSimulated }: { name: string; canSend: boolean; isSimulated: boolean }) {
+export function SlackReport({ name, canSend }: { name: string; canSend: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("compose");
   const [note, setNote] = useState("");
@@ -222,7 +221,7 @@ export function SlackReport({ name, canSend, isSimulated }: { name: string; canS
 
         {(phase === "preview" || phase === "sending" || phase === "sent") && preview && (
           <div className="grid gap-3">
-            <SlackPreview name={name} preview={preview} shared={shared} withNote={withNote} isSimulated={isSimulated} onToggle={toggle} onToggleNote={() => setWithNote((v) => !v)} />
+            <SlackPreview name={name} preview={preview} shared={shared} withNote={withNote} onToggle={toggle} onToggleNote={() => setWithNote((v) => !v)} />
             <p className="text-[12px] text-dim">Tocá cada dato para sacarlo del mensaje.</p>
             {error && <p role="alert" className="rounded-lg bg-heart/15 px-3 py-2.5 font-mono text-[13px] text-heart">✗ {error}</p>}
             {phase === "sent" ? (

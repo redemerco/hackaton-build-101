@@ -13,7 +13,6 @@ import { SourcesList } from "@/components/connect/source-card";
 import { getSourcesOverview } from "@/lib/connection-overview";
 import { buildWorkPrompt, EXAMPLE_WORK_SUMMARY } from "@/lib/summary-work";
 import { Summary } from "@/components/summary";
-import { hasSimulatedData } from "@/lib/report";
 
 const MESSAGE_WIDTH = 21;
 
@@ -146,7 +145,7 @@ export default async function TrabajoPage() {
   const slots = Array.from({ length: MEETING_SLOTS_PER_DAY }, (_, i) => meetingSlots.some(([a, b]) => i >= a && i < b));
   const series = day
     ? [
-        { label: day.sleepIsSimulated ? "sueño [simulado]" : "sueño", values: day.week.sleepMin, className: "text-sleep" },
+        { label: "sueño", values: day.week.sleepMin, className: "text-sleep" },
         { label: "commits", values: day.week.commits, className: "text-work" },
         { label: "ánimo", values: day.week.mood, className: "text-mood" },
       ]
@@ -155,7 +154,7 @@ export default async function TrabajoPage() {
   return (
     <Screen>
       <Pulse bpm={60} stress={0.35} />
-      <PageHeader title="Trabajo" subtitle={connected ? `${connected}${hasSimulatedData(userId) ? " · [datos simulados]" : ""}` : "Conectá fuentes en Ajustes"} />
+      <PageHeader title="Trabajo" subtitle={connected || "Conectá fuentes en Ajustes"} />
 
       {!hasAnyConnected && (
         <Panel label="conectá tus fuentes" meta="privado, solo vos">

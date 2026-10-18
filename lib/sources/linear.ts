@@ -2,18 +2,13 @@ import "server-only";
 import { getConnection, listConnections } from "@/lib/connections";
 import { insertRawEvents, type RawEventInput } from "@/lib/db";
 import { freshToken } from "@/lib/oauth";
-import type { UserId } from "@/lib/users";
+import { userIdByEmail } from "@/lib/users";
 
 // Ingest de Linear: cada issue deja hasta 3 eventos (creado, empezado, terminado) → raw_events (source "linear").
 // - usuario conectado por OAuth: los issues que creó o tiene asignados.
 // - respaldo con LINEAR_API_KEY de .env.local: todo el workspace, repartido por email.
 const DAYS = 30;
 
-// Email de la cuenta de Linear → usuario de Pulso (solo para el respaldo con API key).
-const EMAILS: Record<string, UserId> = {
-  "santiagososatraibel@gmail.com": "santi",
-  "joaquinlangone12@gmail.com": "joaco",
-};
 
 const QUERY = `query($after: String, $filter: IssueFilter) {
   issues(first: 100, after: $after, filter: $filter) {
@@ -86,7 +81,8 @@ export async function syncLinearWorkspace(): Promise<number> {
   const issues = await fetchIssues(key, false);
   return insertRawEvents(
     issues.flatMap((i) => {
-      const userId = EMAILS[(i.assignee ?? i.creator)?.email.toLowerCase() ?? ""];
+      // el email de Linear se busca entre los usuarios de Pulso (su email de Google); si nadie entró con ese email, no se guarda
+      const userId = userIdByEmail((i.assignee ?? i.creator)?.email);
       return userId ? toRows(i, userId) : [];
     }),
   );

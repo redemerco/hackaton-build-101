@@ -9,7 +9,6 @@
     "start": "next start",
     "lint": "eslint",
     "smoke": "node scripts/smoke.mts",
-    "demo:clear": "node scripts/clear-demo.mts",
     "eval:ai": "node scripts/eval-ai.mts",
     "test:agent": "node scripts/test-agent-rules.mts"
   },

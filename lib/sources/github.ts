@@ -2,7 +2,7 @@ import "server-only";
 import { getConnection, listConnections } from "@/lib/connections";
 import { insertRawEvents, type RawEventInput } from "@/lib/db";
 import { freshToken } from "@/lib/oauth";
-import type { UserId } from "@/lib/users";
+import { userIdByEmail } from "@/lib/users";
 
 // Ingest de GitHub → raw_events (source "github"). Dos caminos que escriben lo mismo (el dedupe evita duplicados):
 // - usuario conectado por OAuth: su actividad en TODOS sus repos, vía la Search API.
@@ -11,11 +11,12 @@ const REPO = "redemerco/hackaton-build-101";
 const DAYS = 30;
 const SEARCH_PAGES = 3; // la Search API corta en 1000 resultados y 30 req/min: 300 por tipo sobra
 
-// Login de GitHub (en minúscula) → usuario de Pulso. Lo que no matchea (claude, bots) se ignora.
-const LOGINS: Record<string, UserId> = {
-  santtisosa: "santi",
-  redemerco: "renzo",
-  jaco25pl: "joaco",
+// Login de GitHub (en minúscula) → email de Google con el que esa persona entra a Pulso.
+// El usuario se busca por ese email (en prod el id es el `sub` de Google). Lo que no matchea (claude, bots) se ignora.
+const LOGIN_EMAILS: Record<string, string> = {
+  santtisosa: "santiagososatraibel@gmail.com",
+  redemerco: "rdemarcob@gmail.com",
+  jaco25pl: "joaquinlangone12@gmail.com",
 };
 
 async function gh<T>(token: string, url: string, maxPages = Infinity): Promise<T[]> {
@@ -68,7 +69,7 @@ export async function syncGithubRepo(): Promise<number> {
   if (!token) return 0;
   const rows: RawEventInput[] = [];
   const push = (kind: string, login: string | undefined, ts: string | null | undefined, data: unknown) => {
-    const userId = login ? LOGINS[login.toLowerCase()] : undefined;
+    const userId = login ? userIdByEmail(LOGIN_EMAILS[login.toLowerCase()]) : null;
     if (userId && ts) rows.push({ source: "github", kind, userId, ts: new Date(ts).toISOString(), data });
   };
 

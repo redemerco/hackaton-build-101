@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Screen } from "@/components/screen";
 import { ShareButton } from "@/components/share-button";
 import { SlackWrappedButton } from "@/components/slack-wrapped-button";
-import { canSendToSlack, hasSimulatedData } from "@/lib/report";
+import { canSendToSlack } from "@/lib/report";
 import { WrappedSlides } from "@/components/wrapped-slides";
 import { getBuddy } from "@/lib/buddy";
 import type { DaemonState } from "@/lib/daemon";
@@ -44,7 +44,6 @@ function Highlight({ h, week }: { h: WrappedHighlight; week: number }) {
 export default async function WrappedPage() {
   const [buddy, user] = await Promise.all([getBuddy(), getCurrentUser()]);
   const W = getWrapped(user.id);
-  const isSimulated = hasSimulatedData(user.id);
 
   if (!W) {
     return (
@@ -73,7 +72,7 @@ export default async function WrappedPage() {
       id: "arquetipo",
       content: (
         <article className={SLIDE}>
-          <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {W.week} · esta semana fuiste{isSimulated && <span className="ml-2 normal-case tracking-normal text-faint">[datos simulados]</span>}</p>
+          <p className="font-mono text-xs uppercase tracking-[0.08em] text-dim">semana {W.week} · esta semana fuiste</p>
           <div className="grid justify-items-start gap-4">
             <Daemon state={ARCHETYPE_FACE[W.archetype.name] ?? "racha"} buddy={buddy} scale={3} />
             <h1 className="font-pixel text-[33px] leading-none text-mood">{W.archetype.name}</h1>

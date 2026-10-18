@@ -1,5 +1,5 @@
 import { buildWrappedMessage } from "@/lib/report-core";
-import { hasSimulatedData, postToSlack, ReportError } from "@/lib/report";
+import { postToSlack, ReportError } from "@/lib/report";
 import { getCurrentUser } from "@/lib/users";
 import { getWrapped } from "@/lib/wrapped";
 
@@ -10,7 +10,7 @@ export async function POST() {
   if (!w) return Response.json({ error: "Todavía no hay Wrapped para mandar" }, { status: 404 });
   try {
     // solo trabajo: ánimo, comidas y sueño no salen a Slack con un clic sin vista previa
-    await postToSlack(buildWrappedMessage(user.name, { ...w, rows: w.rows.filter((r) => r.kind === "work") }, hasSimulatedData(user.id)));
+    await postToSlack(buildWrappedMessage(user.name, { ...w, rows: w.rows.filter((r) => r.kind === "work") }));
     return Response.json({ ok: true });
   } catch (error) {
     if (error instanceof ReportError) return Response.json({ error: error.message }, { status: error.status });

@@ -72,7 +72,7 @@ Orden de corte inverso: P2 de todos → acciones reales de Calendar (quedan `[si
 | 0:50 | **Salud, en vivo**: foto a lo que tenga el jurado (puede elegir qué) → ítems en gramos y rangos. Guardar. Regenerar el resumen de salud: la comida nueva aparece. **Comprobación de calidad**: "datos usados: 1 noche, 3 comidas…" y el jurado cambia el check-in de ánimo → el resumen cambia. | Salud | análisis cacheado `[cache]` |
 | 1:30 | **Trabajo**: commits reales de la hackathon, Linear, reuniones; resumen de trabajo. "Correlación, no causa". | Trabajo | `[cache]` |
 | 1:55 | **Yo → acciones**: el agente propone "mover la reunión de 15:00 a 16:30 porque dormiste 4h y tenés el pico de commits a esa hora" → Confirmar → se ve movida en Google Calendar real. | Yo | `[simulado]` si el scope de escritura no está |
-| 2:25 | **Semana**: Wrapped de la hackathon + ranking del equipo (rotulado `[datos simulados]` donde corresponda). | Semana | ya es local |
+| 2:25 | **Semana**: Wrapped de la hackathon + ranking del equipo. | Semana | ya es local |
 | 2:45 | Cierre: "tus datos, tu dispositivo: con tu equipo solo compartís un puntaje. Nunca diagnóstico." | — | — |
 
 Rúbrica: producto funcionando 35 % (todo real end-to-end), problema y valor 25 % (hook + privacidad), **calidad de IA 20 %** (3 resúmenes con "datos usados" + cambio en vivo), experiencia 10 % (UI), originalidad 10 % (agente que actúa sobre tu agenda con tus datos de cuerpo).
@@ -85,6 +85,6 @@ Rúbrica: producto funcionando 35 % (todo real end-to-end), problema y valor 25 
 | Reporte a Slack | crear un Incoming Webhook (api.slack.com/apps → Incoming Webhooks) a un canal **privado** de la demo → `SLACK_WEBHOOK_URL` en el NAS | sin la variable, el botón dice "Falta configurar Slack" (no se rompe nada) |
 | Comprobación de calidad de IA | `npm run eval:ai` en el NAS (o donde esté la key) → imprime **N/6** | en el pitch se dice el N real, nunca uno supuesto |
 | Caché de la IA | con wifi bueno, abrir Yo, Salud, Trabajo y Semana una vez y tocar ↻ en cada resumen: queda guardado y si Gemini cae en vivo se re-tipea rotulado `[cache · IA caída]` | sin esto, sin IA se ve el respaldo `[sin IA]` |
-| Datos de la demo | **reales**: cada uno conecta Google Health, GitHub, Slack y Calendar en Ajustes · `npm run demo:clear` en el NAS borra lo simulado | — |
+| Datos de la demo | **reales**: cada uno conecta Google Health, GitHub, Slack y Calendar en Ajustes (no hay seed ni mocks) | — |
 
 Flujo estrella para el jurado: **Yo → "Contarle a mi equipo cómo vengo"** → el jurado escribe cómo se siente → la IA cruza la nota con las métricas (salud y ánimo solo si se prenden) → vista previa idéntica al mensaje → **Mandar a Slack**. Sin IA no hay reporte: es la parte donde la IA es indispensable.

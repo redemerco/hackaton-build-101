@@ -22,7 +22,6 @@ export type RankRow = {
   name: string;
   isMe: boolean;
   look: Look; // personaje y color de esa persona
-  isSimulated: boolean; // datos de el viejo seed de demo (se rotula en la UI)
   today: DayScore | null;
   week: { score: number; days: number } | null;
 };
@@ -31,7 +30,6 @@ export type Ranking = {
   meShares: boolean; // si el usuario actual eligió entrar al ranking
   team: string | null; // nombre del workspace; null = el usuario actual no tiene Slack
   rows: RankRow[];
-  isExample: boolean;
 };
 
 type Json = Record<string, unknown>;
@@ -70,7 +68,7 @@ function sleepOf(data: Json): { key: string; sleep: NonNullable<DayInput["sleep"
 }
 
 /** Insumos del puntaje por día local, para un usuario. */
-export function dayInputs(userId: string, sinceMs: number): { days: Map<string, DayInput>; isSimulated: boolean } {
+export function dayInputs(userId: string, sinceMs: number): { days: Map<string, DayInput> } {
   const rows = db
     .select()
     .from(rawEvents)
@@ -78,7 +76,6 @@ export function dayInputs(userId: string, sinceMs: number): { days: Map<string, 
     .all();
   const days = new Map<string, DayInput>();
   const at = (key: string) => days.get(key) ?? days.set(key, {}).get(key)!;
-  let isSimulated = false;
 
   for (const r of rows) {
     let data: Json;
@@ -87,7 +84,6 @@ export function dayInputs(userId: string, sinceMs: number): { days: Map<string, 
     } catch {
       continue;
     }
-    if (data._mock === true) isSimulated = true;
     if (r.kind === "sleep") {
       const s = sleepOf(data);
       // si hay dos sesiones el mismo día (siesta), suma
@@ -111,11 +107,11 @@ export function dayInputs(userId: string, sinceMs: number): { days: Map<string, 
       day.azm = (day.azm ?? 0) + n;
     }
   }
-  return { days, isSimulated };
+  return { days };
 }
 
-export function scoresFor(userId: string, now: number): Pick<RankRow, "today" | "week" | "isSimulated"> {
-  const { days, isSimulated } = dayInputs(userId, now - (WEEK_DAYS + BASELINE_DAYS) * DAY_MS);
+export function scoresFor(userId: string, now: number): Pick<RankRow, "today" | "week"> {
+  const { days } = dayInputs(userId, now - (WEEK_DAYS + BASELINE_DAYS) * DAY_MS);
   const scoreOn = (offset: number): DayScore | null => {
     const key = keyOf(now - offset * DAY_MS);
     const day = days.get(key);
@@ -126,7 +122,6 @@ export function scoresFor(userId: string, now: number): Pick<RankRow, "today" | 
   };
   const week = Array.from({ length: WEEK_DAYS }, (_, i) => scoreOn(i)).filter((s): s is DayScore => s !== null);
   return {
-    isSimulated,
     today: scoreOn(0),
     week: week.length ? { score: Math.round(mean(week.map((s) => s.score))!), days: week.length } : null,
   };
@@ -140,7 +135,7 @@ const byScore = (pick: (r: RankRow) => number | undefined) => (a: RankRow, b: Ra
 export function getRanking(me: UserId, now = Date.now()): Ranking {
   const team = teamOf(me);
   const meShares = getLook(me).shareScore;
-  if (!team) return { team: null, rows: [], isExample: false, meShares };
+  if (!team) return { team: null, rows: [], meShares };
   // opt-in: solo aparece quien eligió compartir su puntaje (y vos, para verte, solo si también compartís)
   const members = allUsers().filter((u) => teamOf(u.id) === team && getLook(u.id).shareScore);
   const rows: RankRow[] = members.map((u) => ({
@@ -151,8 +146,8 @@ export function getRanking(me: UserId, now = Date.now()): Ranking {
     ...scoresFor(u.id, now),
   }));
   // Sin ningún puntaje real: ranking vacío honesto (nunca puntajes inventados).
-  if (!meShares || !rows.some((r) => r.today || r.week)) return { team, rows: [], isExample: false, meShares };
-  return { team, rows, isExample: false, meShares };
+  if (!meShares || !rows.some((r) => r.today || r.week)) return { team, rows: [], meShares };
+  return { team, rows, meShares };
 }
 
 export const sortToday = (rows: RankRow[]) => [...rows].sort(byScore((r) => r.today?.score));

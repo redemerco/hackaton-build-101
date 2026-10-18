@@ -9,10 +9,10 @@ import { Panel } from "@/components/glass/panel";
  * Digest semanal en streaming. Sin `src` tipea el respaldo; Joaco pasa `src="/api/digest"`
  * y el respaldo queda como fallback cacheado si la IA falla en vivo.
  */
-export function Digest({ fallback, src, isExample }: { fallback: readonly StreamPart[]; src?: string; isExample: boolean }) {
+export function Digest({ fallback, src }: { fallback: readonly StreamPart[]; src?: string }) {
   const [runId, setRunId] = useState(0);
   const [source, setSource] = useState<StreamSource | null>(null);
-  const meta = isExample ? "[ejemplo · sin IA]" : source === "fallback" ? "[sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "reused" ? "gemini · ya generado" : source === "live" ? "gemini" : "…";
+  const meta = source === "fallback" ? "[sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "reused" ? "gemini · ya generado" : source === "live" ? "gemini" : "…";
   return (
     <>
       <Panel label="tu digest" meta={meta} className="content-start">

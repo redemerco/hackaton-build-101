@@ -90,7 +90,7 @@ export default async function SaludPage() {
   return (
     <Screen>
       <Pulse bpm={night.restingBpm ?? vitals.restingBpm ?? 60} stress={0.2} />
-      <PageHeader title="Salud" subtitle={night.isSimulated ? "[datos simulados]" : "Google Health"} action={<MealCamera />} />
+      <PageHeader title="Salud" subtitle="Google Health" action={<MealCamera />} />
       <HealthSummary userId={user.id} />
 
       <FoodPanels userId={user.id} />

@@ -23,7 +23,7 @@ export default async function SemanaPage() {
     <Screen>
       <Pulse bpm={60} stress={0.3} />
       <PageHeader title="Semana" subtitle="Lo que tu semana de trabajo le hizo a tu cuerpo." />
-      <Digest fallback={DIGEST_FALLBACK} src="/api/digest" isExample={false} />
+      <Digest fallback={DIGEST_FALLBACK} src="/api/digest" />
       {ranking.team && !ranking.meShares ? (
         <Panel label={`ranking · ${ranking.team}`} meta="opt-in">
           <p className="text-[15px] leading-relaxed text-foreground/90">
@@ -35,8 +35,6 @@ export default async function SemanaPage() {
         ranking.rows.length > 0 ? (
           <Ranking
             team={ranking.team}
-            isExample={ranking.isExample}
-            isSimulated={ranking.rows.some((r) => r.isSimulated)}
             today={sortToday(ranking.rows).map((r) => toEntry(r, r.today?.score ?? null, r.today?.isPartial ? "parcial" : undefined))}
             week={sortWeek(ranking.rows).map((r) => toEntry(r, r.week?.score ?? null, r.week ? `${r.week.days}/7 días` : undefined))}
           />

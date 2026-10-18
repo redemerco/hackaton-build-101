@@ -14,7 +14,6 @@ export type Night = {
   hrvTypical: [number, number] | null;
   stepsByHour: number[]; // 08..19 (puede venir vacío)
   stageMinutes?: Record<SleepStage, number>; // minutos reales por etapa (del summary de Fitbit); si falta, se derivan de stages
-  isSimulated?: boolean; // noche de el viejo seed de demo (_mock): se rotula [datos simulados]
 };
 
 // Hora local del dato usando el offset que trae Google (ej. "-10800s" = UTC-3), no la del server.
@@ -70,7 +69,6 @@ function parseNight(data: Record<string, unknown>): Night | null {
       startHour: startLocal.getUTCHours(),
       stages,
       stageMinutes,
-      isSimulated: data._mock === true,
       // El dato de sueño no trae HR/HRV/pasos junto; sin fuente real, no inventamos.
       hrNight: [],
       restingBpm: null,

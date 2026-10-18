@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { aiErrorReason, generateJson, hasAI } from "@/lib/ai";
 import { formatDuration } from "@/lib/ascii";
 import { getCross } from "@/lib/cross";
@@ -18,19 +18,6 @@ export class ReportError extends Error {
 }
 
 export const canSendToSlack = () => Boolean(process.env.SLACK_WEBHOOK_URL);
-
-/** ¿Hay datos de el viejo seed de demo (_mock) en las últimas 6 semanas? Se rotula [datos simulados] en pantalla y en Slack. */
-export function hasSimulatedData(userId: string): boolean {
-  const since = new Date(Date.now() - 43 * 86400_000).toISOString();
-  return Boolean(
-    db
-      .select({ id: rawEvents.id })
-      .from(rawEvents)
-      .where(and(eq(rawEvents.userId, userId), gte(rawEvents.ts, since), sql`${rawEvents.json} LIKE '%"_mock":true%'`))
-      .limit(1)
-      .get(),
-  );
-}
 
 /** Las métricas de hoy con clave estable: es lo único que la IA puede citar. */
 export function reportMetrics(userId: string): { metrics: Metric[]; crosses: string[] } {
@@ -128,6 +115,6 @@ export async function sendPreview(userId: string, name: string, id: unknown, sha
   const s = (share ?? {}) as { metrics?: unknown; note?: unknown };
   const allowed = new Set(Array.isArray(s.metrics) ? s.metrics.filter((k): k is string => typeof k === "string") : []);
   const shared = preview.metrics.filter((m) => allowed.has(m.key));
-  await postToSlack(buildSlackMessage({ name, report: preview.report, shared, note: s.note === true ? preview.note : undefined, isSimulated: hasSimulatedData(userId) }));
+  await postToSlack(buildSlackMessage({ name, report: preview.report, shared, note: s.note === true ? preview.note : undefined }));
   insertRawEvents([{ source: "report", kind: "sent", userId, ts: new Date().toISOString(), data: { id, shared: shared.map((m) => m.key), withNote: s.note === true } }]);
 }

@@ -42,15 +42,15 @@ function bar(score: number): string {
 }
 
 /** Ranking del workspace por recuperación (0–100). Las listas llegan ya ordenadas del server. */
-type RankingProps = { team: string; today: RankingEntry[]; week: RankingEntry[]; isExample: boolean; isSimulated: boolean };
+type RankingProps = { team: string; today: RankingEntry[]; week: RankingEntry[];  };
 
-export function Ranking({ team, today, week, isExample, isSimulated }: RankingProps) {
+export function Ranking({ team, today, week }: RankingProps) {
   const [tab, setTab] = useState<Tab>("hoy");
   const rows = tab === "hoy" ? today : week;
   const hasPartial = rows.some((r) => r.note === "parcial");
 
   return (
-    <Panel label={`ranking · ${team}`} meta={isExample ? "[ejemplo · sin pulseras]" : isSimulated ? "[datos simulados]" : "recuperación · 0–100"}>
+    <Panel label={`ranking · ${team}`} meta="recuperación · 0–100">
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Período del ranking">
         {TABS.map((t) => (
           <button

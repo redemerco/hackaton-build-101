@@ -13,8 +13,6 @@ export type WorkDay = {
   commits: number;
   /** De hace 6 días a hoy. Sueño y ánimo van en null el día que no hay dato (la sparkline lo muestra como "·"). */
   week: { sleepMin: (number | null)[]; commits: number[]; mood: (number | null)[] };
-  /** El sueño viene de datos de el viejo seed de demo (se rotula en la UI). */
-  sleepIsSimulated: boolean;
   /** Días con los tres datos (sueño, commits, ánimo). Por debajo de MIN_DAYS_FOR_CORRELATION no se afirma nada. */
   daysOfData: number;
 };
@@ -69,7 +67,6 @@ export function getWorkDay(userId: string): WorkDay | null {
     log,
     commits: commitsPerDay[6],
     week: { sleepMin: sleepPerDay, commits: commitsPerDay, mood: moodPerDay },
-    sleepIsSimulated: sleep.isSimulated,
     daysOfData,
   };
 }

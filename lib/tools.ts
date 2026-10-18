@@ -58,7 +58,6 @@ export const TOOLS: Tool[] = [
         fin: n.end,
         dormido: formatDuration(st.deep + st.rem + st.light),
         etapas: { profundo: st.deep, rem: st.rem, liviano: st.light, despierto: st.awake },
-        simulada: n.isSimulated === true,
       };
     },
   },

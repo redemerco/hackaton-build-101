@@ -9,7 +9,7 @@ import { mean } from "@/lib/score";
 import type { SummaryCount } from "@/lib/summary";
 
 // Resumen daily de salud (IA): "cómo venís hoy de cuerpo". Solo datos reales de HOY (día local Montevideo);
-// lo simulado (el viejo seed de demo) se rotula en el prompt. Lo consume /api/summary/health vía streamSummary.
+// Lo consume /api/summary/health vía streamSummary.
 
 const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
@@ -35,20 +35,19 @@ export function buildHealthPrompt(userId: string, now = Date.now()): { system: s
     const st = night.stageMinutes ?? minutesByStage(night.stages);
     const asleep = st.deep + st.rem + st.light;
     lines.push(
-      `Última noche: ${night.start} → ${night.end}, dormido ${formatDuration(asleep)} (profundo ${formatDuration(st.deep)}, REM ${formatDuration(st.rem)}, liviano ${formatDuration(st.light)}, despierto ${formatDuration(st.awake)})${night.isSimulated ? " [datos simulados]" : ""}.`,
+      `Última noche: ${night.start} → ${night.end}, dormido ${formatDuration(asleep)} (profundo ${formatDuration(st.deep)}, REM ${formatDuration(st.rem)}, liviano ${formatDuration(st.light)}, despierto ${formatDuration(st.awake)}).`,
     );
   }
 
-  const { days, isSimulated } = dayInputs(userId, now - HISTORY_DAYS * DAY);
-  const tag = isSimulated ? " [datos simulados]" : "";
+  const { days } = dayInputs(userId, now - HISTORY_DAYS * DAY);
   const day = days.get(today);
   const prior = Array.from({ length: BASELINE_DAYS }, (_, i) => days.get(dayKey.format(now - (i + 1) * DAY)));
   const typicalBpm = mean(prior.map((d) => d?.restingBpm));
   const typicalHrv = mean(prior.map((d) => d?.hrvMs));
   const vs = (typical: number | undefined, unit: string) => (typical ? ` (tu típico de ${BASELINE_DAYS} días: ${Math.round(typical)} ${unit})` : " (todavía sin típico propio)");
-  if (day?.restingBpm) lines.push(`Pulso en reposo hoy: ${day.restingBpm} lpm${vs(typicalBpm, "lpm")}${tag}.`);
-  if (day?.hrvMs) lines.push(`HRV hoy: ${Math.round(day.hrvMs)} ms${vs(typicalHrv, "ms")}${tag}.`);
-  if (day?.azm !== undefined) lines.push(`Movimiento hoy: ${day.azm} minutos en zona activa${tag}.`);
+  if (day?.restingBpm) lines.push(`Pulso en reposo hoy: ${day.restingBpm} lpm${vs(typicalBpm, "lpm")}.`);
+  if (day?.hrvMs) lines.push(`HRV hoy: ${Math.round(day.hrvMs)} ms${vs(typicalHrv, "ms")}.`);
+  if (day?.azm !== undefined) lines.push(`Movimiento hoy: ${day.azm} minutos en zona activa.`);
   const heartDays = [...days.values()].filter((d) => d.restingBpm || d.hrvMs).length;
 
   const meals = getMealsToday(userId);
@@ -65,7 +64,7 @@ export function buildHealthPrompt(userId: string, now = Date.now()): { system: s
   if (moods.length) lines.push(`Check-ins de ánimo de hoy (1 = mal, 5 = muy bien): ${moods.join(", ")}.`);
 
   const score = scoresFor(userId, now).today;
-  if (score) lines.push(`Recuperación de hoy (0–100): ${score.score}/100${score.isPartial ? " (parcial: falta alguna parte)" : ""}${tag}.`);
+  if (score) lines.push(`Recuperación de hoy (0–100): ${score.score}/100${score.isPartial ? " (parcial: falta alguna parte)" : ""}.`);
 
   // Los modelos pesan más el cierre: lo último que pasó va al final para que se note el cambio en vivo.
   const lastMeal = meals.at(-1);

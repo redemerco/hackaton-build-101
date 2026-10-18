@@ -18,7 +18,7 @@ import { deriveState, linesFor, STATES } from "@/lib/daemon";
 import { contributors, daemonInput, getToday, stressOf, type Contributor } from "@/lib/today";
 import { getBuddy } from "@/lib/buddy";
 import { getCross } from "@/lib/cross";
-import { canSendToSlack, hasSimulatedData } from "@/lib/report";
+import { canSendToSlack } from "@/lib/report";
 import type { Detail, Insight, Pending } from "@/lib/insights";
 import { buildMePrompt, meFallback } from "@/lib/summary-me";
 import { getCurrentUser } from "@/lib/users";
@@ -95,7 +95,6 @@ const MAX_PENDING = 4;
 export default async function Yo() {
   const [user, buddy] = await Promise.all([getCurrentUser(), getBuddy()]);
   const cross = getCross(user.id);
-  const isSimulated = hasSimulatedData(user.id);
   const today = getToday(user.id, new Date(), cross.series);
   const hasWork = cross.series.some((d) => d.commits > 0 || d.lastWorkMinute !== null || d.meetingMin > 0);
 
@@ -161,19 +160,19 @@ export default async function Yo() {
         <MoodCheckin mood={today.mood} />
       </div>
 
-      <Panel label="carga y recuperación · hoy" meta={isSimulated ? "[datos simulados]" : "contra tu normal"}>
+      <Panel label="carga y recuperación · hoy" meta="contra tu normal">
         <StressMapView map={cross.stress} projects={cross.projects} />
       </Panel>
 
-      <Panel label="tu día · por hora" meta={isSimulated ? "[datos simulados]" : "hoy"}>
+      <Panel label="tu día · por hora" meta="hoy">
         <CrossChart day={cross.today} nowHour={cross.nowHour} sleepMin={today.sleepMin} />
       </Panel>
 
       <Summary label="hoy, en una" src="/api/summary/me" counts={buildMePrompt(user.id, today, cross).counts} fallback={meFallback(today, cross)} />
 
-      <SlackReport name={user.name} canSend={canSendToSlack()} isSimulated={isSimulated} />
+      <SlackReport name={user.name} canSend={canSendToSlack()} />
 
-      <Panel label="cruces con tus datos" meta={isSimulated ? `${cross.insights.length} · [simulados]` : `${cross.insights.length} con respaldo`}>
+      <Panel label="cruces con tus datos" meta={`${cross.insights.length} con respaldo`}>
         {cross.insights.length > 0 ? (
           <ul className="grid gap-3">
             {cross.insights.slice(0, MAX_INSIGHTS).map((i) => <InsightRow key={i.id} i={i} />)}
