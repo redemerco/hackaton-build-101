@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, ne, notInArray } from "drizzle-orm";
 import { db, insertRawEvents, rawEvents } from "@/lib/db";
 
 const DAYS = 7;
@@ -31,11 +31,30 @@ function compact(source: string, kind: string, json: string): string {
     if (kind === "issue") return `${d.title} (${d.state})`;
     if (kind === "review") return d.state ?? "";
   }
+  if (source === "google") {
+    const d = JSON.parse(json);
+    if (kind === "sleep") return sleepLine(d.sleep);
+    if (kind === "hrv") return `HRV ${d.dailyHeartRateVariability?.averageHeartRateVariabilityMilliseconds} ms`;
+    if (kind === "resting_hr") return `FC en reposo ${d.dailyRestingHeartRate?.beatsPerMinute} lpm`;
+  }
   if (source === "linear") {
     const d = JSON.parse(json);
     return `${d.identifier} ${d.title} (${d.state?.name})`;
   }
   return json.length > 500 ? `${json.slice(0, 500)}…` : json;
+}
+
+const mins = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 60000);
+const hm = (m: number) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+
+// El JSON crudo de sueño trae cada etapa con timestamps (~8 KB): al prompt va la duración y los minutos por etapa.
+function sleepLine(s: { interval?: { startTime: string; endTime: string }; stages?: { startTime: string; endTime: string; type: string }[] }): string {
+  if (!s?.interval) return "";
+  const byType = new Map<string, number>();
+  for (const st of s.stages ?? []) byType.set(st.type, (byType.get(st.type) ?? 0) + mins(st.startTime, st.endTime));
+  const total = mins(s.interval.startTime, s.interval.endTime) - (byType.get("AWAKE") ?? 0);
+  const stages = [...byType].map(([t, m]) => `${t.toLowerCase()} ${m}m`).join(", ");
+  return `durmió ${hm(total)} (${hour.format(new Date(s.interval.startTime))}–${hour.format(new Date(s.interval.endTime))}${stages ? `; ${stages}` : ""})`;
 }
 
 export function buildDigestPrompt(userId: string): string {
@@ -45,13 +64,13 @@ export function buildDigestPrompt(userId: string): string {
     .from(rawEvents)
     .where(
       // fuera lo que escribe la propia app (resúmenes, agente, reportes): no son eventos del usuario
-      and(eq(rawEvents.userId, userId), gte(rawEvents.ts, since), notInArray(rawEvents.source, ["digest", "slack", "summary", "agent", "report"])),
+      and(eq(rawEvents.userId, userId), gte(rawEvents.ts, since), notInArray(rawEvents.source, ["digest", "slack", "summary", "agent", "report"]), ne(rawEvents.kind, "azm")),
     )
     .orderBy(desc(rawEvents.ts))
     .limit(MAX_EVENTS)
     .all()
     .reverse();
-  const slack = slackPerDay(userId, since);
+  const slack = slackPerDay(userId, since) + azmPerDay(userId, since);
 
   if (rows.length === 0 && !slack) return "No hay datos de esta semana todavía. Decilo en una línea y sugerí conectar fuentes.";
   const lines = rows.map((r) => `${fmt.format(new Date(r.ts))} ${r.source}/${r.kind} ${compact(r.source, r.kind, r.json)}`);
@@ -77,6 +96,27 @@ function slackPerDay(userId: string, since: string): string {
     return `${d} slack: ${msgs.length} mensajes, primero ${first}, último ${last}`;
   });
   return `\n\nActividad en Slack por día (solo horarios):\n${lines.join("\n")}`;
+}
+
+// Active Zone Minutes llega minuto a minuto (cientos por semana, ~500 B cada uno): al prompt va el total por día y zona.
+function azmPerDay(userId: string, since: string): string {
+  const rows = db
+    .select({ ts: rawEvents.ts, json: rawEvents.json })
+    .from(rawEvents)
+    .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "google"), eq(rawEvents.kind, "azm"), gte(rawEvents.ts, since)))
+    .orderBy(rawEvents.ts)
+    .all();
+  if (rows.length === 0) return "";
+  const byDay = new Map<string, Map<string, number>>();
+  for (const r of rows) {
+    const a = JSON.parse(r.json).activeZoneMinutes;
+    const zones = byDay.get(day.format(new Date(r.ts))) ?? new Map<string, number>();
+    const zone = String(a?.heartRateZone ?? "?").toLowerCase();
+    zones.set(zone, (zones.get(zone) ?? 0) + Number(a?.activeZoneMinutes ?? 0));
+    byDay.set(day.format(new Date(r.ts)), zones);
+  }
+  const lines = [...byDay].map(([d, zones]) => `${d} minutos en zona activa: ${[...zones].map(([z, m]) => `${z} ${m}`).join(", ")}`);
+  return `\n\nMinutos en zona activa por día (Google Health):\n${lines.join("\n")}`;
 }
 
 // El último digest que salió bien queda guardado: si la IA o el wifi mueren en vivo, se re-reproduce.
