@@ -15,7 +15,7 @@ export function LoginGate({ buddy }: { buddy: BuddyId }) {
       <div className="grid justify-items-center gap-4 text-center">
         <Daemon state="enforma" buddy={buddy} scale={4} />
         <p className="font-pixel text-[22px] leading-none text-dim">
-          ~/<span className="text-foreground">build101</span>
+          ~/<span className="text-foreground">pulso</span>
         </p>
         <h1 className="text-balance text-[26px] font-semibold leading-tight">Tu cuerpo y tu trabajo, en el mismo gráfico.</h1>
       </div>

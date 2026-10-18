@@ -58,7 +58,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <div id="app" className="mx-auto flex min-h-dvh max-w-md flex-col">
               <header className="flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]" style={{ viewTransitionName: "app-header" }}>
                 <span className="font-pixel text-[22px] leading-none text-dim">
-                  ~/<span className="text-foreground">build101</span>
+                  ~/<span className="text-foreground">pulso</span>
                 </span>
                 <SettingsSheet
                   userName={user.name}
