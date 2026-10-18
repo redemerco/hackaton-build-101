@@ -22,6 +22,44 @@ function rowsFor(userId: string, sinceMs: number): RawRow[] {
     .all();
 }
 
+const LATE_FROM_MIN = 23 * 60;
+const LATE_UNTIL_MIN = 4 * 60;
+
+/** Un "día" con las últimas 24 h de trabajo (completo, comparable con tu media diaria) y el cuerpo de hoy. */
+function last24h(rows: RawRow[], series: DaySeries[], now: number): DaySeries | null {
+  const today = series.at(-1);
+  if (!today) return null;
+  const since = now - DAY_MS;
+  const inWindow = rows.filter((r) => {
+    const t = Date.parse(r.ts);
+    return t >= since && t <= now;
+  });
+  const isLate = (ts: string) => {
+    const m = local(ts).minute;
+    return m >= LATE_FROM_MIN || m < LATE_UNTIL_MIN;
+  };
+  const work = inWindow.filter((r) => (r.source === "github" && r.kind === "commit") || r.source === "slack");
+  const meetingMin = inWindow
+    .filter((r) => r.source === "calendar")
+    .reduce((n, r) => {
+      const e = JSON.parse(r.json) as { start?: string; end?: string | null; allDay?: boolean };
+      if (!e.start || !e.end || e.allDay) return n;
+      return n + Math.max(0, Math.min(Date.parse(e.end), now) - Math.max(Date.parse(e.start), since)) / 60_000;
+    }, 0);
+  const yesterday = series.at(-2);
+  return {
+    ...today,
+    commits: inWindow.filter((r) => r.source === "github" && r.kind === "commit").length,
+    messages: inWindow.filter((r) => r.source === "slack").length,
+    issues: inWindow.filter((r) => r.source === "linear").length,
+    meetingMin: Math.round(meetingMin),
+    lastWorkMinute: work.some((r) => isLate(r.ts)) ? LATE_FROM_MIN : work.length ? 18 * 60 : null,
+    // pulso y HRV de hoy si ya llegaron; si no, los de ayer (Google Health los manda al sincronizar)
+    restingBpm: today.restingBpm ?? yesterday?.restingBpm ?? null,
+    hrvMs: today.hrvMs ?? yesterday?.hrvMs ?? null,
+  };
+}
+
 export function getCross(userId: string, now = Date.now()): Cross {
   // un día extra antes: la noche que termina el primer día empezó la víspera
   const rows = rowsFor(userId, now - (HISTORY_DAYS + 1) * DAY_MS);
@@ -35,7 +73,7 @@ export function getCross(userId: string, now = Date.now()): Cross {
     series,
     insights: ready,
     pending,
-    stress: stressMap(series),
+    stress: stressMap(series, last24h(rows, series, now)),
     projects: projectsOf(rows, new Date(now - 7 * DAY_MS).toISOString()),
   };
 }

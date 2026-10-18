@@ -60,9 +60,9 @@ function Projects({ items }: { items: ProjectShare[] }) {
   );
 }
 
-/** Estrés de la semana: tu carga de trabajo contra cómo responde tu cuerpo, los dos contra tu normal. */
+/** Estrés de hoy: tu carga de trabajo de las últimas 24 h contra cómo está tu cuerpo hoy, los dos contra tu normal. */
 export function StressMapView({ map, projects }: { map: StressMap; projects: ProjectShare[] }) {
-  if (!map.zone || !map.week) {
+  if (!map.zone || !map.today) {
     return (
       <div className="grid gap-2">
         <p className="text-[15px] leading-relaxed text-dim">Todavía no alcanza para saber tu normal y compararte contra ella.</p>
@@ -71,8 +71,7 @@ export function StressMapView({ map, projects }: { map: StressMap; projects: Pro
       </div>
     );
   }
-  const last = map.points.find((p) => p.isLast);
-  const trail = map.points.map((p) => `${toX(p.x)},${toY(p.y)}`).join(" ");
+  const today = map.today;
   const color = map.zone === "en tu normal" ? NORMAL_COLOR : ZONE[map.zone].color;
 
   return (
@@ -80,6 +79,9 @@ export function StressMapView({ map, projects }: { map: StressMap; projects: Pro
       <div className="grid gap-1">
         <p className="font-pixel text-[26px] leading-none" style={{ color }}>{map.zone}</p>
         <p className="text-[15px] leading-relaxed text-pretty">{map.verdict}</p>
+        <p className="text-[12px] leading-snug text-dim">
+          Medimos tu <b className="font-medium text-foreground/90">carga de trabajo de las últimas 24 h</b> y cómo está tu <b className="font-medium text-foreground/90">cuerpo hoy</b> (sueño de anoche, HRV y pulso), cada uno contra tu normal.
+        </p>
       </div>
 
       <div className="grid grid-cols-[auto_1fr] gap-x-2">
@@ -113,21 +115,19 @@ export function StressMapView({ map, projects }: { map: StressMap; projects: Pro
                 {q.zone}
               </text>
             ))}
-            <polyline points={trail} fill="none" stroke="rgb(255 255 255 / .3)" strokeWidth={1} strokeDasharray="2 2" />
-            {map.points.filter((p) => !p.isLast).map((p) => (
-              <g key={p.day}>
-                <circle cx={toX(p.x)} cy={toY(p.y)} r={6} fill="rgb(255 255 255 / .12)" stroke="rgb(255 255 255 / .35)" strokeWidth={0.75} />
-                <text x={toX(p.x)} y={toY(p.y) + 2.6} textAnchor="middle" className="font-mono" fontSize={7} fill="rgb(255 255 255 / .75)">{dayLetter(p.day)}</text>
-              </g>
+            {/* los días anteriores: solo referencia, chiquitos */}
+            {map.past.map((p) => (
+              <circle key={p.day} cx={toX(p.x)} cy={toY(p.y)} r={2.5} fill="rgb(255 255 255 / .35)">
+                <title>{dayLetter(p.day)}</title>
+              </circle>
             ))}
             {/* tu normal: el centro */}
             <circle cx={SIZE / 2} cy={SIZE / 2} r={(NORMAL / RANGE) * (SIZE / 2 - PAD)} fill="none" stroke="rgb(255 255 255 / .3)" strokeDasharray="1.5 2" />
-            {last && (
-              <g>
-                <circle cx={toX(last.x)} cy={toY(last.y)} r={9} fill="var(--mood)" />
-                <text x={toX(last.x)} y={toY(last.y) + 2.8} textAnchor="middle" className="font-mono" fontSize={7.5} fontWeight={700} fill="var(--background)">ayer</text>
-              </g>
-            )}
+            <g>
+              <circle cx={toX(today.x)} cy={toY(today.y)} r={15} fill={color} opacity={0.25} />
+              <circle cx={toX(today.x)} cy={toY(today.y)} r={10} fill={color} />
+              <text x={toX(today.x)} y={toY(today.y) + 2.8} textAnchor="middle" className="font-mono" fontSize={8} fontWeight={700} fill="var(--background)">hoy</text>
+            </g>
           </svg>
           <p aria-hidden className="flex justify-between font-mono text-[10px] uppercase tracking-[0.08em] text-faint">
             <span>poca carga</span>
@@ -137,13 +137,13 @@ export function StressMapView({ map, projects }: { map: StressMap; projects: Pro
       </div>
 
       <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3">
-        <Deltas title="tu carga vs tu normal" items={map.load} />
-        <Deltas title="tu cuerpo vs tu normal" items={map.body} />
+        <Deltas title="carga · últimas 24 h" items={map.load} />
+        <Deltas title="cuerpo · hoy" items={map.body} />
       </div>
 
       {projects.length > 0 && <Projects items={projects} />}
 
-      <p className="font-mono text-[11px] text-faint">un punto por día cerrado · el círculo del centro es tu normal (media de 6 semanas) · observación, no diagnóstico médico</p>
+      <p className="font-mono text-[11px] text-faint">el círculo del centro es tu normal (media de 6 semanas) · los puntitos son tus días anteriores · observación, no diagnóstico médico</p>
     </div>
   );
 }

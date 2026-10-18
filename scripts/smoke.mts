@@ -141,8 +141,8 @@ const day = (i: number, heavy: boolean) => ({
   meetingMin: heavy ? 240 : 60 + (i % 3) * 15, longestFreeMin: null, restingBpm: heavy ? 66 : 58 + (i % 2), hrvMs: heavy ? 38 : 55 + (i % 3) * 3,
 });
 const stressSeries = Array.from({ length: 28 }, (_, i) => day(i, i >= 21));
-assert.equal(stressMap(stressSeries).zone, "cuidado");
-assert.equal(stressMap(stressSeries.slice(0, 3)).zone, null, "sin base de 7 días no hay veredicto");
+assert.equal(stressMap(stressSeries, stressSeries.at(-1)!).zone, "cuidado");
+assert.equal(stressMap(stressSeries.slice(0, 3), stressSeries[2]).zone, null, "sin base de 7 días no hay veredicto");
 assert.deepEqual(
   projectsOf([{ source: "github", kind: "commit", ts: "2026-10-18T10:00:00Z", json: JSON.stringify({ html_url: "https://github.com/a/build101/commit/1" }) }], "2026-10-11").map((p) => p.name),
   ["build101"],
