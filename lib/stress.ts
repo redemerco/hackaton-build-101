@@ -118,19 +118,20 @@ export function stressMap(series: DaySeries[], now: DaySeries | null): StressMap
   return { today, past, zone, verdict: VERDICT[zone], load: deltas([now], loadBase, true), body: deltas([now], bodyBase, false), need: null };
 }
 
-// ── Por proyecto: el repo de cada commit (de su URL) y el equipo de cada issue de Linear (PUL-8 → PUL) ──
+// ── Por proyecto: solo los repos donde hiciste un PR en el último mes; se reparte tu actividad de la semana en ellos ──
 const REPO_RE = /"html_url":"https:\/\/github\.com\/[^/"]+\/([^/"]+)\//;
 
 export type ProjectShare = { name: string; share: number; count: number };
 
-export function projectsOf(rows: RawRow[], sinceIso: string, max = 3): ProjectShare[] {
+const repoOf = (r: RawRow) => (r.source === "github" ? (REPO_RE.exec(r.json)?.[1] ?? null) : null);
+
+/** `sinceIso`: desde cuándo se cuenta la actividad (la semana). `prSinceIso`: desde cuándo vale un PR para que el repo cuente. */
+export function projectsOf(rows: RawRow[], sinceIso: string, prSinceIso: string, max = 3): ProjectShare[] {
+  const withPr = new Set(rows.filter((r) => r.kind === "pr" && r.ts >= prSinceIso).flatMap((r) => repoOf(r) ?? []));
   const counts = new Map<string, number>();
   for (const r of rows) {
-    if (r.ts < sinceIso) continue;
-    let name: string | null = null;
-    if (r.source === "github") name = REPO_RE.exec(r.json)?.[1] ?? null;
-    else if (r.source === "linear") name = /"identifier":"([A-Z]+)-\d+"/.exec(r.json)?.[1]?.toLowerCase() ?? null;
-    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+    const name = r.ts >= sinceIso ? repoOf(r) : null;
+    if (name && withPr.has(name)) counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
   if (!total) return [];

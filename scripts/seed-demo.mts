@@ -178,6 +178,11 @@ for (const p of PEOPLE) {
       if (t > now.getTime()) continue;
       events += insertAny.run("github", "commit", p.id, isoZ(t), JSON.stringify({ commit: { message: COMMIT_MESSAGES[(i * 3 + k) % COMMIT_MESSAGES.length], author: { date: isoZ(t) } }, html_url: `https://github.com/demo/${REPOS[(i + k) % REPOS.length]}/commit/${i}-${k}`, _mock: true })).changes;
     }
+    // PRs: cada 3 días en el proyecto principal y cada 6 en el otro ("dónde se fue tu semana" solo cuenta repos con PR)
+    const prRepo = i % 3 === 0 ? REPOS[0] : i % 6 === 4 ? REPOS[2] : null;
+    if (prRepo && at(16.5) <= now.getTime()) {
+      events += insertAny.run("github", "pr", p.id, isoZ(at(16.5)), JSON.stringify({ title: "PR simulado", html_url: `https://github.com/demo/${prRepo}/pull/${100 + i}`, _mock: true })).changes;
+    }
     for (let k = 0; k < (isCrunch ? 30 : 18); k++) {
       const t = at(jitter(13, 4));
       if (t <= now.getTime()) events += insertAny.run("slack", "message", p.id, isoZ(t), JSON.stringify({ _mock: true })).changes;

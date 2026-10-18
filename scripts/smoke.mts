@@ -144,8 +144,17 @@ const stressSeries = Array.from({ length: 28 }, (_, i) => day(i, i >= 21));
 assert.equal(stressMap(stressSeries, stressSeries.at(-1)!).zone, "cuidado");
 assert.equal(stressMap(stressSeries.slice(0, 3), stressSeries[2]).zone, null, "sin base de 7 días no hay veredicto");
 assert.deepEqual(
-  projectsOf([{ source: "github", kind: "commit", ts: "2026-10-18T10:00:00Z", json: JSON.stringify({ html_url: "https://github.com/a/build101/commit/1" }) }], "2026-10-11").map((p) => p.name),
+  projectsOf(
+    [
+      { source: "github", kind: "pr", ts: "2026-10-01T10:00:00Z", json: JSON.stringify({ html_url: "https://github.com/a/build101/pull/1" }) },
+      { source: "github", kind: "commit", ts: "2026-10-18T10:00:00Z", json: JSON.stringify({ html_url: "https://github.com/a/build101/commit/1" }) },
+      { source: "github", kind: "commit", ts: "2026-10-18T11:00:00Z", json: JSON.stringify({ html_url: "https://github.com/a/sin-pr/commit/2" }) },
+    ],
+    "2026-10-11",
+    "2026-09-18",
+  ).map((p) => p.name),
   ["build101"],
+  "solo cuentan los repos con un PR en el último mes",
 );
 
 console.log("smoke OK");
