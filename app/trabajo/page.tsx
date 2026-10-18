@@ -13,6 +13,7 @@ import { SourcesList } from "@/components/connect/source-card";
 import { getSourcesOverview } from "@/lib/connection-overview";
 import { buildWorkPrompt, EXAMPLE_WORK_SUMMARY } from "@/lib/summary-work";
 import { Summary } from "@/components/summary";
+import { hasSimulatedData } from "@/lib/report";
 
 const MESSAGE_WIDTH = 21;
 
@@ -154,7 +155,7 @@ export default async function TrabajoPage() {
   return (
     <Screen>
       <Pulse bpm={60} stress={0.35} />
-      <PageHeader title="Trabajo" subtitle={connected || "Conectá fuentes en Ajustes"} />
+      <PageHeader title="Trabajo" subtitle={connected ? `${connected}${hasSimulatedData(userId) ? " · [datos simulados]" : ""}` : "Conectá fuentes en Ajustes"} />
 
       {!hasAnyConnected && (
         <Panel label="conectá tus fuentes" meta="privado, solo vos">
@@ -167,9 +168,10 @@ export default async function TrabajoPage() {
 
       {day && (
         <Panel label="git log · recientes" meta={`${day.commits} hoy`}>
-          <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-xs leading-[1.7]">
+          <pre className="m-0 min-w-0 overflow-hidden whitespace-pre font-mono text-xs leading-[1.7]">
+            {/* cada línea se corta con "…" (un mensaje largo no se esconde detrás de un scroll lateral) */}
             {day.log.map((entry, i) => (
-              <span key={i}><LogLine entry={entry} />{"\n"}</span>
+              <span key={i} className="block truncate"><LogLine entry={entry} /></span>
             ))}
           </pre>
         </Panel>

@@ -156,7 +156,7 @@ export default async function SaludPage() {
                 </>
               )}
             </dl>
-            <p className="text-xs text-faint">valores del día de Google Health · tu típico = tus últimas 4 semanas</p>
+            <p className="text-xs text-faint">último valor que mandó Google Health · tu típico = tus últimas 4 semanas</p>
           </Panel>
         ) : (
           <Panel label="pulso · noche" meta="sin dato">

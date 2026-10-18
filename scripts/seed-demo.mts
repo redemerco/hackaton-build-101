@@ -6,7 +6,19 @@ import Database from "better-sqlite3";
 import { createDb } from "../lib/db-core.ts";
 
 const DB_PATH = "data/pulso.db";
-const DAYS = 21;
+const DAYS = 28; // > 21 días con sueño + commits + ánimo: el umbral de correlación de Trabajo se alcanza
+// mensajes con forma de commit real (la pantalla igual rotula [datos simulados])
+const COMMIT_MESSAGES = [
+  "feat: endpoint de pagos con reintentos",
+  "fix: race en el refresh del token",
+  "refactor: separar el parser de webhooks",
+  "test: casos borde del calendario",
+  "fix: timezone en el reporte semanal",
+  "chore: bump de dependencias",
+  "feat: filtro por proyecto en el dashboard",
+  "fix: null en el onboarding",
+  "docs: cómo levantar el entorno local",
+];
 const MOCK_TOKEN = "mock";
 const DEMO_TEAM = "build101-demo";
 const TZ_OFFSET = "-10800s"; // Montevideo
@@ -157,10 +169,10 @@ for (const p of PEOPLE) {
     // las noches malas vienen de trabajar tarde: si la noche que termina mañana (i-1) es mala, hoy se trabaja hasta tarde
     const late = (i - 1) % 4 === 2 ? [23.3, 23.8, 0.6 + 24] : [];
     const commitHours = [10.2, 11.1, 15.4, 16.2, 17.5, ...late].map((h) => jitter(h, 0.3));
-    for (const h of commitHours) {
+    for (const [k, h] of commitHours.entries()) {
       const t = at(h);
       if (t > now.getTime()) continue;
-      events += insertAny.run("github", "commit", p.id, isoZ(t), JSON.stringify({ commit: { message: "commit simulado", author: { date: isoZ(t) } }, _mock: true })).changes;
+      events += insertAny.run("github", "commit", p.id, isoZ(t), JSON.stringify({ commit: { message: COMMIT_MESSAGES[(i * 3 + k) % COMMIT_MESSAGES.length], author: { date: isoZ(t) } }, _mock: true })).changes;
     }
     for (let k = 0; k < 18; k++) {
       const t = at(jitter(13, 4));
