@@ -64,7 +64,8 @@ export function getWrapped(userId: string, now = new Date()): Wrapped | null {
 
   // Identidad antes que números (como Spotify/Oura): el rasgo más marcado de la semana.
   const archetype =
-    nightCommits >= 2
+    // búho de verdad: al menos 3 commits nocturnos y 1 de cada 10 de la semana (con 2 de 34 la slide se desmentía sola)
+    nightCommits >= 3 && nightCommits >= commits.length * 0.1
       ? { name: "Búho de merges", why: `${plural(nightCommits, "commit")} de tus ${commits.length} fueron entre la medianoche y las 6` }
       : messages.length > commits.length * 3
         ? { name: "Hilo infinito", why: `${plural(messages.length, "mensaje")} en Slack contra ${plural(commits.length, "commit")}` }
