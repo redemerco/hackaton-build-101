@@ -15,6 +15,7 @@ export type Today = {
   hrvTypical: [number, number] | null;
   mood: number | null; // 1..5, null = sin check-in hoy
   meetings: number;
+  meetingsDone: number; // de las de hoy, las que ya terminaron
   insight: string | null;
   /** true si no hay ningún dato real de cuerpo/trabajo: la UI muestra estado vacío. */
   isEmpty: boolean;
@@ -40,16 +41,17 @@ function todaysMood(userId: UserId): number | null {
   return typeof mood === "number" ? mood : null;
 }
 
-/** Reuniones de hoy (source "calendar", solo horarios). Sin Calendar conectado: 0. */
-function meetingsToday(userId: UserId, now: Date): number {
+/** Reuniones de hoy (source "calendar", solo horarios) y cuántas ya terminaron. Sin Calendar conectado: 0. */
+function meetingsToday(userId: UserId, now: Date): { total: number; done: number } {
   const today = dayKey.format(now);
-  return db
+  const events = db
     .select({ json: rawEvents.json })
     .from(rawEvents)
     .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "calendar"), gte(rawEvents.ts, new Date(now.getTime() - DAY).toISOString())))
     .all()
     .map((r) => JSON.parse(r.json) as { start: string; end: string | null; allDay?: boolean })
-    .filter((e) => !e.allDay && e.end && dayKey.format(Date.parse(e.start)) === today).length;
+    .filter((e) => !e.allDay && e.end && dayKey.format(Date.parse(e.start)) === today);
+  return { total: events.length, done: events.filter((e) => Date.parse(e.end!) <= now.getTime()).length };
 }
 
 // El sueño sale del ingest real de google_health (lib/body) cuando existe; si no, null/0 (nunca ejemplo).
@@ -62,7 +64,7 @@ export function getToday(userId: UserId, now = new Date(), series = getCross(use
   // Semana de sueño real, de hace 6 días a hoy; sin dato ese día queda en 0.
   const sleepWeek = sleepWeekFor(userId, now);
   const mood = todaysMood(userId);
-  const meetings = meetingsToday(userId, now);
+  const { total: meetings, done: meetingsDone } = meetingsToday(userId, now);
   // pulso y HRV vienen como diarios de Google Health (no dentro de la noche): de la serie de lib/cross
   const vitals = recentVitals(series);
   const lastNightMin = series.at(-1)?.sleepMin ?? null;
@@ -76,6 +78,7 @@ export function getToday(userId: UserId, now = new Date(), series = getCross(use
     hrvTypical: vitals.hrvTypical ?? night?.hrvTypical ?? null,
     mood,
     meetings,
+    meetingsDone,
     insight: null, // la observación real la escribe la IA (StreamText con src); sin IA no inventamos texto.
     isEmpty: (sleepMin || lastNightMin) === null && mood === null && meetings === 0 && sleepWeek.every((m) => m === 0),
   };
@@ -133,7 +136,9 @@ export function contributors(today: Today): Contributor[] {
     const trend = today.hrvMs > hi ? "up" : today.hrvMs < lo ? "down" : "flat";
     out.push({ label: "hrv", value: `${today.hrvMs} ms`, vs: `típico ${lo}–${hi}`, trend, isGood: today.hrvMs >= lo });
   }
-  out.push({ label: "reuniones", value: String(today.meetings), vs: today.meetings <= 2 ? "hay hueco para foco" : "día partido", trend: "flat", isGood: today.meetings <= 2 });
+  // "5 hoy · 1 ya pasó": la gráfica de abajo muestra solo las que pasaron, así no parecen números distintos
+  const done = today.meetings ? ` · ${today.meetingsDone} ${today.meetingsDone === 1 ? "ya pasó" : "ya pasaron"}` : "";
+  out.push({ label: "reuniones", value: `${today.meetings} hoy`, vs: `${today.meetings <= 2 ? "hay hueco para foco" : "día partido"}${done}`, trend: "flat", isGood: today.meetings <= 2 });
   return out;
 }
 

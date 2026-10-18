@@ -21,13 +21,13 @@ const levelOf = (z: number) => (z <= -BAND ? 0 : z >= BAND ? 2 : 1);
 type Three = [string, string, string];
 const LOAD_WORDS: Three = ["liviana", "normal", "alta"];
 const LOAD_COLORS: Three = ["var(--work)", "var(--mood)", "var(--food)"];
-const BODY_WORDS: Three = ["tenso", "normal", "bien"];
+const BODY_WORDS: Three = ["baja", "normal", "buena"];
 const BODY_COLORS: Three = ["var(--heart)", "var(--mood)", "var(--work)"];
 
 function Meter({ label, z, words, colors }: { label: string; z: number; words: Three; colors: Three }) {
   const i = levelOf(z);
   return (
-    <p className="grid grid-cols-[4.5rem_auto_1fr] items-baseline gap-3">
+    <p className="grid grid-cols-[6.5rem_auto_1fr] items-baseline gap-3">
       <span className="text-[13px] text-dim">{label}</span>
       <span aria-hidden className="font-mono text-[15px] leading-none tracking-[1px]" style={{ color: colors[i] }}>{bar(z)}</span>
       <span className="text-[14px] font-medium" style={{ color: colors[i] }}>{words[i]}</span>
@@ -85,16 +85,16 @@ export function StressMapView({ map, projects }: { map: StressMap; projects: Pro
         <p className="text-[15px] leading-relaxed text-pretty">{map.verdict}</p>
       </div>
 
-      <div className="grid gap-2" role="img" aria-label={`Carga: ${LOAD_WORDS[levelOf(x)]}. Cuerpo: ${BODY_WORDS[levelOf(y)]}.`}>
+      <div className="grid gap-2" role="img" aria-label={`Carga: ${LOAD_WORDS[levelOf(x)]}. Recuperación: ${BODY_WORDS[levelOf(y)]}.`}>
         <Meter label="carga" z={x} words={LOAD_WORDS} colors={LOAD_COLORS} />
-        <Meter label="cuerpo" z={y} words={BODY_WORDS} colors={BODY_COLORS} />
+        <Meter label="recuperación" z={y} words={BODY_WORDS} colors={BODY_COLORS} />
       </div>
 
       <details className="group border-t border-white/10 pt-3">
         <summary className="cursor-pointer list-none font-mono text-[12px] text-faint group-open:text-dim">ver por qué ▾</summary>
         <div className="mt-2.5 grid grid-cols-2 gap-3">
           <Deltas title="trabajo · 24 h" items={map.load} />
-          <Deltas title="cuerpo · hoy" items={map.body} />
+          <Deltas title="recuperación · hoy" items={map.body} />
         </div>
         {projects.length > 0 && <div className="mt-3"><Projects items={projects} /></div>}
         <p className="mt-3 font-mono text-[11px] text-faint">la mitad de cada barra es tu normal (6 semanas) · observación, no diagnóstico</p>

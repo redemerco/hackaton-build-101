@@ -161,7 +161,7 @@ export default async function Yo() {
         <MoodCheckin mood={today.mood} />
       </div>
 
-      <Panel label="estrés · hoy" meta={isSimulated ? "[datos simulados]" : "carga × cuerpo"}>
+      <Panel label="carga y recuperación · hoy" meta={isSimulated ? "[datos simulados]" : "contra tu normal"}>
         <StressMapView map={cross.stress} projects={cross.projects} />
       </Panel>
 

@@ -91,11 +91,11 @@ export function zoneOf(p: StressPoint): Zone {
 }
 
 const VERDICT: Record<Zone, string> = {
-  "en tu normal": "Venís en tu normal: la carga y el cuerpo, parecidos a siempre.",
-  "en forma": "Venís con tu carga normal y el cuerpo responde bien.",
-  aguantando: "Venís con más carga que tu normal y el cuerpo todavía responde. Ojo con estirarlo.",
-  cuidado: "Venís con más carga que tu normal y el cuerpo lo está sintiendo. Buen momento para bajar un cambio.",
-  "no es el trabajo": "La carga no está alta, pero el cuerpo viene tenso: puede ser otra cosa (sueño, salud, lo de afuera).",
+  "en tu normal": "Venís en tu normal: la carga y la recuperación, parecidas a siempre.",
+  "en forma": "Venís con tu carga normal y te estás recuperando bien.",
+  aguantando: "Venís con más carga que tu normal y todavía te recuperás bien. Ojo con estirarlo.",
+  cuidado: "Venís con más carga que tu normal y te estás recuperando menos (sueño, pulso, HRV). Buen momento para bajar un cambio.",
+  "no es el trabajo": "La carga no está alta, pero te estás recuperando menos: puede ser otra cosa (sueño, salud, lo de afuera).",
 };
 
 /** `now`: el "día" de hoy armado con las últimas 24 h de trabajo y el cuerpo de hoy (lo arma lib/cross). */
