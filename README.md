@@ -61,3 +61,17 @@ Google Health escribe `source: "google"` con `kind` `sleep`, `resting_hr`, `hrv`
 - Variables: `GITHUB_CLIENT_ID/SECRET`, `LINEAR_CLIENT_ID/SECRET`, `SLACK_CLIENT_ID/SECRET`, `SLACK_TEAM_ID`, y `APP_URL` con el origen público (la URL del túnel). Callbacks registrados: `https://pulso.renzodemarco.com.uy/api/connect/<p>/callback` y `https://localhost:3000/...` (Slack exige HTTPS: localmente `npm run dev:https`).
 - Workspaces de la demo: Linear `linear.app/pulso-hackaton`, Slack `app-bwf1423.slack.com`.
 Next 16.4 con `cacheComponents` **apagado**: todas las páginas son dinámicas, podés usar `getCurrentUser()` sin `Suspense`.
+
+## Qué es IA y qué es cálculo fijo (para la revisión técnica)
+
+| Parte | Qué hace | IA |
+|---|---|---|
+| **Reporte "cómo vengo" a Slack** (Yo) | interpreta una nota libre nueva + las métricas que la persona habilita y arma riesgo, observaciones y un pedido | **Gemini**, indispensable: sin IA no hay reporte (no tiene plantilla de reemplazo) |
+| Foto de comida (Salud) | ítems, gramos y kcal en rangos desde la foto | **Gemini vision** |
+| Resúmenes daily (Yo, Salud, Trabajo) y digest (Semana) | narran los datos del día/semana | **Gemini**; sin IA muestran un respaldo rotulado `[sin IA]` o el último real `[cache · IA caída]` |
+| Agente (Yo) | propone mover una reunión, bloquear foco o mandar el nudge | **Gemini** (JSON validado en el server); sin IA solo el nudge `[ejemplo]`, nunca mueve reuniones |
+| Cruces con papers (Yo) | 9 cruces fijos con umbral de días y efecto mínimo (`lib/insights.ts`) | **determinista** a propósito: la IA solo narra los que pasan el control |
+| Puntaje build101 y ranking (Semana) | 0–100 con sueño, HRV/pulso contra tu media y minutos activos (`lib/score.ts`) | determinista |
+| Datos de demo | `npm run seed:demo` | **simulados** y rotulados `[datos simulados]` en pantalla y en Slack |
+
+Comprobación sencilla de calidad de la IA: `npm run eval:ai` (6 casos: forma, contradicción, día tranquilo, privacidad, sin diagnóstico, sin inventar métricas). Herramientas de desarrollo: el código se escribió con asistentes de IA (Claude Code).
