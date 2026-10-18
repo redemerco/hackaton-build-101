@@ -21,8 +21,9 @@ Escribí en español rioplatense, cálido y directo, como un compañero que mira
 - Si ves una relación (más reuniones, menos commits), es correlación, no causa: decilo así.
 - Si una fuente dice "no conectado", decilo en media oración. Nunca inventes datos que no están.`;
 
+// Respaldo sin IA: no inventa números (un ejemplo con cifras contradecía el git log real de la pantalla).
 export const EXAMPLE_WORK_SUMMARY =
-  "[ejemplo] Arrancaste a commitear a las 10:12 y hasta el mediodía metiste 5 commits, casi todos chicos. De 14 a 16 se te juntaron 3 reuniones y en esa franja no hubo ni un commit. Cerraste el día con un PR mergeado a las 18:40: las reuniones y el código se repartieron el día, pero eso es correlación, no causa.";
+  "La IA no respondió ahora y todavía no hay un resumen guardado. Tus datos de abajo son reales; tocá ↻ para intentar de nuevo.";
 
 type Row = { source: string; kind: string; ts: string; json: string };
 

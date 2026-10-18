@@ -12,8 +12,8 @@ import type { StreamPart } from "@/components/ascii/stream-text";
 
 const toEntry = (r: RankRow, score: number | null, note?: string): RankingEntry => ({ userId: r.userId, name: r.name, isMe: r.isMe, ...r.look, score, note });
 
-// Respaldo honesto si el endpoint de digest no responde: no inventa números, dice que no hay digest.
-const DIGEST_FALLBACK: readonly StreamPart[] = ["Todavía no hay digest. Conectá tus fuentes en Ajustes para que build101 cruce tu semana."];
+// Respaldo honesto si el endpoint de digest no responde: no inventa números ni culpa a las fuentes.
+const DIGEST_FALLBACK: readonly StreamPart[] = ["La IA no respondió ahora y todavía no hay un digest guardado. Tocá ↻ Regenerar para intentar de nuevo."];
 
 export default async function SemanaPage() {
   const user = await getCurrentUser();

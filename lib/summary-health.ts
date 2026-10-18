@@ -90,5 +90,6 @@ export function buildHealthPrompt(userId: string, now = Date.now()): { system: s
   };
 }
 
+// Respaldo sin IA: no inventa números (un ejemplo con cifras contradecía las tarjetas reales de la pantalla).
 export const EXAMPLE_HEALTH_SUMMARY =
-  "[ejemplo] Dormiste 6h40 y el pulso en reposo está en 61 lpm, dos arriba de tu típico. Llevás 2 comidas y el ánimo pasó de 3 a 4 después de almorzar. Correlación, no causa: aprovechá para caminar 10 minutos antes de la próxima reunión.";
+  "La IA no respondió ahora y todavía no hay un resumen guardado. Tus datos de abajo son reales; tocá ↻ para intentar de nuevo.";

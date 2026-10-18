@@ -27,7 +27,7 @@ export function Summary({ label, src, counts, fallback }: SummaryProps) {
       <StreamText fallback={[fallback]} src={runId > 0 ? `${src}?force=1` : src} runId={runId} tokenMs={55} onSource={setSource} className="text-[15px] leading-relaxed" />
       <div className="flex items-end justify-between gap-3 border-t border-white/10 pt-2.5">
         <p className="font-mono text-[12px] leading-relaxed text-faint">
-          {used.length ? `datos usados: ${used.map((c) => `${c.value} ${c.label}`).join(" · ")}` : "sin datos todavía: conectá tus fuentes"}
+          {used.length ? `datos usados: ${used.map((c) => `${c.value} ${c.label}`).join(" · ")}` : "sin actividad registrada hoy todavía"}
           <br />
           observaciones de tus datos, no diagnóstico médico.
         </p>

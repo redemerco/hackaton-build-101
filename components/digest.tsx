@@ -12,7 +12,7 @@ import { Panel } from "@/components/glass/panel";
 export function Digest({ fallback, src, isExample }: { fallback: readonly StreamPart[]; src?: string; isExample: boolean }) {
   const [runId, setRunId] = useState(0);
   const [source, setSource] = useState<StreamSource | null>(null);
-  const meta = isExample || source === "fallback" ? "[ejemplo · sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "reused" ? "gemini · ya generado" : source === "live" ? "gemini" : "…";
+  const meta = isExample ? "[ejemplo · sin IA]" : source === "fallback" ? "[sin IA]" : source === "cache" ? "[cache · IA caída]" : source === "reused" ? "gemini · ya generado" : source === "live" ? "gemini" : "…";
   return (
     <>
       <Panel label="tu digest" meta={meta} className="content-start">
