@@ -11,9 +11,9 @@ import { freshToken } from "@/lib/oauth";
 //   dailyHeartRateVariability:{date, averageHeartRateVariabilityMilliseconds}
 //   activeZoneMinutes:{interval:{startTime}, heartRateZone, activeZoneMinutes}
 const SLEEP_DAYS = 90;
-const DAILY_DAYS = 21; // 7 días de ranking + 14 de línea base
+const DAILY_DAYS = 35; // el último mes (cruces de Yo, Wrapped) + margen; el ranking usa 7 + 14 de base
 const BASE = "https://health.googleapis.com/v4/users/me";
-const MAX_PAGES = 20;
+const MAX_PAGES = 50; // AZM viene por minuto: un mes son varias páginas de 100 (4 tipos × 50 sigue bajo 300 req/min)
 
 type Point = Record<string, unknown>;
 type Pick = (p: Point) => { kind: string; ts: string } | null;
