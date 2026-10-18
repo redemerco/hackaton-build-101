@@ -27,7 +27,7 @@ export function meFallback(today: Today, cross: Cross): string {
   return `${day.length ? `${day.join(", ")}. ` : ""}${top ? `${top.text} ${top.tryThis}` : "Todavía no hay cruces con datos suficientes."}`;
 }
 
-export function buildMePrompt(userId: string, today: Today, cross: Cross): { system: string; prompt: string; counts: SummaryCount[] } {
+export function buildMePrompt(userId: string, today: Today, cross: Cross, isSimulated = false): { system: string; prompt: string; counts: SummaryCount[] } {
   const health = getCachedSummary(userId, "health");
   const work = getCachedSummary(userId, "work");
   const hours = cross.today.hours;
@@ -46,6 +46,7 @@ export function buildMePrompt(userId: string, today: Today, cross: Cross): { sys
 
   const crosses = cross.insights.slice(0, 3).map((i) => `- ${i.text} [${i.basis}; ${i.isHypothesis ? "hipótesis" : `respaldo: ${i.evidence}`}] Prueba sugerida: ${i.tryThis}`);
   const prompt = [
+    isSimulated ? "Ojo: estos datos son SIMULADOS para una demo; decilo en media oración al final." : null,
     `Hechos de hoy:\n${facts.join("\n")}`,
     crosses.length ? `Cruces que pasaron el control (de más a menos fuerte):\n${crosses.join("\n")}` : "Todavía no hay cruces con datos suficientes: decilo y no inventes ninguno.",
     health ? `Resumen de salud de hoy (lo escribió otra IA con sus datos):\n${health.text}` : null,

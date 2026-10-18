@@ -58,7 +58,7 @@ const RISK_DOT: Record<Risk, string> = { bajo: "🟢", medio: "🟡", alto: "�
 type SlackMessage = { text: string; blocks: object[] };
 
 /** Mensaje de Slack (Block Kit). `shared` = las métricas que la persona dejó prendidas; la nota solo si la eligió. */
-export function buildSlackMessage({ name, report, shared, note }: { name: string; report: Report; shared: Metric[]; note?: string }): SlackMessage {
+export function buildSlackMessage({ name, report, shared, note, isSimulated = false }: { name: string; report: Report; shared: Metric[]; note?: string; isSimulated?: boolean }): SlackMessage {
   const blocks: object[] = [
     { type: "header", text: { type: "plain_text", text: `${name} · cómo vengo hoy`.slice(0, 150), emoji: true } },
     { type: "section", text: { type: "mrkdwn", text: `${RISK_DOT[report.riesgo]} *${report.titular}*\nCarga del día: *${report.riesgo}*` } },
@@ -70,7 +70,7 @@ export function buildSlackMessage({ name, report, shared, note }: { name: string
     // Block Kit: hasta 10 fields por section
     blocks.push({ type: "section", fields: shared.slice(0, 10).map((m) => ({ type: "mrkdwn", text: `*${m.label}*\n${m.value}` })) });
   }
-  blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: "build101 · generado con IA (Gemini) a partir de sus métricas · lo eligió compartir la persona" }] });
+  blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `build101 · generado con IA (Gemini) a partir de sus métricas · lo eligió compartir la persona${isSimulated ? " · *[datos simulados]*" : ""}` }] });
   return { text: `${name}: ${report.titular}`, blocks };
 }
 
@@ -82,7 +82,7 @@ export type WrappedForSlack = {
 };
 
 /** Wrapped de la semana como mensaje de Slack (son tus números de la semana; el texto no lo escribe la IA). */
-export function buildWrappedMessage(name: string, w: WrappedForSlack): SlackMessage {
+export function buildWrappedMessage(name: string, w: WrappedForSlack, isSimulated = false): SlackMessage {
   const blocks: object[] = [
     { type: "header", text: { type: "plain_text", text: `${name} · semana ${w.week} en build101`.slice(0, 150), emoji: true } },
     { type: "section", text: { type: "mrkdwn", text: `build101 me puso *${w.archetype.name}* esta semana:\n_“${w.archetype.why}.”_` } },
@@ -90,6 +90,6 @@ export function buildWrappedMessage(name: string, w: WrappedForSlack): SlackMess
   if (w.rows.length) {
     blocks.push({ type: "section", fields: w.rows.slice(0, 10).map((r) => ({ type: "mrkdwn", text: `*${r.label}*\n${r.value}${r.note ? ` · ${r.note}` : ""}` })) });
   }
-  blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `Mejor día: *${w.bestDay.name}* · build101 · lo eligió compartir la persona` }] });
+  blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `Mejor día: *${w.bestDay.name}* · build101 · solo datos de trabajo${isSimulated ? " · *[datos simulados]*" : ""}` }] });
   return { text: `${name}: semana ${w.week}, ${w.archetype.name}`, blocks };
 }
