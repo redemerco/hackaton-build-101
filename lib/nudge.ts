@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, gte, inArray } from "drizzle-orm";
 import { formatDuration } from "@/lib/ascii";
 import { db, rawEvents } from "@/lib/db";
+import { isPulsoEvent } from "@/lib/pulso-events";
 
 // Nudge contextual: se calcula de datos reales (racha de trabajo sin cortar + hora + próxima reunión) y lo dispara un botón
 // (sin cron). Texto determinístico a propósito: en vivo no depende de la IA ni del wifi.
@@ -19,7 +20,7 @@ const LONG_STREAK_MIN = 90;
 const MIN = 60_000;
 
 // Calendar guarda solo horarios (sin título ni invitados): ver lib/sources/calendar.ts.
-type Meeting = { start: string; allDay?: boolean };
+type Meeting = { id?: string | null; pulso?: boolean; start: string; allDay?: boolean };
 
 const freeTime = (min: number) => (min < 60 ? `${min} min` : formatDuration(min));
 
@@ -51,7 +52,7 @@ export function getNudge(userId: string, now = new Date()): Nudge | null {
   const next = events
     .filter((e) => e.source === "calendar")
     .map((e) => JSON.parse(e.json) as Meeting)
-    .filter((m) => !m.allDay)
+    .filter((m) => !m.allDay && !isPulsoEvent(m))
     .map((m) => ({ ...m, t: Date.parse(m.start) }))
     .find((m) => m.t > now.getTime() && m.t - now.getTime() < 3 * 60 * MIN);
   const gap = next ? ` y tenés ${freeTime(Math.round((next.t - now.getTime()) / MIN))} libres antes de tu próxima reunión` : "";

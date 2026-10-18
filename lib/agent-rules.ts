@@ -76,7 +76,7 @@ export function isExpired(p: { createdAt?: string; expiresAt?: string }, now: nu
 export function calendarEventId(userId: string, kind: string, key: string): string {
   return `pulso${createHash("sha256").update(`${userId}|${kind}|${key}`).digest("hex").slice(0, 40)}`;
 }
-export const isPulsoEventId = (id: string | null | undefined) => typeof id === "string" && /^pulso[0-9a-f]{40}$/.test(id);
+export { isPulsoEvent, isPulsoEventId } from "./pulso-events.ts";
 
 // ── evaluación ──────────────────────────────────────────────────────────────
 export type PromisedIssue = { id: string; title: string; done: boolean; weight: number };

@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, gte, notInArray } from "drizzle-orm";
 import { moodFace, sparkline } from "@/lib/ascii";
 import { db, rawEvents } from "@/lib/db";
+import { isPulsoEventJson } from "@/lib/pulso-events";
 import { type WrappedHighlight, type WrappedRow } from "@/lib/week";
 
 // Semana Wrapped con datos reales de raw_events. Solo entra lo que tiene datos: nunca se inventan números.
@@ -52,7 +53,7 @@ export function getWrapped(userId: string, now = new Date()): Wrapped | null {
   const issuesDone = rows.filter((r) => r.source === "linear" && r.kind === "issue_completed").length;
   const issuesOpened = rows.filter((r) => r.source === "linear" && r.kind === "issue_created").length;
   const meals = rows.filter((r) => r.source === "meal");
-  const isMeeting = (r: (typeof rows)[number]) => r.source === "calendar" && r.t <= now.getTime() && !JSON.parse(r.json).allDay;
+  const isMeeting = (r: (typeof rows)[number]) => r.source === "calendar" && r.t <= now.getTime() && !JSON.parse(r.json).allDay && !isPulsoEventJson(r.json);
   const meetings = rows.filter(isMeeting);
   const meetingsPerDay = perDay(isMeeting);
   const moods = rows.filter((r) => r.source === "mood").map((r) => ({ day: r.day, mood: Number(JSON.parse(r.json).mood) }));

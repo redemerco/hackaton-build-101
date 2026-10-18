@@ -21,7 +21,7 @@ import {
   fallbackReason,
   hhmmOf,
   isExpired,
-  isPulsoEventId,
+  isPulsoEvent,
   localDayKey,
   localHour,
   MIN,
@@ -81,7 +81,7 @@ const CALENDAR_TYPES = new Set<AgentActionType>(["move_meeting", "block_focus", 
 const isCalendarWriteOk = () => process.env.CALENDAR_WRITE_OK === "1";
 const localIso = (ms: number) => `${localDayKey(ms)}T${hhmmOf(ms)}:00${OFFSET}`;
 
-type Meeting = { id: string; start: number; end: number; durationMin: number };
+type Meeting = { id: string; start: number; end: number; durationMin: number; pulso: boolean };
 
 /** Eventos con hora de Calendar en [from, to), uno por `id`; si quedó una fila vieja del mismo id, gana la última sincronizada. */
 function calendarEvents(userId: string, from: number, to: number): Meeting[] {
@@ -93,12 +93,12 @@ function calendarEvents(userId: string, from: number, to: number): Meeting[] {
     .all();
   const byId = new Map<string, Meeting>();
   for (const r of rows) {
-    const d = JSON.parse(r.json) as { id?: string | null; start?: string; end?: string | null; allDay?: boolean };
+    const d = JSON.parse(r.json) as { id?: string | null; pulso?: boolean; start?: string; end?: string | null; allDay?: boolean };
     if (!d.id || d.allDay || !d.start || !d.end) continue;
     const start = Date.parse(d.start);
     const end = Date.parse(d.end);
     if (!Number.isFinite(start) || !Number.isFinite(end) || start < from || start >= to) continue;
-    byId.set(d.id, { id: d.id, start, end, durationMin: Math.round((end - start) / MIN) });
+    byId.set(d.id, { id: d.id, start, end, durationMin: Math.round((end - start) / MIN), pulso: isPulsoEvent(d) });
   }
   return [...byId.values()].sort((a, b) => a.start - b.start);
 }
@@ -217,7 +217,7 @@ function gatherInputs(userId: string, now: number): Inputs {
         commitsWeek,
         prsWeek,
         typicalCommitsWeek: typicalCommits > 0 ? typicalCommits : null,
-        meetingsWeek: calendarEvents(userId, weekStart, weekStart + 7 * DAY_MS).filter((m) => !isPulsoEventId(m.id)),
+        meetingsWeek: calendarEvents(userId, weekStart, weekStart + 7 * DAY_MS).filter((m) => !m.pulso),
       },
       health: {
         today: day ?? null,
@@ -240,7 +240,7 @@ function gatherInputs(userId: string, now: number): Inputs {
     now,
     today,
     meetings,
-    upcoming: meetings.filter((m) => m.start > now && !isPulsoEventId(m.id)),
+    upcoming: meetings.filter((m) => m.start > now && !m.pulso),
     sleepMin: day?.sleep ? Math.round(day.sleep.asleepMin) : null,
     restingBpm: day?.restingBpm ?? null,
     typicalBpm: baseline.restingBpm === undefined ? null : Math.round(baseline.restingBpm),

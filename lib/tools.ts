@@ -3,6 +3,7 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { formatDuration } from "@/lib/ascii";
 import { getLastNight, getMealsToday, minutesByStage } from "@/lib/body";
 import { db, rawEvents } from "@/lib/db";
+import { isPulsoEvent } from "@/lib/pulso-events";
 import type { UserId } from "@/lib/users";
 import { getLinearWeek, getSlackToday } from "@/lib/work-signals";
 
@@ -131,7 +132,7 @@ export const TOOLS: Tool[] = [
     description: "Reuniones de hoy del calendario (solo horarios, sin título ni invitados): inicio, fin y duración.",
     run: (userId) => {
       const events = today(userId, "calendar", "event")
-        .filter((e) => !e.data.allDay)
+        .filter((e) => !e.data.allDay && !isPulsoEvent(e.data))
         .map((e) => ({ inicio: e.time, fin: e.data.end ? hhmm.format(Date.parse(String(e.data.end))) : null, minutos: e.data.durationMin }));
       return events.length ? events : null;
     },

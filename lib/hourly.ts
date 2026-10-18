@@ -1,6 +1,8 @@
 // Eventos crudos → por hora (para la gráfica cruzada de Yo) y por día (para los cruces de lib/insights.ts).
 // Puro: sin DB ni server-only, lo prueba scripts/smoke.mts. La carga desde raw_events está en lib/cross.ts.
 
+import { isPulsoEvent } from "./pulso-events.ts";
+
 export type RawRow = { source: string; kind: string; ts: string; json: string };
 
 export const TZ_OFFSET_MIN = -180; // Montevideo (sin horario de verano)
@@ -49,8 +51,8 @@ function sleepIntervals(rows: RawRow[]): [number, number][] {
 function meetings(rows: RawRow[]): [number, number][] {
   return rows
     .filter((r) => r.source === "calendar")
-    .map((r) => parse(r.json) as { start?: string; end?: string | null; allDay?: boolean })
-    .filter((e) => e.start && e.end && !e.allDay)
+    .map((r) => parse(r.json) as { id?: string | null; pulso?: boolean; start?: string; end?: string | null; allDay?: boolean })
+    .filter((e) => e.start && e.end && !e.allDay && !isPulsoEvent(e))
     .map((e) => [Date.parse(e.start!), Date.parse(e.end!)] as [number, number]);
 }
 

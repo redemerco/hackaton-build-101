@@ -1,6 +1,7 @@
 import "server-only";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db, rawEvents } from "@/lib/db";
+import { isPulsoEvent } from "@/lib/pulso-events";
 import type { DaemonInput } from "@/lib/daemon";
 import type { UserId } from "@/lib/users";
 import { getLastNight } from "@/lib/body";
@@ -49,8 +50,8 @@ function meetingsToday(userId: UserId, now: Date): { total: number; done: number
     .from(rawEvents)
     .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "calendar"), gte(rawEvents.ts, new Date(now.getTime() - DAY).toISOString())))
     .all()
-    .map((r) => JSON.parse(r.json) as { start: string; end: string | null; allDay?: boolean })
-    .filter((e) => !e.allDay && e.end && dayKey.format(Date.parse(e.start)) === today);
+    .map((r) => JSON.parse(r.json) as { id?: string | null; pulso?: boolean; start: string; end: string | null; allDay?: boolean })
+    .filter((e) => !e.allDay && e.end && !isPulsoEvent(e) && dayKey.format(Date.parse(e.start)) === today);
   return { total: events.length, done: events.filter((e) => Date.parse(e.end!) <= now.getTime()).length };
 }
 

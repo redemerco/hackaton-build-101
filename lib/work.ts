@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { getCross } from "@/lib/cross";
 import { db, rawEvents } from "@/lib/db";
+import { isPulsoEvent } from "@/lib/pulso-events";
 import { dayInputs } from "@/lib/ranking";
 
 export type Commit ={ time: string; message: string; additions: number; deletions: number };
@@ -100,8 +101,9 @@ export function meetingsToday(userId: string): Meeting[] {
     .where(and(eq(rawEvents.userId, userId), eq(rawEvents.source, "calendar"), gte(rawEvents.ts, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())))
     .orderBy(rawEvents.ts)
     .all()
-    .map((r) => JSON.parse(r.json) as { start: string; end: string | null; allDay?: boolean })
-    .filter((e): e is { start: string; end: string; allDay?: boolean } => !e.allDay && !!e.end && dayKey.format(Date.parse(e.start)) === today)
+    .map((r) => JSON.parse(r.json) as { id?: string | null; pulso?: boolean; start: string; end: string | null; allDay?: boolean })
+    // los bloques que crea Pulso (foco, a dormir, entrenar, descanso) no son reuniones
+    .filter((e): e is { start: string; end: string; allDay?: boolean } => !e.allDay && !!e.end && !isPulsoEvent(e) && dayKey.format(Date.parse(e.start)) === today)
     .map((e) => ({ start: hhmm.format(Date.parse(e.start)), end: hhmm.format(Date.parse(e.end)), durationMin: Math.round((Date.parse(e.end) - Date.parse(e.start)) / 60000) }));
 }
 

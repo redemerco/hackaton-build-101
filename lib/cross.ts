@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, gte, notInArray } from "drizzle-orm";
 import { getConnection } from "@/lib/connections";
 import { db, rawEvents } from "@/lib/db";
+import { isPulsoEvent } from "@/lib/pulso-events";
 import { dailySeries, hourlyFor, local, type DaySeries, type Hourly, type RawRow } from "@/lib/hourly";
 import { crossInsights, type Insight, type Pending } from "@/lib/insights";
 import { projectsOf, stressMap, type ProjectShare, type StressMap } from "@/lib/stress";
@@ -43,8 +44,8 @@ function last24h(rows: RawRow[], series: DaySeries[], now: number): DaySeries | 
   const meetingMin = inWindow
     .filter((r) => r.source === "calendar")
     .reduce((n, r) => {
-      const e = JSON.parse(r.json) as { start?: string; end?: string | null; allDay?: boolean };
-      if (!e.start || !e.end || e.allDay) return n;
+      const e = JSON.parse(r.json) as { id?: string | null; pulso?: boolean; start?: string; end?: string | null; allDay?: boolean };
+      if (!e.start || !e.end || e.allDay || isPulsoEvent(e)) return n;
       return n + Math.max(0, Math.min(Date.parse(e.end), now) - Math.max(Date.parse(e.start), since)) / 60_000;
     }, 0);
   const yesterday = series.at(-2);
