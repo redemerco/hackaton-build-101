@@ -41,7 +41,7 @@ function bar(score: number): string {
   return "█".repeat(full) + "░".repeat(BAR_CELLS - full);
 }
 
-/** Ranking del workspace por puntaje build101. Las listas llegan ya ordenadas del server. */
+/** Ranking del workspace por recuperación (0–100). Las listas llegan ya ordenadas del server. */
 type RankingProps = { team: string; today: RankingEntry[]; week: RankingEntry[]; isExample: boolean; isSimulated: boolean };
 
 export function Ranking({ team, today, week, isExample, isSimulated }: RankingProps) {
@@ -50,7 +50,7 @@ export function Ranking({ team, today, week, isExample, isSimulated }: RankingPr
   const hasPartial = rows.some((r) => r.note === "parcial");
 
   return (
-    <Panel label={`ranking · ${team}`} meta={isExample ? "[ejemplo · sin pulseras]" : isSimulated ? "[datos simulados]" : "puntaje build101"}>
+    <Panel label={`ranking · ${team}`} meta={isExample ? "[ejemplo · sin pulseras]" : isSimulated ? "[datos simulados]" : "recuperación · 0–100"}>
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Período del ranking">
         {TABS.map((t) => (
           <button
@@ -96,8 +96,8 @@ export function Ranking({ team, today, week, isExample, isSimulated }: RankingPr
       </ol>
 
       <p className="text-xs leading-relaxed text-dim">
-        0–100 con tu sueño (50), tu HRV y pulso en reposo contra tu propia media (35) y minutos en zona activa (15). Lo calculamos nosotros: no es el score de Fitbit.
-        {hasPartial && " “parcial” = todavía no hay HRV, pulso o línea base: se puntúa sobre lo que hay."} Aparece solo quien eligió entrar, y se comparte solo el puntaje.
+        Recuperación de 0 a 100: tu sueño (50), tu HRV y pulso en reposo contra tu propia media (35) y minutos en zona activa (15). Cada uno contra su propia media, no contra los demás. Lo calculamos nosotros: no es el score de Fitbit.
+        {hasPartial && " “parcial” = todavía no hay HRV, pulso o línea base: se puntúa sobre lo que hay."} Aparece solo quien eligió entrar, y se comparte solo ese número.
       </p>
       <ShareScoreToggle isOn className="justify-self-start" />
     </Panel>

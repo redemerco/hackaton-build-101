@@ -80,7 +80,7 @@ export function SettingsSheet({ userName, currentBuddy, currentTint, sources }: 
       <button type="button" onClick={() => setIsOpen(true)} className="glass press h-11 min-w-11 max-w-[200px] truncate rounded-full px-4 text-sm font-medium">
         {label}
       </button>
-      <Sheet open={isOpen} onClose={() => { setIsOpen(false); setIsConfirmingDelete(false); }} title="Ajustes" subtitle="Tus datos, tu dispositivo. Con tu equipo solo compartís el puntaje.">
+      <Sheet open={isOpen} onClose={() => { setIsOpen(false); setIsConfirmingDelete(false); }} title="Ajustes" subtitle="Tus datos, tu dispositivo. Con tu equipo solo compartís tu recuperación (0–100).">
         <Section title="tu compañero">
           <div className="grid grid-cols-4 gap-2" role="group" aria-label="Elegí tu compañero">
             {BUDDIES.map((id) => (

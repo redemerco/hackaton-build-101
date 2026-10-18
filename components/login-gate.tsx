@@ -51,7 +51,7 @@ export function LoginGate({ buddy }: { buddy: BuddyId }) {
       </a>
 
       <p className="text-center font-mono text-xs leading-relaxed text-dim">
-        solo lectura · nunca leemos el contenido de tus mensajes ni eventos · con tu equipo solo compartís un puntaje
+        solo lectura · nunca leemos el contenido de tus mensajes ni eventos · con tu equipo solo compartís tu recuperación (0–100)
       </p>
     </main>
   );

@@ -1,6 +1,6 @@
-// Puntaje build101 (0–100) de un día. Puro: lo usan lib/ranking.ts y scripts/smoke.mts.
+// Recuperación (0–100) de un día. Puro: lo usan lib/ranking.ts y scripts/smoke.mts.
 // Inspirado en el Readiness de Google Health (sueño + HRV + pulso en reposo contra TU línea base),
-// pero es nuestro: Google no expone ningún score por la API. Se muestra como "puntaje build101".
+// pero es nuestro: Google no expone ningún score por la API. Se muestra como "recuperación".
 
 export type DayInput = {
   sleep?: { asleepMin: number; deepRemMin: number; awakeMin: number };

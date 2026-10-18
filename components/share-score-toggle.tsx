@@ -5,14 +5,14 @@ import { toast } from "sonner";
 import { setShareScore } from "@/app/actions/buddy";
 import { cn } from "@/lib/utils";
 
-/** Opt-in del ranking: entrar/salir comparte solo tu puntaje build101 (0–100) con tu workspace, nunca tus datos. */
+/** Opt-in del ranking: entrar/salir comparte solo tu recuperación (0–100) con tu workspace, nunca tus datos. */
 export function ShareScoreToggle({ isOn, className }: { isOn: boolean; className?: string }) {
   const [isPending, startTransition] = useTransition();
   const toggle = () =>
     startTransition(async () => {
       try {
         await setShareScore(!isOn);
-        toast(isOn ? "Saliste del ranking: tu puntaje ya no se comparte" : "Entraste al ranking: tu equipo ve solo tu puntaje");
+        toast(isOn ? "Saliste del ranking: tu recuperación ya no se comparte" : "Entraste al ranking: tu equipo ve solo tu recuperación");
       } catch {
         toast.error("No se pudo cambiar");
       }

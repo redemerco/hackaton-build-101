@@ -27,7 +27,7 @@ export default async function SemanaPage() {
       {ranking.team && !ranking.meShares ? (
         <Panel label={`ranking · ${ranking.team}`} meta="opt-in">
           <p className="text-[15px] leading-relaxed text-foreground/90">
-            Compará tu puntaje build101 con los de tu workspace que también eligieron entrar. Se comparte solo el número (0–100), nunca tu sueño, tu pulso ni tu trabajo.
+            Tu recuperación del día, de 0 a 100: cuánto y cómo dormiste, tu HRV y pulso contra tu propia media, y cuánto te moviste. Cada uno se compara consigo mismo, así que no es una competencia de quién duerme más. Con tu workspace se comparte solo ese número, nunca tu sueño, tu pulso ni tu trabajo.
           </p>
           <ShareScoreToggle isOn={false} className="w-full" />
         </Panel>
@@ -43,7 +43,7 @@ export default async function SemanaPage() {
         ) : (
           <Panel label={`ranking · ${ranking.team}`} meta="sin puntajes">
             <p className="text-[15px] leading-relaxed text-foreground/90">
-              Todavía nadie de tu workspace tiene puntaje. Conectá tu wearable con Google Health para entrar al ranking.
+              Todavía nadie de tu workspace tiene recuperación calculada. Conectá tu wearable con Google Health para entrar al ranking.
             </p>
             <ShareScoreToggle isOn className="justify-self-start" />
           </Panel>
@@ -51,7 +51,7 @@ export default async function SemanaPage() {
       ) : (
         <Panel label="ranking del equipo">
           <p className="text-[15px] leading-relaxed text-foreground/90">
-            Conectá Slack en Ajustes para entrar al ranking de tu workspace. Solo se comparte tu puntaje, nunca tus datos.
+            Conectá Slack en Ajustes para entrar al ranking de tu workspace. Solo se comparte tu recuperación (0–100), nunca tus datos.
           </p>
         </Panel>
       )}

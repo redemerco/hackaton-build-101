@@ -8,7 +8,7 @@ import { allUsers } from "@/lib/users";
 import { type UserId } from "@/lib/user-list";
 
 // Ranking de la organización: los usuarios de build101 conectados al mismo workspace de Slack,
-// ordenados por el puntaje build101 (lib/score.ts) del día y de la semana. Solo se comparte el puntaje.
+// ordenados por la recuperación (lib/score.ts) del día y de la semana. Solo se comparte el puntaje.
 
 const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }); // → "2026-10-17"

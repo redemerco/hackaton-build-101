@@ -20,7 +20,7 @@ const HISTORY_DAYS = 21;
 
 export const HEALTH_SYSTEM = `Sos build101, la observabilidad personal de un developer. Te paso cómo viene HOY su cuerpo.
 Escribí en español rioplatense, cálido y directo, en 3 o 4 oraciones de texto plano: sin listas, negritas, títulos ni emojis.
-- Cubrí sueño, recuperación (pulso en reposo y HRV contra SU típico de las últimas semanas, no contra la población), movimiento, comida, ánimo y el puntaje build101 del día.
+- Cubrí sueño, recuperación (pulso en reposo y HRV contra SU típico de las últimas semanas, no contra la población), movimiento, comida, ánimo y la recuperación del día (0–100, calculada sobre su sueño, HRV/pulso y movimiento).
 - Citá números concretos de los datos.
 - Son correlaciones, no causas. Nunca diagnostiques, ni des consejo médico, ni nombres enfermedades.
 - Si falta una fuente, decilo en media oración; no inventes.
@@ -67,7 +67,7 @@ export function buildHealthPrompt(userId: string, now = Date.now()): { system: s
   if (moods.length) lines.push(`Check-ins de ánimo de hoy (1 = mal, 5 = muy bien): ${moods.join(", ")}.`);
 
   const score = scoresFor(userId, now).today;
-  if (score) lines.push(`Puntaje build101 de hoy: ${score.score}/100${score.isPartial ? " (parcial: falta alguna parte)" : ""}${tag}.`);
+  if (score) lines.push(`Recuperación de hoy (0–100): ${score.score}/100${score.isPartial ? " (parcial: falta alguna parte)" : ""}${tag}.`);
 
   // Los modelos pesan más el cierre: lo último que pasó va al final para que se note el cambio en vivo.
   const lastMeal = meals.at(-1);
@@ -85,7 +85,7 @@ export function buildHealthPrompt(userId: string, now = Date.now()): { system: s
       { label: "días con pulso/HRV", value: heartDays },
       { label: "comidas hoy", value: meals.length },
       { label: "check-ins hoy", value: moods.length },
-      { label: "puntaje build101", value: score ? 1 : 0 },
+      { label: "recuperación del día", value: score ? 1 : 0 },
     ],
   };
 }
