@@ -22,11 +22,10 @@ db.run(sql`CREATE TABLE IF NOT EXISTS profiles (
   tint TEXT NOT NULL,
   updated_at TEXT NOT NULL
 )`);
-// La tabla ya existe en el NAS sin esta columna: se agrega una vez (si ya está, SQLite tira "duplicate column").
-try {
+// La tabla ya existe en el NAS sin esta columna: se agrega una sola vez, solo si falta.
+const profileColumns = db.all<{ name: string }>(sql`PRAGMA table_info(profiles)`);
+if (!profileColumns.some((c) => c.name === "share_score")) {
   db.run(sql`ALTER TABLE profiles ADD COLUMN share_score INTEGER NOT NULL DEFAULT 0`);
-} catch (error) {
-  if (!String(error).includes("duplicate column")) throw error;
 }
 
 export type Look = { buddy: BuddyId; tint: TintId; shareScore: boolean };
