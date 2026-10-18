@@ -59,7 +59,9 @@ export default async function SaludPage() {
     );
   }
 
-  const night = getLastNight(user.id);
+  const recentNight = getLastNight(user.id);
+  // si el reloj no sincronizó anoche, se muestra la última noche que haya, rotulada como tal (no como "anoche")
+  const night = recentNight ?? getLastNight(user.id, null);
   const vitals = recentVitals(getCross(user.id).series);
   if (!night) {
     return (
@@ -93,7 +95,7 @@ export default async function SaludPage() {
 
       <FoodPanels userId={user.id} />
 
-      <Panel label="sueño · anoche" meta={`${night.start} → ${night.end}`}>
+      <Panel label={recentNight ? "sueño · anoche" : "sueño · última registrada"} meta={`${night.start} → ${night.end}`}>
         <p className="font-mono text-[28px] font-semibold leading-none tracking-tight">
           <DurationCount minutes={asleep} />
           <span className="ml-1.5 text-sm font-normal tracking-normal text-dim">dormido</span>

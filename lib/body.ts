@@ -87,12 +87,13 @@ function parseNight(data: Record<string, unknown>): Night | null {
 // Lee la última noche real de raw_events (source "google", kind "sleep"); si no hay, null (estado vacío en la UI).
 const LAST_NIGHT_MAX_H = 36;
 
-export function getLastNight(userId: string): Night | null {
+/** `maxAgeH` null = la última que haya, sin importar cuándo (Salud la muestra rotulada como "última registrada"). */
+export function getLastNight(userId: string, maxAgeH: number | null = LAST_NIGHT_MAX_H): Night | null {
   try {
     // Siempre filtrada por usuario: sin userId devolvería la noche de cualquiera.
     // "anoche" = una noche de las últimas 36 h: una noche vieja (el reloj no sincronizó) no se muestra como de anoche
-    const since = new Date(Date.now() - LAST_NIGHT_MAX_H * 3600_000).toISOString();
-    const where = and(eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), eq(rawEvents.userId, userId), gte(rawEvents.ts, since));
+    const since = maxAgeH === null ? undefined : gte(rawEvents.ts, new Date(Date.now() - maxAgeH * 3600_000).toISOString());
+    const where = and(eq(rawEvents.source, "google"), eq(rawEvents.kind, "sleep"), eq(rawEvents.userId, userId), since);
     const row = db.select().from(rawEvents).where(where).orderBy(desc(rawEvents.ts)).limit(1).get();
     if (row) return parseNight(JSON.parse(row.json));
   } catch (error) {

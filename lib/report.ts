@@ -59,7 +59,7 @@ export function reportMetrics(userId: string): { metrics: Metric[]; crosses: str
     azm ? { key: "activo", label: "Minutos activos", value: String(azm), kind: "salud" } : null,
     today.mood !== null ? { key: "animo", label: "Ánimo (check-in)", value: `${today.mood}/5`, kind: "ánimo" } : null,
   ];
-  return { metrics: metrics.filter((m): m is Metric => m !== null), crosses: cross.insights.slice(0, 2).map((i) => i.text) };
+  return { metrics: metrics.filter((m): m is Metric => m !== null), crosses: cross.insights.filter((i) => !i.isHypothesis).slice(0, 2).map((i) => i.text) };
 }
 
 /** Genera la vista previa con IA. Sin IA no hay reporte (no hay plantilla de reemplazo, a propósito). */

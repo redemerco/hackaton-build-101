@@ -25,6 +25,13 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return data;
 }
 
+// "6h55" o "140" en el texto = ese dato ya está escrito. Tokens cortos ("0", "58") no: darían falsos avisos.
+const QUOTE_MIN = 3;
+const isQuoted = (text: string, value: string) => {
+  const token = value.split(" ")[0];
+  return token.length >= QUOTE_MIN && text.includes(token);
+};
+
 /** Vista previa con la misma forma que el mensaje de Slack: lo que ves es lo que llega. Las métricas se prenden y apagan acá. */
 function SlackPreview({ name, preview, shared, withNote, isSimulated, onToggle, onToggleNote }: {
   name: string;
@@ -38,7 +45,9 @@ function SlackPreview({ name, preview, shared, withNote, isSimulated, onToggle, 
   const { report, metrics, note } = preview;
   const risk = RISK_STYLE[report.riesgo];
   // si apagás una ficha que el texto de la IA ya cita, el dato sigue en la frase: se avisa en vez de esconderlo
-  const citedButOff = metrics.filter((m) => report.metricsUsed.includes(m.key) && !shared.has(m.key));
+  // también si el valor aparece en el texto aunque la IA no haya declarado la clave
+  const text = [report.titular, ...report.observaciones, report.pedido].join(" ");
+  const citedButOff = metrics.filter((m) => !shared.has(m.key) && (report.metricsUsed.includes(m.key) || isQuoted(text, m.value)));
   return (
     <div className="grid gap-2.5 rounded-xl border border-white/10 bg-[#1a1d21] p-3.5 text-[14px] leading-snug text-[#d1d2d3]">
       <p className="flex items-center gap-2 text-[13px]">
