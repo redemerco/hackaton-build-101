@@ -308,6 +308,11 @@ dialog[data-sheet][data-state="closing"]::backdrop { opacity: 0; transition: opa
 
 /* Flash de obturador al elegir la foto: solo opacity, 260ms. */
 @keyframes camera-flash { from { opacity: 0.85; } to { opacity: 0; visibility: hidden; } }
+.scan-beam { top: 0; background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--food) 45%, transparent) 85%, var(--food)); mix-blend-mode: screen; animation: scan-beam 1.3s ease-in-out infinite alternate; }
+@keyframes scan-beam { from { top: -4rem; } to { top: 100%; } }
+.scan-corner { animation: scan-corner 0.9s ease-in-out infinite; }
+@keyframes scan-corner { 0%, 100% { opacity: 1; scale: 1; } 50% { opacity: 0.45; scale: 0.88; } }
+@media (prefers-reduced-motion: reduce) { .scan-beam, .scan-corner { animation: none; } }
 .camera-flash { position: fixed; inset: 0; z-index: 70; background: #fff; pointer-events: none; animation: camera-flash 260ms ease-out forwards; }
 
 /* ---------- daemon (components/daemon) ---------- */

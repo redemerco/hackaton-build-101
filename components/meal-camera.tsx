@@ -3,9 +3,9 @@
 import { useEffect, useId, useState } from "react";
 import { CameraIcon } from "lucide-react";
 import { toast } from "sonner";
-import { AsciiScan } from "@/components/ascii/ascii-scan";
 import { Decode } from "@/components/ascii/count";
 import { Spinner } from "@/components/ascii/spinner";
+import { PixelScan } from "@/components/pixel-scan";
 import { StreamText } from "@/components/ascii/stream-text";
 import { Sheet } from "@/components/glass/sheet";
 import { reactDaemon } from "@/lib/daemon-events";
@@ -15,7 +15,7 @@ import { formatRange, scaleItem, totalKcal, type MealAnalysis, type MealItem } f
 const MAX_BYTES = 10 * 1024 * 1024;
 
 /**
- * Burbuja de cámara → foto → hoja con el escaneo ASCII → ítems en gramos y rangos de kcal.
+ * Burbuja de cámara → foto → hoja con el escaneo en mosaico pixel → ítems en gramos y rangos de kcal.
  * Usa <input capture> (no getUserMedia: tiene bugs en PWAs standalone de iOS).
  * Analiza con /api/comer/analizar (Gemini) y "Guardar" escribe la comida en raw_events (app/actions/meal.ts).
  * Sin respuesta válida se muestra el error, nunca datos de ejemplo.
@@ -98,8 +98,8 @@ export function MealCamera() {
       <Sheet open={isOpen} onClose={onClosed} title={isScanned ? "Tu plato" : "Analizando"} subtitle="Estimación desde la foto: siempre en rangos.">
         {photoUrl && (
           <div className="relative overflow-hidden rounded-xl bg-[#07080c] ring-1 ring-inset ring-white/10">
-            <AsciiScan src={photoUrl} onDone={() => setIsScanned(true)} className="block aspect-[5/4] w-full" />
-            <span className="glass absolute bottom-3 left-3 rounded-full px-3 py-1.5 font-mono text-[13px]">
+            <PixelScan src={photoUrl} onDone={() => setIsScanned(true)} className="block aspect-[5/4] w-full" />
+            <span className="glass absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1.5 font-mono text-[13px]">
               {isScanned && analysis ? `✓ ${analysis.items.length} ítems` : isScanned && error ? "✗ sin análisis" : <Spinner label="escaneando" className="font-mono text-[13px]" />}
             </span>
           </div>
