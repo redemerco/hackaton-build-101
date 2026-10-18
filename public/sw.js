@@ -3,12 +3,18 @@ self.addEventListener("push", (event) => {
   if (!event.data) return;
   const data = event.data.json();
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-      data: { url: data.url || "/" },
-    }),
+    Promise.all([
+      self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        data: { url: data.url || "/" },
+      }),
+      // Si la PWA está abierta, que se refresque sola (components/live-refresh.tsx escucha esto).
+      self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((wins) => wins.forEach((w) => w.postMessage({ type: "health-updated" }))),
+    ]),
   );
 });
 

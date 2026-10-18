@@ -16,6 +16,7 @@ import { getSourcesOverview } from "@/lib/connection-overview";
 import { getConnection } from "@/lib/connections";
 import { getCurrentUser } from "@/lib/users";
 import { LoginGate } from "@/components/login-gate";
+import { LiveRefresh } from "@/components/live-refresh";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </main>
             </div>
             <TabBar />
+            <LiveRefresh />
           </>
         )}
         <Toaster theme="dark" position="top-center" />
