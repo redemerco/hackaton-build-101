@@ -72,6 +72,6 @@ Next 16.4 con `cacheComponents` **apagado**: todas las páginas son dinámicas, 
 | Agente (Yo) | propone mover una reunión, bloquear foco o mandar el nudge | **Gemini** (JSON validado en el server); sin IA solo el nudge `[ejemplo]`, nunca mueve reuniones |
 | Cruces con papers (Yo) | 9 cruces fijos con umbral de días y efecto mínimo (`lib/insights.ts`) | **determinista** a propósito: la IA solo narra los que pasan el control |
 | Puntaje build101 y ranking (Semana) | 0–100 con sueño, HRV/pulso contra tu media y minutos activos (`lib/score.ts`) | determinista |
-| Datos de demo | `npm run seed:demo` | **simulados** y rotulados `[datos simulados]` en pantalla y en Slack |
+| Datos de demo | reales (Google Health, GitHub, Slack, Calendar, Linear) · `npm run demo:clear` borra lo simulado que haya quedado | si quedara algo simulado, se rotula `[datos simulados]` |
 
 Comprobación sencilla de calidad de la IA: `npm run eval:ai` (6 casos: forma, contradicción, día tranquilo, privacidad, sin diagnóstico, sin inventar métricas). Herramientas de desarrollo: el código se escribió con asistentes de IA (Claude Code).

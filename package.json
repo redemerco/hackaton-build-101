@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "smoke": "node scripts/smoke.mts",
-    "seed:demo": "node scripts/seed-demo.mts",
+    "demo:clear": "node scripts/clear-demo.mts",
     "eval:ai": "node scripts/eval-ai.mts",
     "test:agent": "node scripts/test-agent-rules.mts"
   },

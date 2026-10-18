@@ -19,7 +19,7 @@ export class ReportError extends Error {
 
 export const canSendToSlack = () => Boolean(process.env.SLACK_WEBHOOK_URL);
 
-/** ¿Hay datos de scripts/seed-demo.mts (_mock) en las últimas 6 semanas? Se rotula [datos simulados] en pantalla y en Slack. */
+/** ¿Hay datos de el viejo seed de demo (_mock) en las últimas 6 semanas? Se rotula [datos simulados] en pantalla y en Slack. */
 export function hasSimulatedData(userId: string): boolean {
   const since = new Date(Date.now() - 43 * 86400_000).toISOString();
   return Boolean(

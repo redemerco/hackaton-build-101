@@ -9,7 +9,7 @@ import { mean } from "@/lib/score";
 import type { SummaryCount } from "@/lib/summary";
 
 // Resumen daily de salud (IA): "cómo venís hoy de cuerpo". Solo datos reales de HOY (día local Montevideo);
-// lo simulado (scripts/seed-demo.mts) se rotula en el prompt. Lo consume /api/summary/health vía streamSummary.
+// lo simulado (el viejo seed de demo) se rotula en el prompt. Lo consume /api/summary/health vía streamSummary.
 
 const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });

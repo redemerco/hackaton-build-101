@@ -8,7 +8,7 @@ Reemplaza a los planes viejos (`PLAN.md`, `prompts/`, `docs/pantallas.md`), ya b
 2. OAuth por usuario de GitHub, Linear, Slack y Calendar (token aparte, `calendar.events.readonly`). Ingests en `lib/sources/*` escriben `raw_events`; `/api/sync/<fuente>`.
 3. Cámara → `/api/comer/analizar` (Gemini vision, JSON con rangos) → hoja con ítems y porciones. **La comida nunca se guarda** (`MealCamera.onSave` solo hace toast; no hay ningún `source: "meal"` escrito).
 4. Check-in de ánimo real (`source: "mood"`). Nudge calculado real (`lib/nudge.ts`, `/api/nudge`), pero ninguna UI hace el `POST`.
-5. Digest **semanal** en streaming con caché (`lib/digest.ts` + `/api/digest`), Wrapped con datos reales, ranking del equipo por puntaje build101 (`lib/score.ts`), `npm run seed:demo` rotulado `[datos simulados]`.
+5. Digest **semanal** en streaming con caché (`lib/digest.ts` + `/api/digest`), Wrapped con datos reales, ranking del equipo por puntaje build101 (`lib/score.ts`), demo con datos reales (`npm run demo:clear` borra lo simulado).
 6. UI "vidrio sobre terminal" completa, compañero pixel art por usuario, push (VAPID) con toggle en Ajustes, pull-to-sync (solo github+health).
 7. Pantallas: `/` Hoy · `/cuerpo` · `/comer` · `/trabajo` · `/semana` · `/semana/wrapped`. Tab bar con la cámara al centro.
 8. Ejemplos que todavía se presentan como reales: `today.insight` fijo con rótulo `gemini` (`app/page.tsx:75`), pulso/HRV/pasos de ejemplo dentro de noches reales (`lib/body.ts` `parseNight`), `EXAMPLE_DAY.week.sleepMin/mood` mezclados con commits reales (`lib/work.ts`), `[ejemplo · falta Calendar]` estático en Trabajo aunque Calendar esté conectado.
@@ -85,6 +85,6 @@ Rúbrica: producto funcionando 35 % (todo real end-to-end), problema y valor 25 
 | Reporte a Slack | crear un Incoming Webhook (api.slack.com/apps → Incoming Webhooks) a un canal **privado** de la demo → `SLACK_WEBHOOK_URL` en el NAS | sin la variable, el botón dice "Falta configurar Slack" (no se rompe nada) |
 | Comprobación de calidad de IA | `npm run eval:ai` en el NAS (o donde esté la key) → imprime **N/6** | en el pitch se dice el N real, nunca uno supuesto |
 | Caché de la IA | con wifi bueno, abrir Yo, Salud, Trabajo y Semana una vez y tocar ↻ en cada resumen: queda guardado y si Gemini cae en vivo se re-tipea rotulado `[cache · IA caída]` | sin esto, sin IA se ve el respaldo `[sin IA]` |
-| Datos de la demo | `npm run seed:demo` (rotulado `[datos simulados]`) · borrar con `npm run seed:demo -- --clear` | — |
+| Datos de la demo | **reales**: cada uno conecta Google Health, GitHub, Slack y Calendar en Ajustes · `npm run demo:clear` en el NAS borra lo simulado | — |
 
 Flujo estrella para el jurado: **Yo → "Contarle a mi equipo cómo vengo"** → el jurado escribe cómo se siente → la IA cruza la nota con las métricas (salud y ánimo solo si se prenden) → vista previa idéntica al mensaje → **Mandar a Slack**. Sin IA no hay reporte: es la parte donde la IA es indispensable.

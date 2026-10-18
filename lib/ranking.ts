@@ -22,7 +22,7 @@ export type RankRow = {
   name: string;
   isMe: boolean;
   look: Look; // personaje y color de esa persona
-  isSimulated: boolean; // datos de scripts/seed-demo.mts (se rotula en la UI)
+  isSimulated: boolean; // datos de el viejo seed de demo (se rotula en la UI)
   today: DayScore | null;
   week: { score: number; days: number } | null;
 };

@@ -14,7 +14,7 @@ export type Night = {
   hrvTypical: [number, number] | null;
   stepsByHour: number[]; // 08..19 (puede venir vacío)
   stageMinutes?: Record<SleepStage, number>; // minutos reales por etapa (del summary de Fitbit); si falta, se derivan de stages
-  isSimulated?: boolean; // noche de scripts/seed-demo.mts (_mock): se rotula [datos simulados]
+  isSimulated?: boolean; // noche de el viejo seed de demo (_mock): se rotula [datos simulados]
 };
 
 // Hora local del dato usando el offset que trae Google (ej. "-10800s" = UTC-3), no la del server.
