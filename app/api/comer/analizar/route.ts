@@ -1,11 +1,11 @@
-import { aiErrorReason, getAI, MODEL } from "@/lib/ai";
+import { aiErrorReason, generateJson } from "@/lib/ai";
 import type { MealAnalysis } from "@/lib/meals";
 
 export const maxDuration = 30;
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 // POST /api/comer/analizar  (body: multipart con campo "photo")
-// Manda la foto a Gemini y devuelve el análisis real de la comida (ítems en gramos + rangos de kcal).
+// Manda la foto a la IA (lib/ai.ts: ai-service de PiWS o Gemini directo) y devuelve el análisis real de la comida (ítems en gramos + rangos de kcal).
 const SYSTEM = `Sos un nutricionista que estima calorías a partir de una foto de comida.
 Devolvés SOLO un JSON válido, sin texto alrededor, con esta forma exacta:
 {"items":[{"name":"string en español","grams":[min,max],"kcal":[min,max]}],"comment":"una frase corta, útil y sin culpa"}
@@ -31,9 +31,16 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    const res = await generateWithRetry(mimeType, bytes.toString("base64"));
-    const raw = (res.text ?? "").trim();
-    const parsed = JSON.parse(raw) as Partial<MealAnalysis>;
+    // generateJson reintenta ante 503/429 y parsea; la imagen va como inlineData (→ image_url en ai-service)
+    const parsed = await generateJson<Partial<MealAnalysis>>({
+      config: { systemInstruction: SYSTEM },
+      contents: [
+        { role: "user", parts: [
+          { text: "Analizá esta comida." },
+          { inlineData: { mimeType, data: bytes.toString("base64") } },
+        ] },
+      ],
+    });
 
     // Normalización defensiva: garantizamos la forma que la UI espera.
     const items = Array.isArray(parsed.items)
@@ -53,32 +60,6 @@ export async function POST(req: Request): Promise<Response> {
     // 503 y no 502: detrás de Cloudflare un 502 pierde el cuerpo y no se ve el motivo
     return Response.json({ error: "No se pudo analizar la foto", reason: aiErrorReason(error) }, { status: 503 });
   }
-}
-
-// Reintenta ante picos transitorios de Gemini (503 UNAVAILABLE / 429). Backoff corto.
-async function generateWithRetry(mimeType: string, dataB64: string, tries = 3) {
-  let lastErr: unknown;
-  for (let i = 0; i < tries; i++) {
-    try {
-      return await getAI().models.generateContent({
-        model: MODEL,
-        config: { systemInstruction: SYSTEM, responseMimeType: "application/json" },
-        contents: [
-          { role: "user", parts: [
-            { text: "Analizá esta comida." },
-            { inlineData: { mimeType, data: dataB64 } },
-          ] },
-        ],
-      });
-    } catch (e) {
-      lastErr = e;
-      const msg = String(e);
-      const transient = msg.includes("503") || msg.includes("UNAVAILABLE") || msg.includes("429");
-      if (!transient || i === tries - 1) throw e;
-      await new Promise((r) => setTimeout(r, 800 * (i + 1)));
-    }
-  }
-  throw lastErr;
 }
 
 // Acepta [a,b], número suelto o basura → siempre un rango [min,max] de enteros.
