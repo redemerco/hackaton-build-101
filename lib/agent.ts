@@ -197,28 +197,11 @@ function buildPrompt(inp: Inputs): string {
   return lines.join("\n");
 }
 
-/** Sin IA: la reunión más próxima al pico de commits va justo después del pico; sin reuniones, el nudge. Rótulo [ejemplo]. */
+/**
+ * Sin IA: solo el nudge ya calculado, rotulado [ejemplo]. Mover reuniones queda reservado a la IA:
+ * una regla fija que reprograma tu agenda haría que la función principal no dependa de la IA (consigna).
+ */
 function deterministic(inp: Inputs): AgentAction[] {
-  const lead = inp.sleepMin !== null ? `Dormiste ${formatDuration(inp.sleepMin)} y tu pico` : "Tu pico";
-  const dayEnd = Date.parse(atLocal(inp.today, DAY_END_HOUR));
-  if (inp.peak && inp.upcoming.length) {
-    const peakMid = Date.parse(atLocal(inp.today, inp.peak.from + 1));
-    const m = [...inp.upcoming].sort((a, b) => Math.abs(a.start - peakMid) - Math.abs(b.start - peakMid))[0];
-    const candidates = [Date.parse(atLocal(inp.today, inp.peak.to)), Date.parse(atLocal(inp.today, inp.peak.from)) - m.durationMin * MIN];
-    const to = candidates.find((t) => t > inp.now && t !== m.start && t + m.durationMin * MIN <= dayEnd && !overlaps(t, t + m.durationMin * MIN, inp.meetings, m.id));
-    if (to !== undefined) {
-      return [{
-        id: crypto.randomUUID(),
-        type: "move_meeting",
-        eventId: m.id,
-        from: new Date(m.start).toISOString(),
-        to: new Date(to).toISOString(),
-        reason: `${lead} de commits es ${inp.peak.from}–${inp.peak.to} h: la reunión de las ${hhmm.format(new Date(m.start))} pasa a las ${hhmm.format(new Date(to))} para no cortarlo.`,
-        isSimulated: !isCalendarWriteOk(),
-        tag: "ejemplo",
-      }];
-    }
-  }
   if (inp.nudge) {
     return [{ id: crypto.randomUUID(), type: "send_nudge", reason: inp.nudge.body, isSimulated: false, tag: "ejemplo" }];
   }
