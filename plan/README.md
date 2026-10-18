@@ -76,3 +76,14 @@ Orden de corte inverso: P2 de todos → acciones reales de Calendar (quedan `[si
 | 2:45 | Cierre: "tus datos, tu dispositivo: con tu equipo solo compartís un puntaje. Nunca diagnóstico." | — | — |
 
 Rúbrica: producto funcionando 35 % (todo real end-to-end), problema y valor 25 % (hook + privacidad), **calidad de IA 20 %** (3 resúmenes con "datos usados" + cambio en vivo), experiencia 10 % (UI), originalidad 10 % (agente que actúa sobre tu agenda con tus datos de cuerpo).
+
+## Antes de la demo (dom 18-oct): checklist del NAS
+
+| Qué | Cómo | Si falla |
+|---|---|---|
+| IA andando | `GEMINI_API_KEY` en el entorno del NAS → abrir `/api/ai-status` → `"ok": true` | el campo `reason` dice qué arreglar |
+| Reporte a Slack | crear un Incoming Webhook (api.slack.com/apps → Incoming Webhooks) a un canal **privado** de la demo → `SLACK_WEBHOOK_URL` en el NAS | sin la variable, el botón dice "Falta configurar Slack" (no se rompe nada) |
+| Comprobación de calidad de IA | `npm run eval:ai` en el NAS (o donde esté la key) → imprime **N/6** | en el pitch se dice el N real, nunca uno supuesto |
+| Datos de la demo | `npm run seed:demo` (rotulado `[datos simulados]`) · borrar con `npm run seed:demo -- --clear` | — |
+
+Flujo estrella para el jurado: **Yo → "Contarle a mi equipo cómo vengo"** → el jurado escribe cómo se siente → la IA cruza la nota con las métricas (salud y ánimo solo si se prenden) → vista previa idéntica al mensaje → **Mandar a Slack**. Sin IA no hay reporte: es la parte donde la IA es indispensable.
