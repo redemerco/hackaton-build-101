@@ -1,29 +1,39 @@
 import type { Delta, ProjectShare, StressMap, Zone } from "@/lib/stress";
 
-// Mapa carga × cuerpo: cada día de la semana es un punto. Derecha = más carga que tu normal; arriba = el cuerpo mejor que tu normal.
-const SIZE = 200;
-const PAD = 14;
-const RANGE = 1.2; // 1,2 desvíos ya llegan al borde (más allá se pega al borde): los días se separan a la vista
-const NORMAL = 0.33; // el círculo del centro: lo mismo que NORMAL_BAND en lib/stress
-const edge = (v: number) => Math.max(-RANGE, Math.min(RANGE, v));
-const toX = (x: number) => SIZE / 2 + (edge(x) / RANGE) * (SIZE / 2 - PAD);
-const toY = (y: number) => SIZE / 2 - (edge(y) / RANGE) * (SIZE / 2 - PAD);
-const WEEKDAY = ["D", "L", "M", "X", "J", "V", "S"];
-const dayLetter = (day: string) => WEEKDAY[new Date(`${day}T12:00:00Z`).getUTCDay()];
+// Estrés de hoy en dos barras ASCII (como las del ranking): cuánta carga traés y cómo responde el cuerpo.
+// La mitad de cada barra es tu normal. El detalle (los números) queda plegado en "ver por qué".
+const CELLS = 14;
+const RANGE = 1.2; // a 1,2 desvíos de tu normal la barra se llena (o se vacía)
+const BAND = 0.33; // lo mismo que NORMAL_BAND en lib/stress: dentro de esto es "tu normal"
 
-const NORMAL_COLOR = "var(--mood)";
-const ZONE: Record<Exclude<Zone, "en tu normal">, { color: string; x: number; y: number; anchor: "start" | "end" }> = {
-  "en forma": { color: "var(--work)", x: PAD - 6, y: PAD + 2, anchor: "start" },
-  aguantando: { color: "var(--food)", x: SIZE - PAD + 6, y: PAD + 2, anchor: "end" },
-  "no es el trabajo": { color: "var(--sleep)", x: PAD - 6, y: SIZE - PAD + 4, anchor: "start" },
-  cuidado: { color: "var(--heart)", x: SIZE - PAD + 6, y: SIZE - PAD + 4, anchor: "end" },
+const ZONE_COLOR: Record<Zone, string> = {
+  "en tu normal": "var(--mood)",
+  "en forma": "var(--work)",
+  aguantando: "var(--food)",
+  cuidado: "var(--heart)",
+  "no es el trabajo": "var(--sleep)",
 };
-const QUADRANTS: { zone: Exclude<Zone, "en tu normal">; x: number; y: number }[] = [
-  { zone: "en forma", x: 0, y: 0 },
-  { zone: "aguantando", x: SIZE / 2, y: 0 },
-  { zone: "no es el trabajo", x: 0, y: SIZE / 2 },
-  { zone: "cuidado", x: SIZE / 2, y: SIZE / 2 },
-];
+
+const cellsOf = (z: number) => Math.round(((Math.max(-RANGE, Math.min(RANGE, z)) + RANGE) / (2 * RANGE)) * CELLS);
+const bar = (z: number) => "█".repeat(cellsOf(z)) + "░".repeat(CELLS - cellsOf(z));
+const levelOf = (z: number) => (z <= -BAND ? 0 : z >= BAND ? 2 : 1);
+
+type Three = [string, string, string];
+const LOAD_WORDS: Three = ["liviana", "normal", "alta"];
+const LOAD_COLORS: Three = ["var(--work)", "var(--mood)", "var(--food)"];
+const BODY_WORDS: Three = ["tenso", "normal", "bien"];
+const BODY_COLORS: Three = ["var(--heart)", "var(--mood)", "var(--work)"];
+
+function Meter({ label, z, words, colors }: { label: string; z: number; words: Three; colors: Three }) {
+  const i = levelOf(z);
+  return (
+    <p className="grid grid-cols-[4.5rem_auto_1fr] items-baseline gap-3">
+      <span className="text-[13px] text-dim">{label}</span>
+      <span aria-hidden className="font-mono text-[15px] leading-none tracking-[1px]" style={{ color: colors[i] }}>{bar(z)}</span>
+      <span className="text-[14px] font-medium" style={{ color: colors[i] }}>{words[i]}</span>
+    </p>
+  );
+}
 
 function Deltas({ title, items }: { title: string; items: Delta[] }) {
   return (
@@ -33,7 +43,7 @@ function Deltas({ title, items }: { title: string; items: Delta[] }) {
         items.map((d) => (
           <p key={d.label} className="flex items-baseline justify-between gap-2 text-[13px]">
             <span className="text-dim">{d.label}</span>
-            <span className={`font-mono font-semibold tabular-nums ${d.isGood ? "text-work" : "text-heart"}`}>{d.text}</span>
+            <span className={`font-mono tabular-nums ${d.isGood ? "text-work" : "text-heart"}`}>{d.text}</span>
           </p>
         ))
       ) : (
@@ -45,105 +55,50 @@ function Deltas({ title, items }: { title: string; items: Delta[] }) {
 
 function Projects({ items }: { items: ProjectShare[] }) {
   return (
-    <div className="grid gap-1.5 border-t border-white/10 pt-3">
+    <div className="grid gap-1">
       <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-faint">dónde se fue tu semana</p>
       {items.map((p) => (
-        <p key={p.name} className="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-2 text-[13px]">
-          <span className="truncate">{p.name}</span>
-          <span className="h-2 overflow-hidden rounded-full bg-white/[.06]">
-            <span className="block h-full rounded-full bg-work" style={{ width: `${Math.round(p.share * 100)}%` }} />
-          </span>
-          <span className="font-mono tabular-nums text-dim">{Math.round(p.share * 100)}%</span>
+        <p key={p.name} className="flex items-baseline justify-between gap-2 text-[13px]">
+          <span className="truncate text-dim">{p.name}</span>
+          <span className="font-mono tabular-nums">{Math.round(p.share * 100)}%</span>
         </p>
       ))}
     </div>
   );
 }
 
-/** Estrés de hoy: tu carga de trabajo de las últimas 24 h contra cómo está tu cuerpo hoy, los dos contra tu normal. */
+/** Estrés de hoy: tu carga de trabajo (últimas 24 h) contra cómo está tu cuerpo hoy, los dos contra tu normal. */
 export function StressMapView({ map, projects }: { map: StressMap; projects: ProjectShare[] }) {
   if (!map.zone || !map.today) {
     return (
-      <div className="grid gap-2">
-        <p className="text-[15px] leading-relaxed text-dim">Todavía no alcanza para saber tu normal y compararte contra ella.</p>
+      <div className="grid gap-1.5">
+        <p className="text-[15px] leading-relaxed text-dim">Todavía no conocemos tu normal para compararte.</p>
         <p className="font-mono text-[12px] text-faint">{map.need}</p>
-        {projects.length > 0 && <Projects items={projects} />}
       </div>
     );
   }
-  const today = map.today;
-  const color = map.zone === "en tu normal" ? NORMAL_COLOR : ZONE[map.zone].color;
-
+  const { x, y } = map.today;
   return (
-    <div className="grid gap-3">
-      <div className="grid gap-1">
-        <p className="font-pixel text-[26px] leading-none" style={{ color }}>{map.zone}</p>
+    <div className="grid gap-3.5">
+      <div className="grid gap-1.5">
+        <p className="font-pixel text-[26px] leading-none" style={{ color: ZONE_COLOR[map.zone] }}>{map.zone}</p>
         <p className="text-[15px] leading-relaxed text-pretty">{map.verdict}</p>
-        <p className="text-[12px] leading-snug text-dim">
-          Medimos tu <b className="font-medium text-foreground/90">carga de trabajo de las últimas 24 h</b> y cómo está tu <b className="font-medium text-foreground/90">cuerpo hoy</b> (sueño de anoche, HRV y pulso), cada uno contra tu normal.
-        </p>
       </div>
 
-      <div className="grid grid-cols-[auto_1fr] gap-x-2">
-        <div aria-hidden className="grid grid-rows-2 text-[10px] font-medium uppercase tracking-[0.08em] text-faint">
-          <span className="self-start [writing-mode:vertical-rl] rotate-180">cuerpo bien</span>
-          <span className="self-end [writing-mode:vertical-rl] rotate-180">cuerpo tenso</span>
+      <div className="grid gap-2" role="img" aria-label={`Carga: ${LOAD_WORDS[levelOf(x)]}. Cuerpo: ${BODY_WORDS[levelOf(y)]}.`}>
+        <Meter label="carga" z={x} words={LOAD_WORDS} colors={LOAD_COLORS} />
+        <Meter label="cuerpo" z={y} words={BODY_WORDS} colors={BODY_COLORS} />
+      </div>
+
+      <details className="group border-t border-white/10 pt-3">
+        <summary className="cursor-pointer list-none font-mono text-[12px] text-faint group-open:text-dim">ver por qué ▾</summary>
+        <div className="mt-2.5 grid grid-cols-2 gap-3">
+          <Deltas title="trabajo · 24 h" items={map.load} />
+          <Deltas title="cuerpo · hoy" items={map.body} />
         </div>
-        <div className="grid gap-1">
-          <svg
-            viewBox={`0 0 ${SIZE} ${SIZE}`}
-            className="block aspect-square w-full max-w-[340px] justify-self-center"
-            role="img"
-            aria-label={`Mapa de estrés: esta semana ${map.zone}. ${map.verdict}`}
-          >
-            {QUADRANTS.map((q) => (
-              <rect key={q.zone} x={q.x} y={q.y} width={SIZE / 2} height={SIZE / 2} fill={ZONE[q.zone].color} opacity={q.zone === map.zone ? 0.16 : 0.05} />
-            ))}
-            <rect x={SIZE / 2 - 0.5} y={0} width={1} height={SIZE} fill="rgb(255 255 255 / .18)" />
-            <rect x={0} y={SIZE / 2 - 0.5} width={SIZE} height={1} fill="rgb(255 255 255 / .18)" />
-            {QUADRANTS.map((q) => (
-              <text
-                key={`t${q.zone}`}
-                x={ZONE[q.zone].x}
-                y={ZONE[q.zone].y}
-                textAnchor={ZONE[q.zone].anchor}
-                className="font-mono"
-                fontSize={8.5}
-                fill={ZONE[q.zone].color}
-                opacity={q.zone === map.zone ? 1 : 0.55}
-              >
-                {q.zone}
-              </text>
-            ))}
-            {/* los días anteriores: solo referencia, chiquitos */}
-            {map.past.map((p) => (
-              <circle key={p.day} cx={toX(p.x)} cy={toY(p.y)} r={2.5} fill="rgb(255 255 255 / .35)">
-                <title>{dayLetter(p.day)}</title>
-              </circle>
-            ))}
-            {/* tu normal: el centro */}
-            <circle cx={SIZE / 2} cy={SIZE / 2} r={(NORMAL / RANGE) * (SIZE / 2 - PAD)} fill="none" stroke="rgb(255 255 255 / .3)" strokeDasharray="1.5 2" />
-            <g>
-              <circle cx={toX(today.x)} cy={toY(today.y)} r={15} fill={color} opacity={0.25} />
-              <circle cx={toX(today.x)} cy={toY(today.y)} r={10} fill={color} />
-              <text x={toX(today.x)} y={toY(today.y) + 2.8} textAnchor="middle" className="font-mono" fontSize={8} fontWeight={700} fill="var(--background)">hoy</text>
-            </g>
-          </svg>
-          <p aria-hidden className="flex justify-between font-mono text-[10px] uppercase tracking-[0.08em] text-faint">
-            <span>poca carga</span>
-            <span>mucha carga →</span>
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3">
-        <Deltas title="carga · últimas 24 h" items={map.load} />
-        <Deltas title="cuerpo · hoy" items={map.body} />
-      </div>
-
-      {projects.length > 0 && <Projects items={projects} />}
-
-      <p className="font-mono text-[11px] text-faint">el círculo del centro es tu normal (media de 6 semanas) · los puntitos son tus días anteriores · observación, no diagnóstico médico</p>
+        {projects.length > 0 && <div className="mt-3"><Projects items={projects} /></div>}
+        <p className="mt-3 font-mono text-[11px] text-faint">la mitad de cada barra es tu normal (6 semanas) · observación, no diagnóstico</p>
+      </details>
     </div>
   );
 }
