@@ -1,146 +1,113 @@
 import { formatDuration } from "@/lib/ascii";
 import type { Hour, Hourly } from "@/lib/hourly";
 
-// Tu día en espejo: una columna por hora. Arriba del eje el trabajo, abajo el cuerpo. Bloques pixel, como el resto.
+// Tu día en carriles: una fila por tipo de dato, todas sobre la misma línea de 24 horas.
+// Cada carril dice qué es y cuánto sumó: no hace falta leyenda, y se ve qué se pisa con qué en la misma hora.
 const HOURS = 24;
-const COL = 10; // ancho de cada hora en el viewBox
-const BAR = 7; // ancho de la barra dentro de la columna
-const SEG = 6; // alto de un bloque
-const GAP = 2;
-const UP_SEGS = 9;
-const DOWN_SEGS = 7;
-const AXIS_Y = UP_SEGS * (SEG + GAP) + 4;
-const HEIGHT = AXIS_Y + 6 + DOWN_SEGS * (SEG + GAP);
-const WIDTH = HOURS * COL;
 const AXIS_LABELS = [0, 6, 12, 18, 24];
+const MIN_OPACITY = 0.3;
 
-const work = (h: Hour) => h.commits * 2 + h.messages * 0.4;
-const segsFor = (value: number, max: number, total: number) => (value <= 0 ? 0 : Math.max(1, Math.round((value / Math.max(max, 1e-9)) * total)));
+const pad = (n: number) => String(n).padStart(2, "0");
+const sum = (hours: Hour[], f: (h: Hour) => number) => hours.reduce((n, h) => n + f(h), 0);
 
-function Column({ h, maxWork, maxAzm, isFuture }: { h: Hour; maxWork: number; maxAzm: number; isFuture: boolean }) {
-  const x = h.hour * COL + (COL - BAR) / 2;
-  const up = isFuture ? 0 : segsFor(work(h), maxWork, UP_SEGS);
-  const azm = isFuture ? 0 : segsFor(h.azm, Math.max(maxAzm, 15), DOWN_SEGS);
-  return (
-    <g>
-      {/* en reunión: franja de fondo en la mitad de trabajo, más fuerte cuanto más de la hora ocupa */}
-      {h.meetingMin > 0 && !isFuture && (
-        <rect x={h.hour * COL} y={0} width={COL} height={AXIS_Y - 2} fill="var(--work)" opacity={0.12 + 0.28 * Math.min(1, h.meetingMin / 60)} />
-      )}
-      {Array.from({ length: up }, (_, i) => (
-        <rect key={`w${i}`} x={x} y={AXIS_Y - 4 - (i + 1) * (SEG + GAP) + GAP} width={BAR} height={SEG} fill="var(--work)" />
-      ))}
-      {/* dormido: la columna entera hacia abajo */}
-      {h.asleep &&
-        Array.from({ length: DOWN_SEGS }, (_, i) => (
-          <rect key={`s${i}`} x={x} y={AXIS_Y + 6 + i * (SEG + GAP)} width={BAR} height={SEG} fill="var(--sleep)" opacity={0.75} />
-        ))}
-      {!h.asleep &&
-        Array.from({ length: azm }, (_, i) => (
-          <rect key={`a${i}`} x={x} y={AXIS_Y + 6 + i * (SEG + GAP)} width={BAR} height={SEG} fill="var(--heart)" />
-        ))}
-      {h.meals > 0 && <rect x={h.hour * COL + COL / 2 - 3} y={AXIS_Y - 3} width={6} height={6} fill="var(--food)" transform={`rotate(45 ${h.hour * COL + COL / 2} ${AXIS_Y})`} />}
-      {isFuture && <rect x={h.hour * COL + COL / 2 - 0.75} y={AXIS_Y - 0.75} width={1.5} height={1.5} fill="rgb(255 255 255 / .25)" />}
-    </g>
-  );
+type Lane = {
+  name: string;
+  total: string | null;
+  note: string | null;
+  color: string;
+  /** 0..1 por hora: cuánto de esa hora ocupa el dato (0 = nada) */
+  fill: (h: Hour) => number;
+  /** true: la intensidad es el ancho de la celda (minutos de la hora); false: la opacidad */
+  isWidth?: boolean;
+};
+
+function peakOf(hours: Hour[], f: (h: Hour) => number): string | null {
+  const best = hours.reduce((a, h) => (f(h) > f(a) ? h : a), hours[0]);
+  return f(best) > 0 ? `pico ${pad(best.hour)}–${pad(best.hour + 1)} h` : null;
 }
 
-const hourRange = (from: number, to: number) => `${String(from).padStart(2, "0")}–${String(to).padStart(2, "0")} h`;
-
-/** Los números grandes de arriba: lo que se lee sin mirar la gráfica. */
-function stats(hours: Hour[]) {
-  const commits = hours.reduce((n, h) => n + h.commits, 0);
-  const peak = hours.reduce((best, h) => (work(h) > work(best) ? h : best), hours[0]);
-  const meetingMin = hours.reduce((n, h) => n + h.meetingMin, 0);
-  const azm = hours.reduce((n, h) => n + h.azm, 0);
-  // el bloque de sueño de la mañana (el que empieza más temprano en el día)
+function lanes(hours: Hour[], sleepMin: number | null): Lane[] {
+  const max = (f: (h: Hour) => number) => Math.max(...hours.map(f), 1e-9);
+  const commits = sum(hours, (h) => h.commits);
+  const messages = sum(hours, (h) => h.messages);
+  const meetingMin = sum(hours, (h) => h.meetingMin);
+  const azm = sum(hours, (h) => h.azm);
+  const meals = sum(hours, (h) => h.meals);
+  // el bloque de sueño de la mañana: desde la primera hora dormida hasta que se corta
   const asleep = hours.filter((h) => h.asleep).map((h) => h.hour);
   let wake = asleep[0] ?? null;
   while (wake !== null && asleep.includes(wake + 1)) wake++;
-  return {
-    code: commits ? { big: String(commits), small: `commits · pico ${hourRange(peak.hour, peak.hour + 1)}` } : null,
-    meetings: meetingMin ? { big: formatDuration(meetingMin), small: "de reuniones" } : null,
-    sleep: asleep.length ? { big: `${String(wake! + 1).padStart(2, "0")} h`, small: "te despertaste" } : null,
-    active: azm ? { big: String(azm), small: "min activos" } : null,
-  };
+  const maxCommits = max((h) => h.commits);
+  const maxMessages = max((h) => h.messages);
+  const maxAzm = Math.max(max((h) => h.azm), 15);
+  return [
+    {
+      name: "sueño",
+      total: sleepMin ? formatDuration(sleepMin) : asleep.length ? `${asleep.length} h` : null,
+      note: wake !== null ? `despertaste ${pad(wake + 1)} h` : null,
+      color: "var(--sleep)",
+      fill: (h) => (h.asleep ? 1 : 0),
+    },
+    { name: "reuniones", total: meetingMin ? formatDuration(meetingMin) : null, note: null, color: "var(--mood)", fill: (h) => Math.min(1, h.meetingMin / 60), isWidth: true },
+    { name: "commits", total: commits ? String(commits) : null, note: peakOf(hours, (h) => h.commits), color: "var(--work)", fill: (h) => h.commits / maxCommits },
+    { name: "slack", total: messages ? String(messages) : null, note: null, color: "var(--work)", fill: (h) => h.messages / maxMessages },
+    { name: "activo", total: azm ? `${azm}′` : null, note: null, color: "var(--heart)", fill: (h) => Math.min(1, h.azm / maxAzm) },
+    { name: "comidas", total: meals ? String(meals) : null, note: null, color: "var(--food)", fill: (h) => (h.meals > 0 ? 1 : 0) },
+  ];
 }
 
-function Stat({ big, small, color }: { big: string; small: string; color: string }) {
+function Cell({ value, color, isWidth, isFuture }: { value: number; color: string; isWidth?: boolean; isFuture: boolean }) {
+  if (isFuture || value <= 0) return <span className={isFuture ? "rounded-[2px] bg-white/[.025]" : "rounded-[2px] bg-white/[.06]"} />;
   return (
-    <div className="grid min-w-0 gap-0.5">
-      <span className="font-mono text-[22px] font-semibold leading-none tabular-nums" style={{ color }}>{big}</span>
-      <span className="truncate text-[12px] text-dim">{small}</span>
-    </div>
+    <span className="relative overflow-hidden rounded-[2px] bg-white/[.06]">
+      <span
+        className="absolute inset-y-0 left-0"
+        style={{ background: color, width: isWidth ? `${Math.max(25, value * 100)}%` : "100%", opacity: isWidth ? 1 : MIN_OPACITY + (1 - MIN_OPACITY) * value }}
+      />
+    </span>
   );
 }
 
-const LEGEND = [
-  { label: "código y Slack", color: "var(--work)", shape: "square" },
-  { label: "en reunión", color: "var(--work)", shape: "band" },
-  { label: "dormido", color: "var(--sleep)", shape: "square" },
-  { label: "activo", color: "var(--heart)", shape: "square" },
-  { label: "comida", color: "var(--food)", shape: "diamond" },
-] as const;
-
-/** Tu día por hora: trabajo arriba del eje, cuerpo abajo. La misma hora en la misma columna, para ver qué se pisa con qué. */
-export function CrossChart({ day, nowHour }: { day: Hourly; nowHour: number }) {
-  const maxWork = Math.max(...day.hours.map(work));
-  const maxAzm = Math.max(...day.hours.map((h) => h.azm));
-  const s = stats(day.hours.filter((h) => h.hour <= nowHour));
-  const tiles = [
-    s.code && { ...s.code, color: "var(--work)" },
-    s.meetings && { ...s.meetings, color: "var(--work)" },
-    s.sleep && { ...s.sleep, color: "var(--sleep)" },
-    s.active && { ...s.active, color: "var(--heart)" },
-  ].filter(Boolean) as { big: string; small: string; color: string }[];
+/** Tu día por hora: un carril por dato (sueño, reuniones, commits, Slack, actividad, comidas) sobre las mismas 24 h. */
+export function CrossChart({ day, nowHour, sleepMin = null }: { day: Hourly; nowHour: number; sleepMin?: number | null }) {
+  const past = day.hours.filter((h) => h.hour <= nowHour);
+  const rows = lanes(past, sleepMin);
+  const nowLeft = `${((nowHour + 0.5) / HOURS) * 100}%`;
 
   return (
-    <div className="grid gap-3">
-      {tiles.length > 0 && (
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4">
-          {tiles.map((t) => <Stat key={t.small} {...t} />)}
-        </div>
-      )}
-
-      <div className="grid grid-cols-[auto_1fr] gap-x-2">
-        <div aria-hidden className="grid text-[10px] font-medium uppercase tracking-[0.08em] text-faint" style={{ gridTemplateRows: `${AXIS_Y}fr ${HEIGHT - AXIS_Y}fr` }}>
-          <span className="self-center [writing-mode:vertical-rl] rotate-180">trabajo</span>
-          <span className="self-center [writing-mode:vertical-rl] rotate-180">cuerpo</span>
-        </div>
-        <div className="relative">
-          <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="block h-auto w-full" shapeRendering="crispEdges" role="img" aria-label={`Tu día por hora. ${tiles.map((t) => `${t.big} ${t.small}`).join(", ")}`}>
-            {/* guías cada 6 h */}
-            {[6, 12, 18].map((g) => <rect key={g} x={g * COL} y={0} width={0.5} height={HEIGHT} fill="rgb(255 255 255 / .06)" />)}
-            {day.hours.map((h) => <Column key={h.hour} h={h} maxWork={maxWork} maxAzm={maxAzm} isFuture={h.hour > nowHour} />)}
-            <rect x={0} y={AXIS_Y - 0.5} width={WIDTH} height={1} fill="rgb(255 255 255 / .22)" />
-            {/* ahora */}
-            <rect x={(nowHour + 0.5) * COL - 0.75} y={0} width={1.5} height={HEIGHT} fill="var(--mood)" opacity={0.9} />
-          </svg>
-          <span className="absolute -top-0.5 rounded-sm bg-mood px-1 font-mono text-[10px] font-semibold leading-tight text-background" style={{ left: `calc(${((nowHour + 0.5) / HOURS) * 100}% - 15px)` }}>
-            ahora
+    <div className="grid grid-cols-[minmax(84px,auto)_1fr] gap-x-3">
+      <span />
+      <div aria-hidden className="relative mb-1.5 h-4 font-mono text-[11px] tabular-nums text-dim">
+        {AXIS_LABELS.map((h) => (
+          <span key={h} className="absolute top-0 -translate-x-1/2 first:translate-x-0 last:-translate-x-full" style={{ left: `${(h / HOURS) * 100}%` }}>
+            {pad(h % 24)}
           </span>
-          <div aria-hidden className="relative mt-1 h-4 font-mono text-[11px] tabular-nums text-dim">
-            {AXIS_LABELS.map((h) => (
-              <span key={h} className="absolute top-0 -translate-x-1/2 first:translate-x-0 last:-translate-x-full" style={{ left: `${(h / HOURS) * 100}%` }}>
-                {String(h % 24).padStart(2, "0")}
-              </span>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
 
-      <ul className="flex flex-wrap gap-x-3.5 gap-y-1.5 text-[12px] text-dim" aria-label="Referencias">
-        {LEGEND.map((l) => (
-          <li key={l.label} className="flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className={l.shape === "diamond" ? "size-2 rotate-45" : l.shape === "band" ? "h-3 w-2.5 opacity-40" : "size-2.5"}
-              style={{ background: l.color }}
-            />
-            {l.label}
-          </li>
-        ))}
-      </ul>
+      {rows.map((l) => (
+        <div key={l.name} className="contents" role="group" aria-label={`${l.name}: ${l.total ?? "sin datos hoy"}${l.note ? `, ${l.note}` : ""}`}>
+          <div className="grid content-center gap-px py-1.5">
+            <p className="flex items-baseline gap-1.5 leading-none">
+              <span className="text-[13px] text-dim">{l.name}</span>
+              <span className="font-mono text-[15px] font-semibold tabular-nums" style={{ color: l.total ? l.color : undefined }}>{l.total ?? <span className="text-faint">—</span>}</span>
+            </p>
+            {l.note && <span className="font-mono text-[11px] leading-tight text-faint">{l.note}</span>}
+          </div>
+          <div aria-hidden className="relative grid items-stretch gap-px py-1.5" style={{ gridTemplateColumns: `repeat(${HOURS}, 1fr)` }}>
+            {day.hours.map((h) => <Cell key={h.hour} value={l.fill(h)} color={l.color} isWidth={l.isWidth} isFuture={h.hour > nowHour} />)}
+            {/* ahora: la misma línea cruza todos los carriles */}
+            <span className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-mood" style={{ left: nowLeft }} />
+          </div>
+        </div>
+      ))}
+
+      <span />
+      <div aria-hidden className="relative mt-1 h-4">
+        <span className="absolute top-0 -translate-x-1/2 rounded-sm bg-mood px-1 font-mono text-[10px] font-semibold leading-tight text-background" style={{ left: nowLeft }}>
+          ahora
+        </span>
+      </div>
     </div>
   );
 }

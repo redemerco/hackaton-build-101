@@ -161,7 +161,7 @@ export default async function Yo() {
       </div>
 
       <Panel label="tu día · por hora" meta={isSimulated ? "[datos simulados]" : "hoy"}>
-        <CrossChart day={cross.today} nowHour={cross.nowHour} />
+        <CrossChart day={cross.today} nowHour={cross.nowHour} sleepMin={today.sleepMin} />
       </Panel>
 
       <Summary label="hoy, en una" src="/api/summary/me" counts={buildMePrompt(user.id, today, cross).counts} fallback={meFallback(today, cross)} />
