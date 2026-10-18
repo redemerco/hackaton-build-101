@@ -404,9 +404,14 @@ export async function proposeActions(userId: string, now = Date.now()): Promise<
   return { actions: deterministic(inp), origin: "ejemplo", assessment };
 }
 
+/** Lo que saveProposal devolvería (createdAt + expiresAt), sin escribir nada: para POST /api/agent/cron?dry=1. */
+export function previewProposal(proposal: Proposal, now = Date.now()): Proposal & { createdAt: string; expiresAt: string } {
+  return { ...proposal, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + agentConfig().ttlMs).toISOString() };
+}
+
 /** Guarda la propuesta en raw_events con su vencimiento: es lo que `run` relee por `id` (nunca confía en el payload del cliente). */
 export function saveProposal(userId: string, proposal: Proposal, now = Date.now()): Proposal {
-  const saved = { ...proposal, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + agentConfig().ttlMs).toISOString() };
+  const saved = previewProposal(proposal, now);
   insertRawEvents([{ source: "agent", kind: "proposal", userId, ts: saved.createdAt, data: saved }]);
   return saved;
 }
