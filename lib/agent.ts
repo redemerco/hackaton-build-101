@@ -499,8 +499,11 @@ export function pendingProposal(userId: string, now = Date.now()): Proposal | nu
   const [latest] = recentProposals(userId, new Date(now - agentConfig().ttlMs - DAY_MS).toISOString());
   if (!latest || isExpired(latest, now, latest.ts)) return null;
   const done = doneRuns(db, latest.actions.map((a) => a.id));
+  // La propuesta vive TTL horas: lo que no se ejecutó y ya quedó en el pasado (el bloque o la reunión a mover) no se ofrece más.
+  const isPast = (iso?: string) => iso !== undefined && Date.parse(iso) <= now;
+  const actions = latest.actions.filter((a) => done.has(a.id) || !(isPast(a.to) || (a.type === "move_meeting" && isPast(a.from))));
   const { ts, ...p } = latest;
-  return { ...p, createdAt: p.createdAt ?? ts, actions: p.actions.map((a) => regate(userId, done.has(a.id) ? { ...a, done: done.get(a.id) } : a)) };
+  return { ...p, createdAt: p.createdAt ?? ts, actions: actions.map((a) => regate(userId, done.has(a.id) ? { ...a, done: done.get(a.id) } : a)) };
 }
 
 function withoutReconnect(a: AgentAction): AgentAction {
