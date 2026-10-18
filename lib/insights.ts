@@ -1,4 +1,4 @@
-// Cruces cuerpo × trabajo con respaldo en papers (investigación del 17-oct, ver plan/santi.md).
+// Cruces cuerpo × trabajo con respaldo en papers (cada cruce cita el suyo en `evidence`).
 // Reglas para no inventar: lista FIJA (nunca todos contra todos), mínimo de días por grupo, siempre contra TU
 // propia media, efecto en unidades que se entienden (minutos, puntos de ánimo) y con cuántos días lo respaldan.
 // Puro: lo prueba scripts/smoke.mts. La IA de Yo solo narra lo que sale de acá.

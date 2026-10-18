@@ -1,12 +1,6 @@
 # hackaton-build-101
 Hackatón Build 101
 
-## Setup
-
-1. Cloná el repo y abrí Claude Code en la raíz. Te va a ofrecer instalar el plugin **ECC** (skills, agentes y comandos `/ecc:*`): aceptá.
-2. Los hooks de ECC corren en perfil `minimal` (lo fija `.claude/settings.json`), así no frenan cada edición durante la hackathon.
-3. Abrí tu plan en `plan/` (`santi.md`, `renzo.md`, `joaco.md`); el índice con navegación, dueños y demo es [`plan/README.md`](plan/README.md).
-
 ## Correr la app
 
 ```bash
@@ -19,10 +13,6 @@ npm run smoke                   # chequeo rápido de la DB
 - `http://localhost` ya cuenta como contexto seguro: service worker y push andan sin HTTPS en la laptop.
 - El teléfono entra por el túnel ngrok (HTTPS lo pone ngrok). `npm run dev:https` existe pero la primera vez pide sudo (mkcert instala una CA).
 - La DB es `data/pulso.db` (SQLite, se crea sola, no se commitea).
-
-## Diseño
-
-Pantallas, dueños y tareas: [`plan/README.md`](plan/README.md).
 
 ## Contrato (no romper sin avisar)
 

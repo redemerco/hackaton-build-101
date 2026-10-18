@@ -47,3 +47,9 @@ next-env.d.ts
 
 # python (scripts/buddy-sprites.py)
 __pycache__/
+
+# contexto local de agentes y planes (no se sube)
+CLAUDE.md
+AGENTS.md
+.claude/
+plan/
