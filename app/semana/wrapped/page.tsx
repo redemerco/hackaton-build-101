@@ -4,6 +4,8 @@ import { Daemon } from "@/components/daemon/daemon";
 import { EmptyState } from "@/components/empty-state";
 import { Screen } from "@/components/screen";
 import { ShareButton } from "@/components/share-button";
+import { SlackWrappedButton } from "@/components/slack-wrapped-button";
+import { canSendToSlack } from "@/lib/report";
 import { WrappedSlides } from "@/components/wrapped-slides";
 import { getBuddy } from "@/lib/buddy";
 import type { DaemonState } from "@/lib/daemon";
@@ -108,7 +110,10 @@ export default async function WrappedPage() {
         ← semana
       </Link>
       <WrappedSlides slides={slides} />
-      <ShareButton title={`build101 · semana ${W.week}`} text={shareText} />
+      <div className="grid grid-cols-2 gap-2">
+        <ShareButton title={`build101 · semana ${W.week}`} text={shareText} />
+        <SlackWrappedButton canSend={canSendToSlack()} />
+      </div>
     </Screen>
   );
 }

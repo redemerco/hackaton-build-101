@@ -85,7 +85,7 @@ export type WrappedForSlack = {
 export function buildWrappedMessage(name: string, w: WrappedForSlack): SlackMessage {
   const blocks: object[] = [
     { type: "header", text: { type: "plain_text", text: `${name} · semana ${w.week} en build101`.slice(0, 150), emoji: true } },
-    { type: "section", text: { type: "mrkdwn", text: `*Esta semana fui: ${w.archetype.name}*\n${w.archetype.why}.` } },
+    { type: "section", text: { type: "mrkdwn", text: `build101 me puso *${w.archetype.name}* esta semana:\n_“${w.archetype.why}.”_` } },
   ];
   if (w.rows.length) {
     blocks.push({ type: "section", fields: w.rows.slice(0, 10).map((r) => ({ type: "mrkdwn", text: `*${r.label}*\n${r.value}${r.note ? ` · ${r.note}` : ""}` })) });
