@@ -95,7 +95,7 @@ for (const p of PEOPLE) {
     // ya existe
   }
   // los simulados entran al ranking (opt-in) para que la demo lo muestre
-  sqlite.prepare(`INSERT OR IGNORE INTO profiles (user_id, buddy, tint, share_score, updated_at) VALUES (?, ?, ?, 1, ?)`).run(p.id, p.buddy, p.tint, now.toISOString());
+  sqlite.prepare(`INSERT INTO profiles (user_id, buddy, tint, share_score, updated_at) VALUES (?, ?, ?, 1, ?) ON CONFLICT(user_id) DO UPDATE SET share_score = 1`).run(p.id, p.buddy, p.tint, now.toISOString());
 
   if (hasReal.get(p.id)) {
     console.log(`${p.id}: tiene datos reales de Google Health, no se simula`);

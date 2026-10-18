@@ -26,8 +26,9 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 }
 
 /** Vista previa con la misma forma que el mensaje de Slack: lo que ves es lo que llega. Las métricas se prenden y apagan acá. */
-function SlackPreview({ name, preview, shared, withNote, onToggle, onToggleNote }: {
+function SlackPreview({ name, preview, shared, withNote, isSimulated, onToggle, onToggleNote }: {
   name: string;
+  isSimulated: boolean;
   preview: Preview;
   shared: Set<string>;
   withNote: boolean;
@@ -87,13 +88,13 @@ function SlackPreview({ name, preview, shared, withNote, onToggle, onToggleNote 
           El texto ya menciona {citedButOff.map((m) => m.label.toLowerCase()).join(" y ")}. Si no querés que vaya, tocá «← Editar» y volvé a armarlo: la IA ya no lo va a ver.
         </p>
       )}
-      <p className="text-[11px] text-[#ababad]">build101 · generado con IA (Gemini) a partir de tus métricas · vos elegís qué se comparte</p>
+      <p className="text-[11px] text-[#ababad]">build101 · generado con IA (Gemini) a partir de tus métricas · vos elegís qué se comparte{isSimulated && <b className="text-white"> · [datos simulados]</b>}</p>
     </div>
   );
 }
 
 /** "Contar cómo vengo": escribís cómo te sentís, Gemini lo cruza con tus métricas y vos decidís qué llega a Slack. */
-export function SlackReport({ name, canSend }: { name: string; canSend: boolean }) {
+export function SlackReport({ name, canSend, isSimulated }: { name: string; canSend: boolean; isSimulated: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("compose");
   const [note, setNote] = useState("");
@@ -103,13 +104,16 @@ export function SlackReport({ name, canSend }: { name: string; canSend: boolean 
   // qué ve la IA: trabajo siempre; salud y ánimo solo si se prenden acá (apagados por defecto)
   const [include, setInclude] = useState({ salud: false, animo: false });
   const [error, setError] = useState<string | null>(null);
+  // todo lo que se apagó en alguna vista previa de esta sesión: no vuelve a la IA al regenerar
+  const [excluded, setExcluded] = useState<string[]>([]);
 
   const generate = async () => {
     setPhase("thinking");
     setError(null);
     try {
       // lo que se apagó en la vista previa anterior no vuelve a entrar a la IA
-      const exclude = preview ? preview.metrics.filter((m) => !shared.has(m.key)).map((m) => m.key) : [];
+      const exclude = [...new Set([...excluded, ...(preview?.metrics.filter((m) => !shared.has(m.key)).map((m) => m.key) ?? [])])];
+      setExcluded(exclude);
       const p = await postJson<Preview>("/api/report", { note, include: { ...include, exclude } });
       setPreview(p);
       setShared(new Set(p.metrics.map((m) => m.key)));
@@ -149,6 +153,7 @@ export function SlackReport({ name, canSend }: { name: string; canSend: boolean 
       setPhase("compose");
       setNote("");
       setPreview(null);
+      setExcluded([]);
     }
   };
 
@@ -208,7 +213,7 @@ export function SlackReport({ name, canSend }: { name: string; canSend: boolean 
 
         {(phase === "preview" || phase === "sending" || phase === "sent") && preview && (
           <div className="grid gap-3">
-            <SlackPreview name={name} preview={preview} shared={shared} withNote={withNote} onToggle={toggle} onToggleNote={() => setWithNote((v) => !v)} />
+            <SlackPreview name={name} preview={preview} shared={shared} withNote={withNote} isSimulated={isSimulated} onToggle={toggle} onToggleNote={() => setWithNote((v) => !v)} />
             <p className="text-[12px] text-dim">Tocá cada dato para sacarlo del mensaje.</p>
             {error && <p role="alert" className="rounded-lg bg-heart/15 px-3 py-2.5 font-mono text-[13px] text-heart">✗ {error}</p>}
             {phase === "sent" ? (

@@ -53,6 +53,9 @@ export function validateReport(raw: unknown, metricKeys: readonly string[]): Rep
   return { riesgo, titular, observaciones, pedido, metricsUsed: [...new Set(metricsUsed)] };
 }
 
+/** Slack mrkdwn interpreta <!channel>, <@U…> y <url|texto>: lo que viene de la persona o de la IA se escapa. */
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 const RISK_DOT: Record<Risk, string> = { bajo: "🟢", medio: "🟡", alto: "🔴" };
 
 type SlackMessage = { text: string; blocks: object[] };
@@ -61,14 +64,14 @@ type SlackMessage = { text: string; blocks: object[] };
 export function buildSlackMessage({ name, report, shared, note, isSimulated = false }: { name: string; report: Report; shared: Metric[]; note?: string; isSimulated?: boolean }): SlackMessage {
   const blocks: object[] = [
     { type: "header", text: { type: "plain_text", text: `${name} · cómo vengo hoy`.slice(0, 150), emoji: true } },
-    { type: "section", text: { type: "mrkdwn", text: `${RISK_DOT[report.riesgo]} *${report.titular}*\nCarga del día: *${report.riesgo}*` } },
-    { type: "section", text: { type: "mrkdwn", text: report.observaciones.map((o) => `• ${o}`).join("\n").slice(0, 2900) } },
-    { type: "section", text: { type: "mrkdwn", text: `*Pido:* ${report.pedido}` } },
+    { type: "section", text: { type: "mrkdwn", text: `${RISK_DOT[report.riesgo]} *${esc(report.titular)}*\nCarga del día: *${report.riesgo}*` } },
+    { type: "section", text: { type: "mrkdwn", text: report.observaciones.map((o) => `• ${esc(o)}`).join("\n").slice(0, 2900) } },
+    { type: "section", text: { type: "mrkdwn", text: `*Pido:* ${esc(report.pedido)}` } },
   ];
-  if (note?.trim()) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `_“${note.trim().slice(0, 280)}”_` }] });
+  if (note?.trim()) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `_“${esc(note.trim().slice(0, 280))}”_` }] });
   if (shared.length) {
     // Block Kit: hasta 10 fields por section
-    blocks.push({ type: "section", fields: shared.slice(0, 10).map((m) => ({ type: "mrkdwn", text: `*${m.label}*\n${m.value}` })) });
+    blocks.push({ type: "section", fields: shared.slice(0, 10).map((m) => ({ type: "mrkdwn", text: `*${m.label}*\n${esc(m.value)}` })) });
   }
   blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `build101 · generado con IA (Gemini) a partir de sus métricas · lo eligió compartir la persona${isSimulated ? " · *[datos simulados]*" : ""}` }] });
   return { text: `${name}: ${report.titular}`, blocks };

@@ -71,6 +71,8 @@ export async function generateJson<T>({ model = MODEL, config, ...params }: Stre
 // Si no hay key pero sí AI_SERVICE_URL (el POST /api/ingesta/procesar desplegado, que sí tiene la key),
 // streamText y generateJson le mandan el system y el texto tal cual. Con key se llama a Gemini directo:
 // así el server desplegado no se llama a sí mismo. Solo texto: las imágenes siguen necesitando la key.
+/** ¿Hay IA? Con key directa o vía AI_SERVICE_URL (solo texto). */
+export const hasAI = () => !!process.env.GEMINI_API_KEY || !!process.env.AI_SERVICE_URL;
 const viaService = () => !process.env.GEMINI_API_KEY && !!process.env.AI_SERVICE_URL;
 
 /** Texto plano de `contents` / `systemInstruction` (string, Part, Content o arrays de eso). */

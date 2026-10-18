@@ -1,6 +1,6 @@
 import "server-only";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
-import { aiErrorReason, generateJson } from "@/lib/ai";
+import { aiErrorReason, generateJson, hasAI } from "@/lib/ai";
 import { formatDuration } from "@/lib/ascii";
 import { getCross } from "@/lib/cross";
 import { db, insertRawEvents, rawEvents } from "@/lib/db";
@@ -65,7 +65,7 @@ export function reportMetrics(userId: string): { metrics: Metric[]; crosses: str
 /** Genera la vista previa con IA. Sin IA no hay reporte (no hay plantilla de reemplazo, a propósito). */
 export async function createPreview(userId: string, rawNote: unknown, rawInclude?: unknown): Promise<Preview> {
   const note = typeof rawNote === "string" ? rawNote.trim().slice(0, NOTE_MAX) : "";
-  if (!process.env.GEMINI_API_KEY) throw new ReportError(`Este reporte necesita la IA: ${aiErrorReason(new Error("GEMINI_API_KEY"))}`, 503);
+  if (!hasAI()) throw new ReportError(`Este reporte necesita la IA: ${aiErrorReason(new Error("GEMINI_API_KEY"))}`, 503);
   // Salud y ánimo solo entran si la persona los prendió ANTES de generar: si la IA no los ve, no los puede escribir.
   const inc = (rawInclude ?? {}) as { salud?: unknown; animo?: unknown; exclude?: unknown };
   // fichas que la persona apagó en una vista previa anterior: no vuelven a la IA
@@ -75,8 +75,9 @@ export async function createPreview(userId: string, rawNote: unknown, rawInclude
   const all = reportMetrics(userId);
   const metrics = all.metrics.filter(allowed);
   // los cruces de las últimas semanas hablan de sueño y ánimo: solo van si se compartió salud
-  // (y los que nombran el ánimo, solo si también se compartió el ánimo)
-  const crosses = inc.salud === true ? all.crosses.filter((c) => inc.animo === true || !/ánimo/i.test(c)) : [];
+  // (y los que nombran el ánimo, solo si también se compartió el ánimo). Si apagó una ficha de salud, ninguno.
+  const isHealthTrimmed = all.metrics.some((m) => m.kind === "salud" && exclude.has(m.key));
+  const crosses = inc.salud === true && !isHealthTrimmed ? all.crosses.filter((c) => inc.animo === true || !/ánimo/i.test(c)) : [];
   let raw: unknown;
   try {
     raw = await generateJson<unknown>({ contents: buildReportPrompt(note, metrics, crosses), config: { systemInstruction: REPORT_SYSTEM } });

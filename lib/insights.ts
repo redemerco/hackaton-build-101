@@ -87,7 +87,9 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
       const baseNights = prior.length >= 7 ? prior.length : nights.length;
       // deuda NETA: las noches largas compensan a las cortas (si no, el número contradice la media de la semana)
       const debt = week.reduce((sum, n) => sum + (base - n), 0);
-      if (debt >= 60)
+      // con menos de 3 noches de esta semana no se puede decir "sin deuda": se marca pendiente
+      if (week.length < 3) pending.push({ id: "deuda", question, need: `faltan ${3 - week.length} noches de esta semana` });
+      else if (debt >= 60)
         ready.push({
           id: "deuda",
           tryThis: "Probá acostarte 30 min antes 5 noches seguidas y mirá si la deuda baja.",
@@ -245,7 +247,8 @@ export function crossInsights(series: DaySeries[]): { ready: Insight[]; pending:
     else {
       const week = nums(last(7).map((d) => d.hrvMs)).map(Math.log);
       const z = week.length >= 3 ? (mean(week) - mean(hrv)) / (sd(hrv) || 1) : 0;
-      if (z <= -1)
+      if (week.length < 3) pending.push({ id: "recuperacion", question, need: `faltan ${3 - week.length} días de HRV de esta semana` });
+      else if (z <= -1)
         ready.push({
           id: "recuperacion",
         tryThis: "Hoy algo más liviano: dormir temprano y menos carga si podés elegir.",

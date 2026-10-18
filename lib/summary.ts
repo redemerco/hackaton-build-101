@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
-import { aiErrorReason, streamText } from "@/lib/ai";
+import { aiErrorReason, hasAI, streamText } from "@/lib/ai";
 import { db, insertRawEvents, rawEvents } from "@/lib/db";
 
 // Resúmenes daily con IA (Salud = Joaco, Trabajo = Renzo, Yo = Santi). Cada uno arma su prompt;
@@ -69,7 +69,7 @@ export async function streamSummary({ userId, kind, system, prompt, force = fals
       ? new Response(replay(cached.text, CACHE_PREFIX), { headers: headers("cache") })
       : new Response(`IA no disponible: ${aiErrorReason(error)}`, { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   };
-  if (!process.env.GEMINI_API_KEY) return fallback(new Error("Falta GEMINI_API_KEY"));
+  if (!hasAI()) return fallback(new Error("Falta GEMINI_API_KEY"));
 
   // Se espera el primer pedazo ANTES de responder: si Gemini falla, el status lo dice (503) en vez de
   // cortar una respuesta 200 a medias, que detrás del proxy del NAS se ve como 502.

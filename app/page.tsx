@@ -166,7 +166,7 @@ export default async function Yo() {
 
       <Summary label="hoy, en una" src="/api/summary/me" counts={buildMePrompt(user.id, today, cross).counts} fallback={meFallback(today, cross)} />
 
-      <SlackReport name={user.name} canSend={canSendToSlack()} />
+      <SlackReport name={user.name} canSend={canSendToSlack()} isSimulated={isSimulated} />
 
       <Panel label="cruces con tus datos" meta={isSimulated ? `${cross.insights.length} · [simulados]` : `${cross.insights.length} con respaldo`}>
         {cross.insights.length > 0 ? (

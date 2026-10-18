@@ -45,6 +45,7 @@ export default async function SemanaPage() {
             <p className="text-[15px] leading-relaxed text-foreground/90">
               Todavía nadie de tu workspace tiene puntaje. Conectá tu wearable con Google Health para entrar al ranking.
             </p>
+            <ShareScoreToggle isOn className="justify-self-start" />
           </Panel>
         )
       ) : (

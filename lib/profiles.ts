@@ -25,7 +25,12 @@ db.run(sql`CREATE TABLE IF NOT EXISTS profiles (
 // La tabla ya existe en el NAS sin esta columna: se agrega una sola vez, solo si falta.
 const profileColumns = db.all<{ name: string }>(sql`PRAGMA table_info(profiles)`);
 if (!profileColumns.some((c) => c.name === "share_score")) {
-  db.run(sql`ALTER TABLE profiles ADD COLUMN share_score INTEGER NOT NULL DEFAULT 0`);
+  try {
+    db.run(sql`ALTER TABLE profiles ADD COLUMN share_score INTEGER NOT NULL DEFAULT 0`);
+  } catch (error) {
+    // otro proceso (build o worker) la agregó entre el PRAGMA y el ALTER: alcanza con que exista
+    if (!db.all<{ name: string }>(sql`PRAGMA table_info(profiles)`).some((c) => c.name === "share_score")) throw error;
+  }
 }
 
 export type Look = { buddy: BuddyId; tint: TintId; shareScore: boolean };

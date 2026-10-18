@@ -1,4 +1,4 @@
-import { aiErrorReason, streamText } from "@/lib/ai";
+import { aiErrorReason, hasAI, streamText } from "@/lib/ai";
 import { DIGEST_SYSTEM, buildDigestPrompt, getCachedDigest, saveDigest } from "@/lib/digest";
 import { getCurrentUser } from "@/lib/users";
 
@@ -30,7 +30,7 @@ export async function POST() {
     console.error("[digest] IA no disponible", error);
     return cached ? new Response(replay(cached), { headers: TEXT }) : new Response(`IA no disponible: ${aiErrorReason(error)}`, { status: 503, headers: TEXT });
   };
-  if (!process.env.GEMINI_API_KEY) return fail(new Error("Falta GEMINI_API_KEY"));
+  if (!hasAI()) return fail(new Error("Falta GEMINI_API_KEY"));
 
   const source = streamText({ contents: buildDigestPrompt(user.id), config: { systemInstruction: DIGEST_SYSTEM } }).getReader();
   let first: ReadableStreamReadResult<Uint8Array>;
