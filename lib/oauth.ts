@@ -52,8 +52,9 @@ export const PROVIDERS: Record<Provider, Config> = {
   slack: {
     authorizeUrl: "https://slack.com/oauth/v2/authorize",
     tokenUrl: "https://slack.com/api/oauth.v2.access",
-    // Token de usuario, solo búsqueda: contamos mensajes y horarios, jamás leemos el contenido.
-    scope: "search:read",
+    // Token de usuario: search:read para contar mensajes y horarios (jamás leemos el contenido);
+    // users.profile:write y dnd:write para que el agente ponga tu estado y "no molestar" (modo foco). Coma, no espacio.
+    scope: "search:read,users.profile:write,dnd:write",
     scopeParam: "user_scope",
     // Con el team, Slack va directo al workspace de la demo en vez de preguntar "¿cuál es tu workspace?".
     extraParams: { team: process.env.SLACK_TEAM_ID },
