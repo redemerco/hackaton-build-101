@@ -38,6 +38,15 @@ export const healthWebhookDebounceMs = () => envInt("HEALTH_WEBHOOK_DEBOUNCE_MS"
 /** Un sueño cuenta como "nuevo" (y dispara push) si la noche más reciente es de menos de esto. */
 export const healthSleepFreshMs = () => envInt("HEALTH_SLEEP_FRESH_MS", 36 * 3600_000);
 
+// --- Google Calendar (sync) ----------------------------------------------------------------
+/** Días hacia atrás que trae el sync de Calendar. */
+export const calendarSyncDaysBack = () => envInt("CALENDAR_SYNC_DAYS_BACK", 7);
+/**
+ * Mínimo de días hacia adelante. El sync igual cubre siempre hasta el fin de la semana local (lunes 00:00 siguiente):
+ * la evaluación de trabajo del agente (lib/agent-rules.ts) cuenta las reuniones que quedan en la semana.
+ */
+export const calendarSyncDaysFwd = () => envInt("CALENDAR_SYNC_DAYS_FWD", 1);
+
 // --- SSE /api/events ---------------------------------------------------------------------
 /** `retry:` que le mandamos al EventSource para reconectar. */
 export const sseRetryMs = () => envInt("SSE_RETRY_MS", 5_000);
