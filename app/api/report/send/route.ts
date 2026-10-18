@@ -7,6 +7,7 @@ export async function POST(req: Request) {
   let body: { id?: unknown; share?: unknown };
   try {
     body = (await req.json()) as typeof body;
+    if (!body || typeof body !== "object") throw new Error("body vacío");
   } catch {
     return Response.json({ error: "Body inválido" }, { status: 400 });
   }

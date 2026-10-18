@@ -2,6 +2,7 @@ import { aiErrorReason, getAI, MODEL } from "@/lib/ai";
 import type { MealAnalysis } from "@/lib/meals";
 
 export const maxDuration = 30;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 // POST /api/comer/analizar  (body: multipart con campo "photo")
 // Manda la foto a Gemini y devuelve el análisis real de la comida (ítems en gramos + rangos de kcal).
@@ -20,6 +21,9 @@ export async function POST(req: Request): Promise<Response> {
     const form = await req.formData();
     const file = form.get("photo");
     if (!(file instanceof File)) return Response.json({ error: "Falta la foto" }, { status: 400 });
+    // solo imágenes y de un tamaño razonable: no se manda cualquier archivo a Gemini
+    if (file.type && !file.type.startsWith("image/")) return Response.json({ error: "Eso no es una foto" }, { status: 400 });
+    if (file.size > MAX_PHOTO_BYTES) return Response.json({ error: "La foto pesa más de 10 MB" }, { status: 413 });
     mimeType = file.type || mimeType;
     bytes = Buffer.from(await file.arrayBuffer());
   } catch {
