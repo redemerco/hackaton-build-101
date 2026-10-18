@@ -12,7 +12,9 @@
 #   HEALTH_WEBHOOK_SECRET  valor exacto del header Authorization (con "Bearer "); igual al del .env.local del server.
 #                          Solo hace falta para create/update.
 #   HEALTH_SUBSCRIBER_ID   default pulso-webhook (4-36 chars, [a-z][a-z0-9-]{2,34}[a-z0-9])
-#   HEALTH_ENDPOINT        default https://pulso.renzodemarco.com.uy/api/webhooks/health
+#   HEALTH_ENDPOINT        URL pública del webhook (solo create/update). Sin default: si falta, se arma con APP_URL (el origen público,
+#                          el mismo del server) + /api/webhooks/health; sin ninguna de las dos, falla.
+#   HEALTH_API_BASE        default https://health.googleapis.com/v4 (igual que el server, lib/config.ts)
 #   GCLOUD_CONFIG          configuración de gcloud a usar (ej. build101); vacío = la activa.
 #
 # create/update son síncronos con la verificación: Google manda 2 POST {"type":"verification"}
@@ -22,10 +24,10 @@ set -euo pipefail
 cmd="${1:-}"
 : "${HEALTH_PROJECT_NUMBER:?falta HEALTH_PROJECT_NUMBER (número del proyecto GCP)}"
 SUB_ID="${HEALTH_SUBSCRIBER_ID:-pulso-webhook}"
-ENDPOINT="${HEALTH_ENDPOINT:-https://pulso.renzodemarco.com.uy/api/webhooks/health}"
 # Los dataTypes que ingesta lib/sources/google.ts (TYPES): si se agrega uno ahí, agregarlo acá y correr update.
 DATA_TYPES='["sleep","daily-resting-heart-rate","daily-heart-rate-variability","active-zone-minutes"]'
-BASE="https://health.googleapis.com/v4/projects/${HEALTH_PROJECT_NUMBER}/subscribers"
+API_BASE="${HEALTH_API_BASE:-https://health.googleapis.com/v4}"
+BASE="${API_BASE%/}/projects/${HEALTH_PROJECT_NUMBER}/subscribers"
 
 gc=(gcloud)
 [[ -n "${GCLOUD_CONFIG:-}" ]] && gc+=("--configuration=${GCLOUD_CONFIG}")
@@ -33,6 +35,10 @@ TOKEN="$("${gc[@]}" auth print-access-token)"
 
 body() {
   : "${HEALTH_WEBHOOK_SECRET:?falta HEALTH_WEBHOOK_SECRET (ej. 'Bearer <random>')}"
+  local ENDPOINT
+  if [[ -n "${HEALTH_ENDPOINT:-}" ]]; then ENDPOINT="$HEALTH_ENDPOINT"
+  elif [[ -n "${APP_URL:-}" ]]; then ENDPOINT="${APP_URL%/}/api/webhooks/health"
+  else echo "falta HEALTH_ENDPOINT (o APP_URL con el origen público del server)" >&2; exit 2; fi
   ENDPOINT="$ENDPOINT" DATA_TYPES="$DATA_TYPES" python3 -c '
 import json, os
 print(json.dumps({
@@ -49,9 +55,10 @@ api() { # método url [body]
 }
 
 case "$cmd" in
-  create) api POST "${BASE}?subscriberId=${SUB_ID}" "$(body)" ;;
+  # body va en una asignación aparte: así set -e corta si falta el secreto o el endpoint.
+  create) b="$(body)"; api POST "${BASE}?subscriberId=${SUB_ID}" "$b" ;;
   # subscriberConfigs se reemplaza entero (no merge).
-  update) api PATCH "${BASE}/${SUB_ID}?updateMask=endpointUri,subscriberConfigs,endpointAuthorization" "$(body)" ;;
+  update) b="$(body)"; api PATCH "${BASE}/${SUB_ID}?updateMask=endpointUri,subscriberConfigs,endpointAuthorization" "$b" ;;
   list) api GET "${BASE}" ;;
   get) api GET "${BASE}/${SUB_ID}" ;;
   delete) api DELETE "${BASE}/${SUB_ID}" ;;
