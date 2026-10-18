@@ -138,6 +138,19 @@ for (const p of PEOPLE) {
       if (start > now.getTime()) continue;
       events += insertAny.run("calendar", "event", p.id, isoZ(start), JSON.stringify({ start: isoZ(start), end: isoZ(at(b)), _mock: true })).changes;
     }
+    // comidas (como las guarda la cámara: app/actions/meal.ts)
+    const MEALS = [
+      { h: 8.5, items: [{ name: "café con leche", grams: [200, 250], kcal: [90, 130] }, { name: "tostadas", grams: [60, 80], kcal: [160, 220] }] },
+      { h: 13.2, items: [{ name: "milanesa con ensalada", grams: [250, 350], kcal: [520, 700] }] },
+      { h: isBadNight ? 23 : 21, items: [{ name: isBadNight ? "pizza" : "tarta de verdura", grams: [250, 350], kcal: isBadNight ? [700, 900] : [380, 520] }] },
+    ];
+    for (const m of MEALS) {
+      const t = at(jitter(m.h, 0.4));
+      if (t > now.getTime()) continue;
+      const totalKcal = [m.items.reduce((n, it) => n + it.kcal[0], 0), m.items.reduce((n, it) => n + it.kcal[1], 0)];
+      events += insertAny.run("meal", "photo", p.id, isoZ(t), JSON.stringify({ items: m.items, comment: "comida simulada", totalKcal, _mock: true })).changes;
+    }
+
     const moodAt = at(jitter(13, 1));
     const mood = Math.max(1, Math.min(5, Math.round(jitter(isBadNight ? 2.3 : isHeavy ? 3 : 4, 0.6))));
     if (moodAt <= now.getTime()) events += insertAny.run("mood", "checkin", p.id, isoZ(moodAt), JSON.stringify({ mood, _mock: true })).changes;
