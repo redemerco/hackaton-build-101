@@ -9,6 +9,7 @@ import { Daemon } from "@/components/daemon/daemon";
 import { DaemonSpeech } from "@/components/daemon/daemon-speech";
 import { MoodCheckin } from "@/components/mood-checkin";
 import { Screen } from "@/components/screen";
+import { SlackReport } from "@/components/slack-report";
 import { StatCard } from "@/components/stat-card";
 import { Summary } from "@/components/summary";
 import { formatDuration, sparkline } from "@/lib/ascii";
@@ -16,6 +17,7 @@ import { deriveState, linesFor, STATES } from "@/lib/daemon";
 import { contributors, daemonInput, getToday, stressOf, type Contributor } from "@/lib/today";
 import { getBuddy } from "@/lib/buddy";
 import { getCross } from "@/lib/cross";
+import { canSendToSlack } from "@/lib/report";
 import type { Detail, Insight, Pending } from "@/lib/insights";
 import { buildMePrompt, meFallback } from "@/lib/summary-me";
 import { getCurrentUser } from "@/lib/users";
@@ -162,6 +164,8 @@ export default async function Yo() {
       </Panel>
 
       <Summary label="hoy, en una" src="/api/summary/me" counts={buildMePrompt(user.id, today, cross).counts} fallback={meFallback(today, cross)} />
+
+      <SlackReport name={user.name} canSend={canSendToSlack()} />
 
       <Panel label="cruces con tus datos" meta={`${cross.insights.length} con respaldo`}>
         {cross.insights.length > 0 ? (

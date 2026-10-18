@@ -117,4 +117,20 @@ assert.ok((late[0].lastWorkMinute ?? 0) >= 23 * 60, "la madrugada es la noche de
 assert.equal(late[1].lateCommits, 1);
 // un evento con fecha rota no rompe nada
 assert.doesNotThrow(() => dailySeries([ev("github", "commit", "no-es-fecha"), ev("google", "sleep", "x", { sleep: { interval: { startTime: "x", endTime: "y" } } })], days, true));
+
+// reporte "cómo vengo" (lib/report-core): validación de la IA y privacidad del mensaje de Slack
+const { validateReport, buildSlackMessage, buildReportPrompt } = await import("../lib/report-core.ts");
+const keys = ["commits", "sueno"];
+assert.equal(validateReport({ riesgo: "altísimo", titular: "x", observaciones: ["y"], pedido: "z" }, keys), null, "riesgo fuera del enum se rechaza");
+assert.equal(validateReport({ riesgo: "medio", titular: "x", observaciones: [], pedido: "z" }, keys), null, "sin observaciones se rechaza");
+const okReport = validateReport({ riesgo: "alto", titular: "Vengo cargado", observaciones: ["dormí 5h", "6 reuniones"], pedido: "mover la daily", metricsUsed: ["sueno", "inventada"] }, keys);
+assert.deepEqual(okReport?.metricsUsed, ["sueno"], "solo cita métricas que le pasamos");
+const metricsAll = [
+  { key: "commits", label: "Commits hoy", value: "5", kind: "trabajo" as const },
+  { key: "sueno", label: "Sueño de anoche", value: "5h10", kind: "salud" as const },
+];
+const msg = JSON.stringify(buildSlackMessage({ name: "Santi", report: okReport!, shared: [metricsAll[0]], note: undefined }));
+assert.ok(msg.includes("Commits hoy") && !msg.includes("Sueño de anoche"), "lo que se apaga no llega a Slack");
+assert.ok(!msg.includes("nota secreta"), "la nota no va si no se eligió");
+assert.ok(buildReportPrompt("estoy bárbaro", metricsAll).includes("sueno: Sueño de anoche = 5h10"), "el prompt lleva las métricas con su clave");
 console.log("smoke OK");

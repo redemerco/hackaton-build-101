@@ -9,7 +9,7 @@ import { crossInsights, type Insight, type Pending } from "@/lib/insights";
 const HISTORY_DAYS = 42;
 const DAY_MS = 86400_000;
 // lo que la app escribe sobre sí misma no es un dato del usuario
-const NOT_DATA = ["summary", "digest", "agent"];
+const NOT_DATA = ["summary", "digest", "agent", "report"];
 
 export type Cross = { today: Hourly; nowHour: number; series: DaySeries[]; insights: Insight[]; pending: Pending[] };
 

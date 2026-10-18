@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, ne } from "drizzle-orm";
+import { and, desc, eq, gte, notInArray } from "drizzle-orm";
 import { db, insertRawEvents, rawEvents } from "@/lib/db";
 
 const DAYS = 7;
@@ -44,7 +44,8 @@ export function buildDigestPrompt(userId: string): string {
     .select()
     .from(rawEvents)
     .where(
-      and(eq(rawEvents.userId, userId), gte(rawEvents.ts, since), ne(rawEvents.source, "digest"), ne(rawEvents.source, "slack")),
+      // fuera lo que escribe la propia app (resúmenes, agente, reportes): no son eventos del usuario
+      and(eq(rawEvents.userId, userId), gte(rawEvents.ts, since), notInArray(rawEvents.source, ["digest", "slack", "summary", "agent", "report"])),
     )
     .orderBy(desc(rawEvents.ts))
     .limit(MAX_EVENTS)
