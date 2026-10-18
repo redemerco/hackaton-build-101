@@ -59,19 +59,19 @@ export function getNudge(userId: string, now = new Date()): Nudge | null {
   const hour = localHour(now);
   if (isWorkingNow && hour < 6) {
     return {
-      title: "Pulso · son las " + hhmm.format(now),
+      title: "build101 · son las " + hhmm.format(now),
       body: `Llevás ${formatDuration(streakMin)} sin cortar${what ? ` (${what})` : ""}. El código va a seguir ahí mañana; tu sueño de hoy no. Cortá acá.`,
     };
   }
   if (isWorkingNow && streakMin >= LONG_STREAK_MIN) {
     return {
-      title: "Pulso",
+      title: "build101",
       body: `Llevás ${formatDuration(streakMin)} sin cortar${what ? ` (${what})` : ""}${gap}. Caminá 10 minutos.`,
     };
   }
   const todayCommits = work.filter((e) => e.kind === "commit").length;
   return {
-    title: "Pulso",
+    title: "build101",
     body: `Arrancaste a las ${hhmm.format(new Date(work[0].t))} y llevás ${todayCommits} commit${todayCommits === 1 ? "" : "s"}${gap}. Buen momento para estirar y tomar agua.`,
   };
 }

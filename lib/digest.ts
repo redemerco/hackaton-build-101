@@ -5,7 +5,7 @@ import { db, insertRawEvents, rawEvents } from "@/lib/db";
 const DAYS = 7;
 const MAX_EVENTS = 400;
 
-export const DIGEST_SYSTEM = `Sos Pulso, la observabilidad personal de un developer. Recibís su última semana: cuerpo (sueño, pulso, pasos, comidas, ánimo) y trabajo (commits, PRs, issues, reuniones), con hora local de Buenos Aires.
+export const DIGEST_SYSTEM = `Sos build101, la observabilidad personal de un developer. Recibís su última semana: cuerpo (sueño, pulso, pasos, comidas, ánimo) y trabajo (commits, PRs, issues, reuniones), con hora local de Montevideo.
 Escribí en español rioplatense, cálido y directo, como un amigo que mira tus métricas.
 - Un solo párrafo de 4 a 6 oraciones. Texto plano: sin listas, negritas, títulos ni emojis.
 - Buscá cruces entre cuerpo y trabajo, con números concretos ("los 2 días con commits después de las 2am dormiste 4h45").
@@ -14,7 +14,7 @@ Escribí en español rioplatense, cálido y directo, como un amigo que mira tus 
 - Cerrá con una sola sugerencia chica y concreta para mañana.`;
 
 const fmt = new Intl.DateTimeFormat("es-AR", {
-  timeZone: "America/Argentina/Buenos_Aires",
+  timeZone: "America/Montevideo",
   weekday: "short",
   day: "2-digit",
   month: "2-digit",
@@ -58,8 +58,8 @@ export function buildDigestPrompt(userId: string): string {
   return `Eventos de los últimos ${DAYS} días (${rows.length}):\n${lines.join("\n")}${slack}`;
 }
 
-const day = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Argentina/Buenos_Aires", weekday: "short", day: "2-digit", month: "2-digit" });
-const hour = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" });
+const day = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Montevideo", weekday: "short", day: "2-digit", month: "2-digit" });
+const hour = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Montevideo", hour: "2-digit", minute: "2-digit" });
 
 // Slack puede ser cientos de mensajes: al prompt va un resumen por día (cuántos, primero, último), nunca contenido.
 function slackPerDay(userId: string, since: string): string {

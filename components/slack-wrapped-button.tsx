@@ -34,7 +34,7 @@ export function SlackWrappedButton({ canSend }: { canSend: boolean }) {
       ) : (
         <>
           <ProviderIcon id="slack" className="size-4" />
-          {state === "sent" ? "✓ En Slack" : canSend ? "Mandar a Slack" : "Slack sin configurar"}
+          {state === "sent" ? "✓ En Slack" : canSend ? "Mandar a Slack" : "Slack · falta"}
         </>
       )}
     </button>
