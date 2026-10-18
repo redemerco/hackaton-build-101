@@ -22,6 +22,8 @@ const MAX_BYTES = 10 * 1024 * 1024;
  */
 export function MealCamera() {
   const inputId = useId();
+  // la última foto, para poder reintentar el análisis sin volver a sacarla
+  const [lastFile, setLastFile] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isScanned, setIsScanned] = useState(false);
@@ -58,6 +60,7 @@ export function MealCamera() {
     setFlashId((n) => n + 1);
     setPhotoUrl(URL.createObjectURL(file));
     setIsOpen(true);
+    setLastFile(file);
     void analyze(file);
   };
   // Cerrar anima la hoja; la foto se suelta recién en onClose, así el contenido no se vacía mientras baja.
@@ -97,14 +100,21 @@ export function MealCamera() {
           <div className="relative overflow-hidden rounded-xl bg-[#07080c] ring-1 ring-inset ring-white/10">
             <AsciiScan src={photoUrl} onDone={() => setIsScanned(true)} className="block aspect-[5/4] w-full" />
             <span className="glass absolute bottom-3 left-3 rounded-full px-3 py-1.5 font-mono text-[13px]">
-              {isScanned && analysis ? `✓ ${analysis.items.length} ítems` : <Spinner label="escaneando" className="font-mono text-[13px]" />}
+              {isScanned && analysis ? `✓ ${analysis.items.length} ítems` : isScanned && error ? "✗ sin análisis" : <Spinner label="escaneando" className="font-mono text-[13px]" />}
             </span>
           </div>
         )}
         {isScanned && error && (
-          <p className="rounded-lg bg-heart/15 px-3 py-3 text-center font-mono text-[13px] text-heart">
-            ✗ no se pudo analizar la foto: {error}
-          </p>
+          <div className="grid gap-2">
+            <p role="alert" className="rounded-lg bg-heart/15 px-3 py-3 text-center font-mono text-[13px] text-heart">
+              ✗ no se pudo analizar la foto: {error}
+            </p>
+            {lastFile && (
+              <button type="button" onClick={() => void analyze(lastFile)} className="glass press h-11 rounded-full text-[15px] font-semibold">
+                ↻ Reintentar con la misma foto
+              </button>
+            )}
+          </div>
         )}
         {isScanned && !error && !analysis && (
           <div className="grid place-items-center py-6">
