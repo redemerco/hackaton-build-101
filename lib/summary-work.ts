@@ -10,6 +10,8 @@ import { getLinearWeek, getSlackToday } from "@/lib/work-signals";
 // El cruce con Salud lo hace el resumen de Yo.
 const TZ = "America/Montevideo";
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
+// la hora del prompt va redondeada a la hora: al minuto, "mismos datos = mismo resumen" no reusaría nunca
+const hourOnly = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" });
 const hhmm = new Intl.DateTimeFormat("es-UY", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -101,7 +103,7 @@ export function buildWorkPrompt(userId: string): { system: string; prompt: strin
 
   return {
     system: WORK_SYSTEM,
-    prompt: `Hoy es ${today}, son las ${hhmm.format(now)} en Montevideo.\n\n${sections.join("\n\n")}`,
+    prompt: `Hoy es ${today}, son cerca de las ${hourOnly.format(now)} h en Montevideo.\n\n${sections.join("\n\n")}`,
     counts: [
       { label: "commits", value: on.github ? commits : 0 },
       { label: "PRs", value: on.github ? prs : 0 },
