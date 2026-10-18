@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte, ne } from "drizzle-orm";
+import { and, eq, gte, notInArray } from "drizzle-orm";
 import { moodFace, sparkline } from "@/lib/ascii";
 import { db, rawEvents } from "@/lib/db";
 import { type WrappedHighlight, type WrappedRow } from "@/lib/week";
@@ -31,15 +31,16 @@ function isoWeek(d: Date): number {
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function getWrapped(userId: string, now = new Date()): Wrapped | null {
+  const days = Array.from({ length: 7 }, (_, i) => dayKey.format(now.getTime() - (6 - i) * DAY));
   const rows = db
     .select({ source: rawEvents.source, kind: rawEvents.kind, ts: rawEvents.ts, json: rawEvents.json })
     .from(rawEvents)
-    .where(and(eq(rawEvents.userId, userId), gte(rawEvents.ts, new Date(now.getTime() - 7 * DAY).toISOString()), ne(rawEvents.source, "digest")))
+    .where(and(eq(rawEvents.userId, userId), gte(rawEvents.ts, new Date(now.getTime() - 8 * DAY).toISOString()), notInArray(rawEvents.source, ["digest", "summary", "agent", "report"])))
     .all()
-    .map((r) => ({ ...r, t: Date.parse(r.ts), day: dayKey.format(Date.parse(r.ts)) }));
+    .map((r) => ({ ...r, t: Date.parse(r.ts), day: dayKey.format(Date.parse(r.ts)) }))
+    // solo los 7 días que se muestran: si no, los totales sumaban un 8.º día parcial que no estaba en las barras
+    .filter((r) => days.includes(r.day));
   if (rows.length === 0) return null;
-
-  const days = Array.from({ length: 7 }, (_, i) => dayKey.format(now.getTime() - (6 - i) * DAY));
   const perDay = (pick: (r: (typeof rows)[number]) => boolean) => days.map((d) => rows.filter((r) => r.day === d && pick(r)).length);
 
   const isCommit = (r: (typeof rows)[number]) => r.source === "github" && r.kind === "commit";
