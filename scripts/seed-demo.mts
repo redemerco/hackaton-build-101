@@ -54,6 +54,33 @@ const hasReal = sqlite.prepare(`SELECT 1 FROM raw_events WHERE source = 'google'
 const realSlack = sqlite.prepare(`SELECT account FROM connections WHERE provider = 'slack' AND token != ? LIMIT 1`).get(MOCK_TOKEN) as { account: string } | undefined;
 const team = realSlack?.account.split("@").at(-1) ?? DEMO_TEAM;
 
+/**
+ * Etapas como las manda Google Health (stages[] con inicio y fin), en ciclos de ~90 min:
+ * profundo al principio de la noche, REM al final, un despertar corto al empezar y el resto repartido.
+ */
+function nightStages(startMs: number, deep: number, rem: number, light: number, awake: number) {
+  const CYCLES = 5;
+  const out: { startTime: string; endTime: string; type: string }[] = [];
+  let t = startMs;
+  const push = (type: string, min: number) => {
+    if (min <= 0) return;
+    out.push({ startTime: isoZ(t), endTime: isoZ(t + min * 60_000), type });
+    t += min * 60_000;
+  };
+  push("AWAKE", Math.round(awake * 0.6));
+  for (let c = 0; c < CYCLES; c++) {
+    const early = 1 - c / (CYCLES - 1); // 1 al principio, 0 al final
+    const deepC = Math.round((deep * (0.5 + early)) / CYCLES / 1);
+    const remC = Math.round((rem * (1.5 - early)) / CYCLES);
+    push("LIGHT", Math.round(light / CYCLES / 2));
+    push("DEEP", Math.min(deepC, Math.round(deep / 2)));
+    push("LIGHT", Math.round(light / CYCLES / 2));
+    push("REM", remC);
+    if (c === 2) push("AWAKE", Math.round(awake * 0.4));
+  }
+  return out;
+}
+
 let events = 0;
 for (const p of PEOPLE) {
   sqlite
@@ -93,6 +120,7 @@ for (const p of PEOPLE) {
       sleep: {
         interval: { startTime: isoZ(start), endTime: isoZ(end), startUtcOffset: TZ_OFFSET, endUtcOffset: TZ_OFFSET },
         type: "STAGES",
+        stages: nightStages(start, Math.round(deepRem * 0.45), deepRem - Math.round(deepRem * 0.45), asleep - deepRem, awake),
         summary: {
           stagesSummary: [
             { type: "DEEP", minutes: String(Math.round(deepRem * 0.45)) },

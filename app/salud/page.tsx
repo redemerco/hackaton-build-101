@@ -9,6 +9,7 @@ import { Summary } from "@/components/summary";
 import { MealCamera } from "@/components/meal-camera";
 import { asciiLine, fitMonoFontSize, formatDuration, sparkline } from "@/lib/ascii";
 import { getLastNight, getMealsToday, minutesByStage } from "@/lib/body";
+import { getCross, recentVitals } from "@/lib/cross";
 import { formatRange, totalKcal } from "@/lib/meals";
 import { EXAMPLE_HEALTH_SUMMARY, buildHealthPrompt } from "@/lib/summary-health";
 import { getCurrentUser } from "@/lib/users";
@@ -59,6 +60,7 @@ export default async function SaludPage() {
   }
 
   const night = getLastNight(user.id);
+  const vitals = recentVitals(getCross(user.id).series);
   if (!night) {
     return (
       <Screen>
@@ -85,7 +87,7 @@ export default async function SaludPage() {
 
   return (
     <Screen>
-      <Pulse bpm={night.restingBpm ?? 60} stress={0.2} />
+      <Pulse bpm={night.restingBpm ?? vitals.restingBpm ?? 60} stress={0.2} />
       <PageHeader title="Salud" subtitle={night.isSimulated ? "[datos simulados]" : "Google Health"} action={<MealCamera />} />
       <HealthSummary userId={user.id} />
 
@@ -134,9 +136,33 @@ export default async function SaludPage() {
           </dl>
         </Panel>
       ) : (
-        <Panel label="pulso · noche" meta="sin dato">
-          <p className="text-[15px] text-dim">Google Health no mandó pulso ni HRV para esta noche todavía.</p>
-        </Panel>
+        // Google Health manda pulso en reposo y HRV como datos DIARIOS (no la curva de la noche): se muestran esos.
+        vitals.restingBpm !== null || vitals.hrvMs !== null ? (
+          <Panel
+            label="pulso · en reposo"
+            meta={vitals.restingBpm !== null ? <span className="text-heart"><span className="inline-block [animation:beat_var(--beat,1s)_infinite]">♥</span> {vitals.restingBpm} reposo</span> : undefined}
+          >
+            <dl className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 font-mono text-[13px] tabular-nums">
+              {vitals.restingBpm !== null && (
+                <>
+                  <dt className="text-dim">reposo</dt><dd className="font-semibold"><Count value={vitals.restingBpm} /> bpm</dd>
+                  <dd className="text-right text-xs text-dim">{vitals.restingTypical ? `típico ${vitals.restingTypical[0]}–${vitals.restingTypical[1]}` : ""}</dd>
+                </>
+              )}
+              {vitals.hrvMs !== null && (
+                <>
+                  <dt className="text-dim">hrv</dt><dd className="font-semibold"><Count value={vitals.hrvMs} /> ms</dd>
+                  <dd className="text-right text-xs text-dim">{vitals.hrvTypical ? `típico ${vitals.hrvTypical[0]}–${vitals.hrvTypical[1]}` : ""}</dd>
+                </>
+              )}
+            </dl>
+            <p className="text-xs text-faint">valores del día de Google Health · tu típico = tus últimas 4 semanas</p>
+          </Panel>
+        ) : (
+          <Panel label="pulso · noche" meta="sin dato">
+            <p className="text-[15px] text-dim">Google Health no mandó pulso ni HRV todavía.</p>
+          </Panel>
+        )
       )}
 
       {steps > 0 && (

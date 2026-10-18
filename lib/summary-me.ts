@@ -20,11 +20,11 @@ export function meFallback(today: Today, cross: Cross): string {
   const meetingMin = cross.today.hours.reduce((n, h) => n + h.meetingMin, 0);
   const day = [
     today.sleepMin !== null ? `Dormiste ${fmtMin(today.sleepMin)}` : null,
-    `llevás ${commits} commit${commits === 1 ? "" : "s"}`,
+    commits ? `llevás ${commits} commit${commits === 1 ? "" : "s"}` : null,
     meetingMin ? `${fmtMin(meetingMin)} de reuniones` : null,
   ].filter(Boolean);
   const top = cross.insights[0];
-  return `${day.join(", ")}. ${top ? `${top.text} ${top.tryThis}` : "Todavía no hay cruces con datos suficientes."}`;
+  return `${day.length ? `${day.join(", ")}. ` : ""}${top ? `${top.text} ${top.tryThis}` : "Todavía no hay cruces con datos suficientes."}`;
 }
 
 export function buildMePrompt(userId: string, today: Today, cross: Cross): { system: string; prompt: string; counts: SummaryCount[] } {
