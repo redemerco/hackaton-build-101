@@ -143,9 +143,12 @@ function assessWork(w: AssessInput["work"], now: number, cfg: AgentConfig): Asse
   const commitRatio = w.typicalCommitsWeek && w.typicalCommitsWeek > 0 ? Math.min(1, (w.commitsWeek + 3 * w.prsWeek) / w.typicalCommitsWeek) : null;
   const parts = [issueRatio, commitRatio].filter((x): x is number => x !== null);
   const actual = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : null;
-  const basis = [issueRatio !== null && `issues ${w.issues.filter((i) => i.done).length}/${w.issues.length}`, commitRatio !== null && `commits ${w.commitsWeek} y PRs ${w.prsWeek} vs ~${Math.round(w.typicalCommitsWeek!)} por semana`]
+  const basis = [
+    issueRatio !== null && `cerraste ${w.issues.filter((i) => i.done).length} de ${w.issues.length} issues`,
+    commitRatio !== null && `${w.commitsWeek} commits y ${w.prsWeek} PRs (solés hacer ~${Math.round(w.typicalCommitsWeek!)} por semana)`,
+  ]
     .filter(Boolean)
-    .join(" · ") || "sin Linear ni historial de commits";
+    .join(" y ") || "sin Linear ni historial de commits";
   const meetingsLeftMin = Math.round(w.meetingsWeek.filter((m) => m.start > now).reduce((s, m) => s + (m.end - m.start) / MIN, 0));
   const pendientes = w.issues.filter((i) => !i.done).map((i) => `${i.id} ${i.title}`.trim()).slice(0, 5);
   if (meetingsLeftMin > 0) pendientes.push(`${fmtMin(meetingsLeftMin)} de reuniones que quedan en la semana`);
@@ -217,7 +220,11 @@ export function assess(input: AssessInput, cfg = agentConfig()): Assessment {
   const health = assessHealth(input.health, now, cfg);
   const flags: Flag[] = [];
   const hour = localHour(now);
-  if (work.gap !== null && work.gap <= -cfg.behindPct) flags.push({ id: "work_behind", text: `vas ${-work.gap}% atrasado en la semana (esperado ${work.expected}%, real ${work.actual}%)` });
+  if (work.gap !== null && work.gap <= -cfg.behindPct) {
+    // En palabras: cuánto hiciste y cuánto de la semana laboral ya pasó (no "esperado X%, real Y%").
+    const elapsed = work.expected >= 100 ? "ya terminó la semana laboral" : `ya pasó el ${work.expected}% de la semana laboral`;
+    flags.push({ id: "work_behind", text: `vas ${-work.gap}% atrasado en la semana: ${work.basis}, y ${elapsed}` });
+  }
   if (work.gap !== null && work.gap >= cfg.behindPct) flags.push({ id: "work_ahead", text: `vas ${work.gap}% adelantado en la semana` });
   if (health.stress.level === "regular" || health.stress.level === "mal") flags.push({ id: "stressed", text: health.stress.text });
   if (health.sleep.lastMin !== null && health.sleep.lastMin < cfg.shortSleepMin) flags.push({ id: "sleep_short", text: `dormiste ${fmtMin(health.sleep.lastMin)}` });

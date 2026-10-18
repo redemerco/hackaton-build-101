@@ -206,7 +206,7 @@ function AssessmentCard({ a }: { a: Assessment }) {
           <span className="text-dim">trabajo</span>
           <span className={work.gap !== null && work.gap < 0 ? "text-heart" : "text-work"}>{headline}</span>
           <span className="tabular-nums text-dim">
-            esperado {work.expected}% · real {work.actual ?? "—"}%
+            llevás {work.actual ?? "—"}% · {work.expected >= 100 ? "la semana laboral ya terminó" : `pasó el ${work.expected}% de la semana`}
           </span>
         </p>
         <p className="font-mono text-[12px] text-faint">{work.basis}</p>
